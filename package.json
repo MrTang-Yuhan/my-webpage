@@ -5,13 +5,22 @@
   "scripts": {
     "start": "npx @11ty/eleventy --serve",
     "build": "npx @11ty/eleventy",
-    "dev": "npx @11ty/eleventy --serve --watch"
+    "dev": "npx @11ty/eleventy --serve --watch",
+    "deploy": "npm run build && wrangler deploy",
+    "preview": "npm run build && wrangler dev"
   },
-  "keywords": ["blog", "eleventy", "static-site"],
+  "keywords": [
+    "blog",
+    "eleventy",
+    "static-site"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
     "@11ty/eleventy": "^3.1.5"
+  },
+  "devDependencies": {
+    "wrangler": "^4.88.0"
   }
 }
