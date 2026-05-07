@@ -1,0 +1,29 @@
+---
+layout: base.njk
+title: Archive
+description: All blog posts
+permalink: /posts/
+---
+
+<section class="archive-header">
+  <h1 class="archive-title">Archive</h1>
+  {% set totalPosts = 0 %}
+  {% for dir, posts in collections.postsByDir %}
+    {% set totalPosts = totalPosts + posts | length %}
+  {% endfor %}
+  <p class="archive-subtitle">All {{ totalPosts }} posts</p>
+</section>
+
+{% for dir, posts in collections.postsByDir %}
+  <div class="archive-section">
+    <h2 class="archive-dir-title">{{ dir | replace("-", " ") | title }}</h2>
+    <ul class="archive-list">
+      {% for post in posts %}
+        <li class="archive-list-item">
+          <span class="archive-date">{{ post.date | formatDate }}</span>
+          <span class="archive-title"><a href="{{ post.url }}">{{ post.data.title }}</a></span>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endfor %}

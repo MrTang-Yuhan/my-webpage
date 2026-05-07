@@ -1,0 +1,113 @@
+---
+layout: base.njk
+---
+<article class="post">
+  <header class="post-header">
+    <h1 class="post-title" id="top">{{ title }}</h1>
+    <div class="post-meta">
+      <time datetime="{{ date | formatDate }}">{{ date | formatDate }}</time>
+      <span class="post-divider">·</span>
+      <span class="post-reading-time">{{ content | readingTime }}</span>
+    </div>
+  </header>
+
+  <div class="post-layout">
+    <div class="post-content" id="post-content">
+      <nav class="post-toc-inline" id="post-toc-inline"></nav>
+      {{ content | addHeadingIds | safe }}
+    </div>
+  </div>
+
+  <footer class="post-footer">
+    <div class="post-tags">
+      {% for tag in tags %}
+        {% if tag != "post" %}
+          <span class="tag">{{ tag }}</span>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    <div class="post-navigation">
+      {% if collections.posts %}
+        {% set posts = collections.posts | reverse %}
+        {% for post in posts %}
+          {% if post.url == page.url %}
+            {% if loop.index > 1 %}
+              {% set prevPost = posts[loop.index - 2] %}
+              <a href="{{ prevPost.url }}" class="nav-link prev">&larr; {{ prevPost.data.title }}</a>
+            {% endif %}
+            {% if loop.index < posts.length %}
+              {% set nextPost = posts[loop.index] %}
+              <a href="{{ nextPost.url }}" class="nav-link next">{{ nextPost.data.title }} &rarr;</a>
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+    </div>
+  </footer>
+
+  <div class="comments-section">
+    <h2>Comments</h2>
+    <script src="https://giscus.app/client.js"
+      data-repo="yourusername/yourrepo"
+      data-repo-id="your-repo-id"
+      data-category="Announcements"
+      data-category-id="DIC_kwDXXXXXXXXXXXXXXX"
+      data-mapping="pathname"
+      data-strict="0"
+      data-reactions-enabled="1"
+      data-emit-metadata="0"
+      data-input-position="top"
+      data-theme="preferred_color_scheme"
+      data-lang="en"
+      crossorigin="anonymous"
+      async>
+    </script>
+  </div>
+</article>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Generate inline TOC at the beginning of content
+  const content = document.getElementById('post-content');
+  const tocInline = document.getElementById('post-toc-inline');
+  if (content && tocInline) {
+    const headings = content.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    if (headings.length > 0) {
+      const toc = document.createElement('div');
+      toc.className = 'toc-inline';
+      const title = document.createElement('div');
+      title.className = 'toc-inline-title';
+      title.textContent = 'Contents';
+      toc.appendChild(title);
+      const nav = document.createElement('nav');
+      nav.className = 'toc-inline-nav';
+      headings.forEach(function(heading) {
+        if (heading.id) {
+          const link = document.createElement('a');
+          link.href = '#' + heading.id;
+          link.className = 'toc-link toc-level-' + heading.tagName.toLowerCase();
+          link.textContent = heading.textContent;
+          nav.appendChild(link);
+        }
+      });
+      toc.appendChild(nav);
+      tocInline.appendChild(toc);
+    }
+  }
+
+  // Add numbers to footnotes
+  const footnotes = content.querySelectorAll('aside.footnote');
+  footnotes.forEach(function(footnote, index) {
+    const num = index + 1;
+    const id = footnote.id;
+    const match = id ? id.match(/fn(\d+)/) : null;
+    const numToShow = match ? parseInt(match[1]) : num;
+
+    const badge = document.createElement('span');
+    badge.className = 'footnote-number';
+    badge.textContent = numToShow;
+    footnote.insertBefore(badge, footnote.firstChild);
+  });
+});
+</script>

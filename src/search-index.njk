@@ -1,0 +1,18 @@
+---
+permalink: /search-index.json
+eleventyExcludeFromCollections: true
+---
+[
+  {% for post in collections.searchablePosts | reverse %}
+    {% if post.data.layout == "post.njk" %}
+    {
+      "title": {{ post.data.title | dump | safe }},
+      "url": {{ post.url | dump | safe }},
+      "date": {{ post.date | formatDate | dump | safe }},
+      "tags": {{ post.data.tags | dump | safe }},
+      "content": {{ post.templateContent | dump | safe }},
+      "excerpt": {{ post.data.description | dump | safe }}
+    }{% if not loop.last %},{% endif %}
+    {% endif %}
+  {% endfor %}
+]
