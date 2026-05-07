@@ -1,0 +1,10 @@
+name = "my-webpage"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = "_site"
+
+[vars]
+NODE_VERSION = "18"
+
+[build]
+command = "npm run build"
+watch_dir = "src"
