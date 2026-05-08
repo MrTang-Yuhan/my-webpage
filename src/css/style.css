@@ -420,6 +420,13 @@ a:hover {
   margin: 2rem 0;
 }
 
+.post-content video {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 2rem 0;
+}
+
 .post-content hr {
   margin: 3rem 0;
   border: none;

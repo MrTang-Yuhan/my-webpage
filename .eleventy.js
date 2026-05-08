@@ -4,6 +4,7 @@ module.exports = function(eleventyConfig) {
   eleventyConfig.addPassthroughCopy("src/js");
   eleventyConfig.addPassthroughCopy("src/images");
   eleventyConfig.addPassthroughCopy("src/posts/**/img");
+  eleventyConfig.addPassthroughCopy("src/posts/**/video");
 
   // Add filter for formatting dates
   eleventyConfig.addFilter("formatDate", function(date) {
