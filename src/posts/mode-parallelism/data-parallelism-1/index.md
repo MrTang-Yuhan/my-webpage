@@ -80,7 +80,7 @@ Single Data Parallelism 的主要问题有三个：
 
 DDP 首先要解决的是通信问题：将原本集中在 Server 上的通信压力，均匀分摊到各个 Worker 上。完成这一步之后，就可以进一步去掉 Server，仅保留 Worker。
 
-在 [Interconnect](../../../Interconnect/Interconnect.md) 一节中提到，Ring-All-Reduce 的通信时间仅为中心化节点方案的 $1/(k-1)$，其中 $k$ 是 GPU 数量。
+在 [Interconnect](../../interconnect/) 一节中提到，Ring-All-Reduce 的通信时间仅为中心化节点方案的 $1/(k-1)$，其中 $k$ 是 GPU 数量。
 
 前文提到，聚合梯度并下发梯度这一轮操作称为 **All-Reduce**。DDP 的核心就是使用 **Ring-All-Reduce** 来替代 DP 中中心化的梯度更新流程（或者连同参数更新一起替代），从而显著降低通信时间。
 

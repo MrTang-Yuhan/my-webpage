@@ -46,6 +46,49 @@ module.exports = function(eleventyConfig) {
     return collectionApi.getFilteredByGlob('src/posts/**/*');
   });
 
+  // Renumber footnotes sequentially
+  eleventyConfig.addFilter("renumberFootnotes", function(content) {
+    if (!content) return content;
+
+    // Collect all footnote refs in order they appear in content
+    const refPattern = /<sup class="footnote-ref"><a href="#fn(\d+)"[^>]*>\[(\d+)\]<\/a><\/sup>/g;
+    const refs = [];
+    let match;
+    while ((match = refPattern.exec(content)) !== null) {
+      refs.push({ id: match[1], num: match[2] });
+    }
+
+    // Get unique footnote IDs in order of first appearance
+    const footnoteIds = [];
+    const idSet = new Set();
+    refs.forEach(r => {
+      if (!idSet.has(r.id)) {
+        footnoteIds.push(r.id);
+        idSet.add(r.id);
+      }
+    });
+
+    // Create mapping from old ID to new sequential number
+    const mapping = {};
+    footnoteIds.forEach((id, index) => {
+      mapping[id] = index + 1;
+    });
+
+    // Replace footnote refs with new numbers
+    let result = content.replace(/<sup class="footnote-ref"><a href="#fn(\d+)"[^>]*>\[(\d+)\]<\/a><\/sup>/g, function(match, id, num) {
+      const newNum = mapping[id];
+      return `<sup class="footnote-ref"><a href="#fn${newNum}">[${newNum}]</a></sup>`;
+    });
+
+    // Replace footnote definitions with new numbers
+    result = result.replace(/<aside id="fn(\d+)" class="footnote">/g, function(match, id) {
+      const newNum = mapping[id];
+      return `<aside id="fn${newNum}" class="footnote">`;
+    });
+
+    return result;
+  });
+
   // Group posts by directory for archive
   eleventyConfig.addCollection('postsByDir', function(collectionApi) {
     const posts = collectionApi.getFilteredByGlob('src/posts/**/*').filter(item => item.data.layout === 'post.njk');

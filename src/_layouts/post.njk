@@ -14,7 +14,7 @@ layout: base.njk
   <div class="post-layout">
     <div class="post-content" id="post-content">
       <nav class="post-toc-inline" id="post-toc-inline"></nav>
-      {{ content | addHeadingIds | safe }}
+      {{ content | addHeadingIds | renumberFootnotes | safe }}
     </div>
   </div>
 
@@ -109,5 +109,31 @@ document.addEventListener('DOMContentLoaded', function() {
     badge.textContent = numToShow;
     footnote.insertBefore(badge, footnote.firstChild);
   });
+});
+</script>
+<script>
+// Convert markdown links BEFORE KaTeX processes the content
+(function() {
+  var content = document.getElementById('post-content');
+  if (content) {
+    content.innerHTML = content.innerHTML.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  }
+})();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script src="/js/post-processing.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var content = document.getElementById('post-content');
+  if (content && typeof renderMathInElement === "function") {
+    renderMathInElement(content, {
+      delimiters: [
+        { left: "$$", right: "$$", display: true },
+        { left: "$", right: "$", display: false }
+      ],
+      throwOnError: false
+    });
+  }
 });
 </script>

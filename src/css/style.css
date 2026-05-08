@@ -266,6 +266,10 @@ a:hover {
 }
 
 /* Post Layout - Tufte-style (Content | Sidenotes in margin) */
+.post-layout {
+  display: flow-root;
+}
+
 .post {
   padding: 4rem 0;
 }
@@ -299,6 +303,7 @@ a:hover {
 /* Main article content - Tufte style */
 .post-content {
   width: 65%;
+  max-width: 800px;
   position: relative;
   font-size: 1.0625rem;
   line-height: 1.65;
@@ -425,13 +430,14 @@ a:hover {
 .post-content aside.footnote {
   float: right;
   clear: right;
-  width: 18vw;
-  max-width: 240px;
-  margin-right: -18vw;
+  width: 24vw;
+  max-width: 280px;
+  min-width: 140px;
+  margin-right: -24vw;
   margin-left: 1rem;
   margin-top: 0;
   margin-bottom: 1rem;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   line-height: 1.4;
   color: var(--color-text-secondary);
   position: relative;
@@ -548,6 +554,7 @@ a:hover {
   margin-top: 4rem;
   padding-top: 2rem;
   border-top: 1px solid var(--color-border);
+  clear: both;
 }
 
 .post-tags {
@@ -593,6 +600,7 @@ a:hover {
   margin-top: 4rem;
   padding-top: 2rem;
   border-top: 1px solid var(--color-border);
+  clear: both;
 }
 
 .comments-section h2 {
@@ -842,7 +850,7 @@ a:hover {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.9);
+  background-color: var(--color-bg);
   z-index: 9999;
   justify-content: center;
   align-items: center;
@@ -872,7 +880,7 @@ a:hover {
   right: 0;
   background: none;
   border: none;
-  color: white;
+  color: var(--color-text);
   font-size: 2rem;
   cursor: pointer;
   padding: 0.5rem;
@@ -883,4 +891,27 @@ a:hover {
 
 .lightbox-close:hover {
   opacity: 1;
+}
+
+/* Tables */
+.post-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.5rem 0;
+}
+
+.post-content th,
+.post-content td {
+  border: 1px solid var(--color-border);
+  padding: 0.75rem 1rem;
+  text-align: left;
+}
+
+.post-content th {
+  background-color: var(--color-bg-secondary);
+  font-weight: 600;
+}
+
+.post-content tr:nth-child(even) {
+  background-color: var(--color-bg-secondary);
 }

@@ -86,7 +86,7 @@ tags:
 为了达到顺序一致性，<sup class="footnote-ref"><a href="#fn8">[8]</a></sup> 我们需要在更新权重之前同步梯度。最常用的损失函数是各个样本损失的平均值：
 
 <aside id="fn8" class="footnote">
-  <p> 如果一个分布式算法算出来的梯度，和单机顺序训练算出来的完全一样，我就称它是顺序一致的（*sequentially consistent*）。</p>
+  <p> 如果一个分布式算法算出来的梯度，和单机顺序训练算出来的完全一样，我就称它是顺序一致的（<em>sequentially consistent</em>）。</p>
 </aside>
 
 $$
@@ -100,7 +100,7 @@ $$
 </aside>
 
 $$
-\nabla W^{\text{sync'd}} = \frac{1}{\#\text{Nodes}} \sum_{i=0}^{\#\text{Nodes}} \nabla W_i^{\text{local}}
+\nabla W^{\text{sync'd}} = \frac{1}{\text{\\#Nodes}} \sum_{i=0}^{\text{\\#Nodes}} \nabla W_i^{\text{local}}
 $$
 
 同步完成后，我们就可以进行权重更新并更新优化器状态。将分布式梯度累加并使每个节点都拿到这个累加和，是通过 `MPI.AllReduce` 操作实现的。<sup class="footnote-ref"><a href="#fn10">[10]</a></sup>
@@ -121,17 +121,17 @@ $$
 
 <aside id="fn12" class="footnote">
   <p>[MPI 规范](https://www.mpi-forum.org/docs/)要求 AllReduce 在每个节点上的结果必须完全相同。但因为浮点数计算不满足结合律，这件事没那么简单。所以我们必须保证各节点做局部归约时的顺序一致。比如下面这个最简单的实现方式就达不到规范要求，因为不同节点上局部求和的顺序不一样：</p>
-  <p>![](./img/bad-allreduce.png)</p>
-  <p>`(a + b) + c  和  a + (b + c)`在实数里相等，但在浮点数里不一定完全相等。</p>
+  <img src="./img/bad-allreduce.png" alt="错误的局部归约顺序">
+  <p><code>(a + b) + c</code>  和  <code>a + (b + c)</code> 在实数里相等，但在浮点数里不一定完全相等。</p>
 </aside>
 
-- **带宽**：使用 Ring AllReduce 时，每个节点需要与其两个环邻居之间传输 $2(\#nodes - 1)\frac{\#params}{\#nodes}$ 个浮点数。忽略 $\frac{1}{\#nodes}\%$ 的不精确性，增加更多节点并不会增加传输的数据量。此外，Ring AllReduce 在带宽上是最优的，意味着没有其他方法可以用更少的数据传输完成同样的任务。<sup class="footnote-ref"><a href="#fn13">[13]</a></sup>
+- **带宽**：使用 Ring AllReduce 时，每个节点需要与其两个环邻居之间传输 $2(\\#nodes - 1)\frac{\\#params}{\\#nodes}$ 个浮点数。当 $\\#nodes$ 足够多时，这个公式等同于 $2\\#params$。此外，Ring AllReduce 在带宽上是最优的，意味着没有其他方法可以用更少的数据传输完成同样的任务。<sup class="footnote-ref"><a href="#fn13">[13]</a></sup>
 
 <aside id="fn13" class="footnote">
   <p>在全双工连接下，我们可以把通信时间的下限估计为$\frac{模型大小}{带宽}$，因为在 Ring AllReduce 过程中，每个节点都在同时收发数据。</p>
 </aside>
 
-- **延迟**：同样对于 Ring AllReduce，我们需要执行 $\#nodes-1$ 步的 `MPI.ReduceScatter` 和 $\#nodes-1$ 步的 `MPI.AllGather`。这意味着虽然增加节点数不会增加数据传输量，但会线性增加通信轮数。这对整体运行时间的影响取决于节点之间的延迟。
+- **延迟**：同样对于 Ring AllReduce，我们需要执行 $\\#nodes-1$ 步的 `MPI.ReduceScatter` 和 $\\#nodes-1$ 步的 `MPI.AllGather`。这意味着虽然增加节点数不会增加数据传输量，但会线性增加通信轮数。这对整体运行时间的影响取决于节点之间的延迟。
 
 下面我们可以直观地看到 AllReduce 是如何使用的。当梯度计算完成后，使用 `MPI.Communicator` 中的所有节点执行 AllReduce。
 
@@ -165,7 +165,7 @@ for param in model.parameters():
 通常，这是通过挂钩（hook）到 Autograd 系统来实现的：<sup class="footnote-ref"><a href="#fn15">[15]</a></sup>
 
 <aside id="fn15" class="footnote">
-  <p>PyTorch 并没有暴露实现交错数据并行所需要的钩子函数。但它在内部实现的 [`DistributedDataParallel`](https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html) 模块，其实和我这里描述的方式是一致的。</p>
+  <p>PyTorch 并没有暴露实现交错数据并行所需要的钩子函数。但它在内部实现的 [<code>DistributedDataParallel</code>](https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html) 模块，其实和我这里描述的方式是一致的。</p>
 </aside>
 
 ```python
@@ -240,7 +240,7 @@ def wait_for_comms(params):
 
 <aside id="fn20" class="footnote">
   <p>其实没必要在不同精度下同时保留两份参数副本。因为对于一个 fp32 值来说，只取它的前两个字节，就等价于它在 bfloat16 下的表示。</p>
-  <p>![](./img/bfloat16_vs_float32.png)</p>
+  <img src="./img/bfloat16_vs_float32.png" alt="bfloat16 vs float32">
   <p>我猜大多数库还是选择保留 bfloat16 副本，是因为对 float32 张量做步长访问会严重影响缓存效率。</p>
 </aside>
 
@@ -262,8 +262,9 @@ def wait_for_comms(params):
 </aside>
 
 $$
-\text{batchsize} \cdot \sum_{i \in \#layers} \text{input\_size}_i
+\mathrm{batchsize} \cdot \sum_{i \in \\#layers} \mathrm{input\_size}_i
 $$
+
 
 我们以16位精度存储激活值。
 
