@@ -537,9 +537,11 @@ a:hover {
 }
 
 .toc-level-h1 { font-weight: 600; }
-.toc-level-h2 { padding-left: 0; }
-.toc-level-h3 { padding-left: 0.75rem; font-size: 0.75rem; }
-.toc-level-h4 { padding-left: 1.5rem; font-size: 0.7rem; }
+.toc-level-h2 { padding-left: 1rem; }
+.toc-level-h3 { padding-left: 2rem; font-size: 0.75rem; }
+.toc-level-h4 { padding-left: 3rem; font-size: 0.7rem; }
+.toc-level-h5 { padding-left: 4rem; font-size: 0.65rem; }
+.toc-level-h6 { padding-left: 5rem; font-size: 0.6rem; }
 
 .footnote-content p {
   margin: 0;
