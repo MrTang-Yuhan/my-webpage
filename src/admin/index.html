@@ -4,37 +4,34 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Content Manager</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css" />
   </head>
   <body>
     <script src="https://unpkg.com/remark-gfm@^4.0.1/index.js"></script>
-    <script src="https://unpkg.com/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
-    <script src="https://unpkg.com/markdown-it-footnote@4.0.0/dist/markdown-it-footnote.min.js"></script>
+    <script src="https://unpkg.com/remark-math@^6.0.0/index.js"></script>
+    <script src="https://unpkg.com/rehype-katex@^7.0.1/index.js"></script>
     <script src="https://unpkg.com/decap-cms@^3.5.0/dist/decap-cms.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
     <script>
       (function () {
-        const md = window.markdownit({ html: true, breaks: false, linkify: true });
-        if (window.markdownitFootnote) md.use(window.markdownitFootnote);
+        if (window.CMS) {
+          if (window.remarkGfm) window.CMS.registerRemarkPlugin(window.remarkGfm);
+          if (window.remarkMath) window.CMS.registerRemarkPlugin(window.remarkMath);
+          if (window.rehypeKatex) window.CMS.registerRehypePlugin(window.rehypeKatex);
 
-        if (window.CMS && window.remarkGfm) {
-          window.CMS.registerRemarkPlugin(window.remarkGfm);
           window.CMS.registerPreviewStyle("/css/style.css");
           window.CMS.registerPreviewStyle("https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css");
         }
 
         function normalizeFootnotes(root) {
           const sections = root.querySelectorAll("section.footnotes");
-          sections.forEach(function(section) {
+          sections.forEach(function (section) {
             const listItems = section.querySelectorAll("li[id^='fn']");
-            listItems.forEach(function(li) {
+            listItems.forEach(function (li) {
               const id = li.id.replace(/^fn/, "");
               const aside = document.createElement("aside");
               aside.id = "fn" + id;
               aside.className = "footnote";
               const clone = li.cloneNode(true);
-              clone.querySelectorAll("a.footnote-backref").forEach(function(a) {
+              clone.querySelectorAll("a.footnote-backref").forEach(function (a) {
                 a.remove();
               });
               aside.innerHTML = clone.innerHTML.trim();
@@ -48,7 +45,7 @@
           const refs = Array.from(root.querySelectorAll("sup.footnote-ref a[href^='#fn']"));
           const order = [];
           const seen = new Set();
-          refs.forEach(function(a) {
+          refs.forEach(function (a) {
             const id = (a.getAttribute("href") || "").replace(/^#fn/, "");
             if (id && !seen.has(id)) {
               seen.add(id);
@@ -56,11 +53,11 @@
             }
           });
           const mapping = {};
-          order.forEach(function(id, i) {
+          order.forEach(function (id, i) {
             mapping[id] = String(i + 1);
           });
 
-          refs.forEach(function(a) {
+          refs.forEach(function (a) {
             const oldId = (a.getAttribute("href") || "").replace(/^#fn/, "");
             const newId = mapping[oldId];
             if (!newId) return;
@@ -68,7 +65,7 @@
             a.textContent = "[" + newId + "]";
           });
 
-          root.querySelectorAll("aside.footnote[id^='fn']").forEach(function(aside) {
+          root.querySelectorAll("aside.footnote[id^='fn']").forEach(function (aside) {
             const oldId = aside.id.replace(/^fn/, "");
             const newId = mapping[oldId];
             if (!newId) return;
@@ -85,14 +82,13 @@
           if (folder && slug) {
             return String(folder).replace(/\/$/, "") + "/" + String(slug).replace(/^\//, "") + ".md";
           }
-
           return "";
         }
 
         function expandVideoShortcodeInDom(root) {
           if (!root) return;
           const nodes = root.querySelectorAll("p");
-          nodes.forEach(function(p) {
+          nodes.forEach(function (p) {
             const text = (p.textContent || "").trim();
             const m = text.match(/^::video\{([^}]*)\}$/);
             if (!m) return;
@@ -121,7 +117,6 @@
               cp.appendChild(em);
               wrapper.appendChild(cp);
             }
-
             p.parentNode.replaceChild(wrapper, p);
           });
         }
@@ -129,11 +124,9 @@
         function rewriteRelativeUrlsInDom(root, entryPath) {
           if (!root || !entryPath) return;
           const normalizedPath = String(entryPath).replace(/\\/g, "/");
-          const baseDir = normalizedPath
-            .replace(/^src\//, "/")
-            .replace(/\/[^/]*$/, "/");
+          const baseDir = normalizedPath.replace(/^src\//, "/").replace(/\/[^/]*$/, "/");
 
-          root.querySelectorAll("img[src], a[href]").forEach(function(el) {
+          root.querySelectorAll("img[src], a[href]").forEach(function (el) {
             const attr = el.tagName.toLowerCase() === "img" ? "src" : "href";
             const value = el.getAttribute(attr);
             if (!value) return;
@@ -143,61 +136,32 @@
           });
         }
 
-        function renderMath(root) {
-          if (!root || typeof renderMathInElement !== "function") return;
-          renderMathInElement(root, {
-            delimiters: [
-              { left: "$$", right: "$$", display: true },
-              { left: "$", right: "$", display: false }
-            ],
-            ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
-            ignoredClasses: ["katex", "katex-display", "katex-mathml", "katex-html"],
-            throwOnError: false
-          });
-        }
-
-        function rewriteRelativeUrls(html, entryPath) {
-          if (!entryPath) return html;
-          const normalizedPath = String(entryPath).replace(/\\/g, "/");
-          const baseDir = normalizedPath.replace(/^src\//, "/").replace(/\/[^/]*$/, "/");
-          return html.replace(/\b(src|href)=["']([^"']+)["']/gi, function(match, attr, value) {
-            if (/^(?:[a-z]+:|\/|#|data:|blob:)/i.test(value)) return match;
-            const abs = new URL(value, window.location.origin + baseDir).pathname;
-            return `${attr}="${abs}"`;
-          });
-        }
-
         const PostPreview = window.createClass({
-          componentDidMount: function() {
+          componentDidMount: function () {
             this.postProcess();
           },
-          componentDidUpdate: function() {
+          componentDidUpdate: function () {
             this.postProcess();
           },
-          postProcess: function() {
+          postProcess: function () {
             if (!this._root) return;
+
             const bodyText = this.props.entry.getIn(["data", "body"]) || "";
             const titleText = this.props.entry.getIn(["data", "title"]) || "";
             const signature = String(titleText) + "\n---\n" + String(bodyText);
-            if (this._lastProcessedSignature === signature && this._lastRenderDone === true) return;
-            this._lastRenderDone = false;
+            if (this._lastProcessedSignature === signature) return;
 
             const entryPath = computeEntryPath(this.props.entry, this.props.collection);
             rewriteRelativeUrlsInDom(this._root, entryPath);
             expandVideoShortcodeInDom(this._root);
             normalizeFootnotes(this._root);
             renumberFootnotes(this._root);
-            requestAnimationFrame(() => renderMath(this._root));
-
             this._lastProcessedSignature = signature;
-            this._lastRenderDone = true;
           },
-          render: function() {
+          render: function () {
             const entry = this.props.entry;
             const title = entry.getIn(["data", "title"]) || "";
-            const bodyMarkdown = entry.getIn(["data", "body"]) || "";
-            const entryPath = computeEntryPath(entry, this.props.collection);
-            const bodyHtml = rewriteRelativeUrls(md.render(bodyMarkdown), entryPath);
+            const body = this.props.widgetFor("body");
 
             return window.h(
               "article",
@@ -206,7 +170,7 @@
                 "div",
                 { className: "post-content", ref: (el) => { this._root = el; } },
                 window.h("h1", { className: "post-title" }, title),
-                window.h("div", { className: "post-body-preview", dangerouslySetInnerHTML: { __html: bodyHtml } })
+                window.h("div", { className: "post-body-preview" }, body)
               )
             );
           }
@@ -222,19 +186,19 @@
               { name: "caption", label: "Caption (optional)", widget: "string", required: false }
             ],
             pattern: /^<video controls(?: poster="([^"]*)")?>\s*<source src="([^"]+)" type="video\/mp4">\s*<\/video>(?:\s*<p><em>([^<]*)<\/em><\/p>)?/m,
-            fromBlock: function(match) {
+            fromBlock: function (match) {
               return {
                 poster: match[1] || "",
                 src: match[2] || "",
                 caption: match[3] || ""
               };
             },
-            toBlock: function(data) {
+            toBlock: function (data) {
               const poster = data.poster ? ` poster="${data.poster}"` : "";
               const caption = data.caption ? `\n<p><em>${data.caption}</em></p>` : "";
               return `<video controls${poster}>\n  <source src="${data.src}" type="video/mp4">\n</video>${caption}`;
             },
-            toPreview: function(data) {
+            toPreview: function (data) {
               const poster = data.poster ? ` poster="${data.poster}"` : "";
               const caption = data.caption ? `<p><em>${data.caption}</em></p>` : "";
               return `<video controls${poster} style="max-width:100%;height:auto;"><source src="${data.src}" type="video/mp4"></video>${caption}`;
