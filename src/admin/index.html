@@ -159,6 +159,12 @@
           },
           postProcess: function() {
             if (!this._root) return;
+            const bodyText = this.props.entry.getIn(["data", "body"]) || "";
+            const titleText = this.props.entry.getIn(["data", "title"]) || "";
+            const signature = String(titleText) + "\n---\n" + String(bodyText);
+            if (this._lastProcessedSignature === signature) return;
+            this._lastProcessedSignature = signature;
+
             const entryPath = computeEntryPath(this.props.entry, this.props.collection);
             rewriteRelativeUrlsInDom(this._root, entryPath);
             expandVideoShortcodeInDom(this._root);
