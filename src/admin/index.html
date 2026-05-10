@@ -162,8 +162,8 @@
             const bodyText = this.props.entry.getIn(["data", "body"]) || "";
             const titleText = this.props.entry.getIn(["data", "title"]) || "";
             const signature = String(titleText) + "\n---\n" + String(bodyText);
-            if (this._lastProcessedSignature === signature) return;
-            this._lastProcessedSignature = signature;
+            if (this._lastProcessedSignature === signature && this._lastRenderDone === true) return;
+            this._lastRenderDone = false;
 
             const entryPath = computeEntryPath(this.props.entry, this.props.collection);
             rewriteRelativeUrlsInDom(this._root, entryPath);
@@ -171,6 +171,9 @@
             normalizeFootnotes(this._root);
             renumberFootnotes(this._root);
             renderMath(this._root);
+
+            this._lastProcessedSignature = signature;
+            this._lastRenderDone = true;
           },
           render: function() {
             const entry = this.props.entry;
