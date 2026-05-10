@@ -5,7 +5,7 @@ date: 2026-05-01
 description: "写网页的一些语法介绍"
 tags:
   - post
-  - web guide
+  - 网页语法
 ---
 
 总体而言，正文支持 markdown 和 html 语法，而脚注的使用仅支持 html 语法 和 部分 markdown 语法。

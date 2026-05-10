@@ -262,7 +262,7 @@ def wait_for_comms(params):
 </aside>
 
 $$
-\mathrm{batchsize} \cdot \sum_{i \in \\#layers} \mathrm{input\_size}_i
+\mathrm{batchsize} \cdot \sum_{i \in \\#layers} \mathrm{input\\_size}_i
 $$
 
 
