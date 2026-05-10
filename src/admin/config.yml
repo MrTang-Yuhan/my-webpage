@@ -1,0 +1,30 @@
+backend:
+  name: github
+  repo: MrTang-Yuhan/my-webpage
+  branch: main
+  base_url: https://my-webpage-adu.pages.dev
+  auth_endpoint: /api/auth
+
+media_folder: "src/images/uploads"
+public_folder: "/images/uploads"
+
+publish_mode: editorial_workflow
+
+collections:
+  - name: "posts"
+    label: "Posts"
+    folder: "src/posts"
+    create: true
+    slug: "{{slug}}/index"
+    extension: "md"
+    format: "frontmatter"
+    nested:
+      depth: 10
+      summary: "{{title}}"
+    fields:
+      - { label: "Layout", name: "layout", widget: "hidden", default: "post.njk" }
+      - { label: "Title", name: "title", widget: "string" }
+      - { label: "Date", name: "date", widget: "datetime", format: "YYYY-MM-DD", date_format: "YYYY-MM-DD", time_format: false }
+      - { label: "Description", name: "description", widget: "string", required: false }
+      - { label: "Tags", name: "tags", widget: "list", default: ["post"] }
+      - { label: "Body", name: "body", widget: "markdown" }

@@ -61,17 +61,35 @@ Your content here...
 
 3. The post will automatically appear on the homepage and archive page after rebuilding.
 
-### Adding Footnotes (Margin Notes)
+### Adding Footnotes
 
-Use the `<aside class="footnote">` HTML element for margin footnotes:
+The site supports Markdown footnotes now.
+
+Single-line footnote:
 
 ```markdown
-<aside class="footnote">
-  <p>Your footnote content here.</p>
-</aside>
+Text with a note[^1]
+
+[^1]: This is the footnote.
 ```
 
-Footnotes float to the right on desktop screens, matching the siboehm.com style.
+Multi-line footnote (indent continuation lines by at least 2 spaces or 1 tab):
+
+```markdown
+Text with a long note[^2]
+
+[^2]: First line.
+  Second line in the same footnote.
+  Third line with `code` and a [link](https://example.com).
+```
+
+You can also include a blank line in one footnote by indenting the next paragraph:
+
+```markdown
+[^3]: Paragraph one.
+
+  Paragraph two in the same footnote.
+```
 
 ### Adding Images
 
@@ -99,7 +117,20 @@ To enable GitHub comments:
 2. Update `src/_layouts/post.njk` with your giscus configuration:
    - `data-repo`: Your GitHub repo (e.g., `username/repo`)
    - `data-repo-id`: Your repo ID
-   - `data-category` and `data-category-id`: Your category settings
+  - `data-category` and `data-category-id`: Your category settings
+
+### Online Editing (/admin) with Cloudflare Pages
+
+This project includes Decap CMS at `/admin` and uses Cloudflare Pages Functions as the GitHub OAuth proxy.
+
+1. In GitHub, create an OAuth App:
+   - Homepage URL: `https://my-webpage-adu.pages.dev`
+   - Authorization callback URL: `https://my-webpage-adu.pages.dev/api/callback`
+2. In Cloudflare Pages project settings, add environment variables (Production + Preview):
+   - `GITHUB_CLIENT_ID`
+   - `GITHUB_CLIENT_SECRET`
+3. Deploy the site.
+4. Open `https://my-webpage-adu.pages.dev/admin` and sign in with GitHub.
 
 ### Site Metadata
 

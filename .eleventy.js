@@ -1,8 +1,19 @@
+const markdownIt = require("markdown-it");
+const markdownItFootnote = require("markdown-it-footnote");
+
 module.exports = function(eleventyConfig) {
+  const md = markdownIt({
+    html: true,
+    breaks: false,
+    linkify: true
+  }).use(markdownItFootnote);
+  eleventyConfig.setLibrary("md", md);
+
   // Pass through static files
   eleventyConfig.addPassthroughCopy("src/css");
   eleventyConfig.addPassthroughCopy("src/js");
   eleventyConfig.addPassthroughCopy("src/images");
+  eleventyConfig.addPassthroughCopy("src/admin/config.yml");
   eleventyConfig.addPassthroughCopy("src/posts/**/img");
   eleventyConfig.addPassthroughCopy("src/posts/**/video");
 

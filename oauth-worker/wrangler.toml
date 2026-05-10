@@ -1,0 +1,7 @@
+name = "my-webpage-decap-oauth"
+main = "src/index.js"
+compatibility_date = "2026-05-10"
+
+[vars]
+# Replace with your deployed Worker URL, e.g. https://my-webpage-oauth.<subdomain>.workers.dev
+AUTH_BASE_URL = "https://YOUR_AUTH_WORKER_DOMAIN"
