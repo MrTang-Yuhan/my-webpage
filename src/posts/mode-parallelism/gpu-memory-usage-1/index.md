@@ -136,7 +136,7 @@ $$
 
 
 <aside id="fn2" class="footnote">
-  <p>一般隐藏层尺寸就是`[b, s, h]`；FP16 占 2 bytes</p>
+  <p>一般隐藏层尺寸就是<code>[b, s, h]</code>；FP16 占 2 bytes</p>
 </aside>
 
 
