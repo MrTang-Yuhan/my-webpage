@@ -20,17 +20,13 @@ tags:
 
 这三种方法的共同思想是：将一个非常大的输入数据切分成若干份，并在多个 GPU 上并行完成前向传播和反向传播。
 
-对于参数效率<sup class="footnote-ref"><a href="#fn1">[1]</a></sup>极高的模型，数据并行尤为有效，比如 CNNs。
+对于参数效率[^1]极高的模型，数据并行尤为有效，比如 CNNs。
 
-<aside id="fn1" class="footnote">
-  <p>"参数效率（parameter efficient）为模型单次前向传播中浮点操作数（FLOPs）与参数量的比值，越大代表模型的计算密度越高</p>
-</aside>
 
-<u>ShallowSpeed</u><sup class="footnote-ref"><a href="#fn2">[2]</a></sup> 通过 python + MPI 实现了简单的数据并行。
 
-<aside id="fn2" class="footnote">
-  <p>https://github.com/siboehm/shallowspeed</p>
-</aside>
+<u>ShallowSpeed</u>[^2] 通过 python + MPI 实现了简单的数据并行。
+
+
 
 
 ### Naive Data Parallelism
@@ -286,3 +282,7 @@ ZeRO 一共有三个级别，分别对应 Model States 不同程度的分割（P
     ![(https://www.cnblogs.com/whiteBear/p/18341975)](./img/zero-dp-17.png)
 
     - FP16 精度的权重成为了下一个迭代开始时的模型参数，至此一个训练迭代完成
+
+[^1]: "参数效率（parameter efficient）为模型单次前向传播中浮点操作数（FLOPs）与参数量的比值，越大代表模型的计算密度越高
+
+[^2]: https://github.com/siboehm/shallowspeed

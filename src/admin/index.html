@@ -4,8 +4,104 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Content Manager</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css" />
   </head>
   <body>
+    <script src="https://unpkg.com/remark-gfm@^4.0.1/index.js"></script>
     <script src="https://unpkg.com/decap-cms@^3.5.0/dist/decap-cms.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+    <script>
+      (function () {
+        if (window.CMS && window.remarkGfm) {
+          window.CMS.registerRemarkPlugin(window.remarkGfm);
+          window.CMS.registerPreviewStyle("/css/style.css");
+        }
+
+        function normalizeFootnotes(root) {
+          const sections = root.querySelectorAll("section.footnotes");
+          sections.forEach(function(section) {
+            const listItems = section.querySelectorAll("li[id^='fn']");
+            listItems.forEach(function(li) {
+              const id = li.id.replace(/^fn/, "");
+              const aside = document.createElement("aside");
+              aside.id = "fn" + id;
+              aside.className = "footnote";
+              const clone = li.cloneNode(true);
+              clone.querySelectorAll("a.footnote-backref").forEach(function(a) {
+                a.remove();
+              });
+              aside.innerHTML = clone.innerHTML.trim();
+              section.parentNode.insertBefore(aside, section);
+            });
+            section.remove();
+          });
+        }
+
+        function renumberFootnotes(root) {
+          const refs = Array.from(root.querySelectorAll("sup.footnote-ref a[href^='#fn']"));
+          const order = [];
+          const seen = new Set();
+          refs.forEach(function(a) {
+            const id = (a.getAttribute("href") || "").replace(/^#fn/, "");
+            if (id && !seen.has(id)) {
+              seen.add(id);
+              order.push(id);
+            }
+          });
+          const mapping = {};
+          order.forEach(function(id, i) {
+            mapping[id] = String(i + 1);
+          });
+
+          refs.forEach(function(a) {
+            const oldId = (a.getAttribute("href") || "").replace(/^#fn/, "");
+            const newId = mapping[oldId];
+            if (!newId) return;
+            a.setAttribute("href", "#fn" + newId);
+            a.textContent = "[" + newId + "]";
+          });
+
+          root.querySelectorAll("aside.footnote[id^='fn']").forEach(function(aside) {
+            const oldId = aside.id.replace(/^fn/, "");
+            const newId = mapping[oldId];
+            if (!newId) return;
+            aside.id = "fn" + newId;
+          });
+        }
+
+        function renderMath(root) {
+          if (!root || typeof renderMathInElement !== "function") return;
+          renderMathInElement(root, {
+            delimiters: [
+              { left: "$$", right: "$$", display: true },
+              { left: "$", right: "$", display: false }
+            ],
+            throwOnError: false
+          });
+        }
+
+        function renderAllPreviews() {
+          const panes = document.querySelectorAll(".frame-content, .cms-preview-pane");
+          panes.forEach(function(pane) {
+            normalizeFootnotes(pane);
+            renumberFootnotes(pane);
+            renderMath(pane);
+          });
+        }
+
+        const observer = new MutationObserver(function () {
+          renderAllPreviews();
+        });
+
+        observer.observe(document.documentElement, {
+          childList: true,
+          subtree: true
+        });
+
+        window.addEventListener("load", renderAllPreviews);
+        setInterval(renderAllPreviews, 1000);
+      })();
+    </script>
   </body>
 </html>

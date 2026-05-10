@@ -62,11 +62,30 @@ module.exports = function(eleventyConfig) {
   eleventyConfig.addFilter("renumberFootnotes", function(content) {
     if (!content) return content;
 
+    // Convert markdown-it-footnote output into the site's existing aside footnote format.
+    // This keeps markdown footnotes compatible with current CSS and numbering logic.
+    let normalized = content
+      .replace(/<hr class="footnotes-sep">\s*/g, "")
+      .replace(/<section class="footnotes">[\s\S]*?<\/section>/g, function(sectionHtml) {
+        const items = [];
+        const liPattern = /<li id="fn(\d+)" class="footnote-item">([\s\S]*?)<\/li>/g;
+        let liMatch;
+        while ((liMatch = liPattern.exec(sectionHtml)) !== null) {
+          const id = liMatch[1];
+          const rawBody = liMatch[2];
+          const body = rawBody
+            .replace(/<a href="#fnref\d+" class="footnote-backref">[\s\S]*?<\/a>/g, "")
+            .trim();
+          items.push(`<aside id="fn${id}" class="footnote">${body}</aside>`);
+        }
+        return items.join("\n");
+      });
+
     // Collect all footnote refs in order they appear in content
     const refPattern = /<sup class="footnote-ref"><a href="#fn(\d+)"[^>]*>\[(\d+)\]<\/a><\/sup>/g;
     const refs = [];
     let match;
-    while ((match = refPattern.exec(content)) !== null) {
+    while ((match = refPattern.exec(normalized)) !== null) {
       refs.push({ id: match[1], num: match[2] });
     }
 
@@ -87,7 +106,7 @@ module.exports = function(eleventyConfig) {
     });
 
     // Replace footnote refs with new numbers
-    let result = content.replace(/<sup class="footnote-ref"><a href="#fn(\d+)"[^>]*>\[(\d+)\]<\/a><\/sup>/g, function(match, id, num) {
+    let result = normalized.replace(/<sup class="footnote-ref"><a href="#fn(\d+)"[^>]*>\[(\d+)\]<\/a><\/sup>/g, function(match, id, num) {
       const newNum = mapping[id];
       return `<sup class="footnote-ref"><a href="#fn${newNum}">[${newNum}]</a></sup>`;
     });

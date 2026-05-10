@@ -96,6 +96,26 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
+  // Move each footnote next to the paragraph where it is referenced.
+  const footnoteById = {};
+  content.querySelectorAll('aside.footnote[id]').forEach(function(footnote) {
+    footnoteById[footnote.id] = footnote;
+  });
+
+  const inserted = new Set();
+  content.querySelectorAll('sup.footnote-ref a[href^="#fn"]').forEach(function(link) {
+    const href = link.getAttribute('href') || '';
+    const id = href.replace('#', '');
+    const footnote = footnoteById[id];
+    if (!footnote || inserted.has(id)) return;
+
+    const anchor = link.closest('p, li, blockquote, h1, h2, h3, h4, h5, h6');
+    if (anchor && anchor.parentNode) {
+      anchor.parentNode.insertBefore(footnote, anchor.nextSibling);
+      inserted.add(id);
+    }
+  });
+
   // Add numbers to footnotes
   const footnotes = content.querySelectorAll('aside.footnote');
   footnotes.forEach(function(footnote, index) {

@@ -5,8 +5,8 @@ backend:
   base_url: https://my-webpage-adu.pages.dev
   auth_endpoint: /api/auth
 
-media_folder: "src/images/uploads"
-public_folder: "/images/uploads"
+media_folder: "{{media_folder}}/img"
+public_folder: "./img"
 
 publish_mode: editorial_workflow
 
