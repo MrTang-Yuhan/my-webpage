@@ -13,6 +13,7 @@ module.exports = function(eleventyConfig) {
   eleventyConfig.addPassthroughCopy("src/css");
   eleventyConfig.addPassthroughCopy("src/js");
   eleventyConfig.addPassthroughCopy("src/images");
+  eleventyConfig.addPassthroughCopy("src/logo");
   eleventyConfig.addPassthroughCopy("src/admin/config.yml");
   eleventyConfig.addPassthroughCopy("src/posts/**/img");
   eleventyConfig.addPassthroughCopy("src/posts/**/video");
@@ -51,6 +52,24 @@ module.exports = function(eleventyConfig) {
       const uniqueId = id || 'heading-' + counter++;
       return `<${tag} id="${uniqueId}">${text}</${tag}>`;
     });
+  });
+
+  // Support simple video shortcode in markdown:
+  // ::video{src="./video/demo.mp4" poster="./img/poster.png" caption="Demo"}
+  eleventyConfig.addFilter("videoShortcode", function(content) {
+    if (!content) return content;
+    return content.replace(
+      /<p>::video\{([^}]*)\}<\/p>/g,
+      function(_, attrs) {
+        const src = (attrs.match(/src="([^"]+)"/) || [])[1];
+        const poster = (attrs.match(/poster="([^"]+)"/) || [])[1];
+        const caption = (attrs.match(/caption="([^"]+)"/) || [])[1];
+        if (!src) return _;
+        const posterAttr = poster ? ` poster="${poster}"` : "";
+        const captionHtml = caption ? `\n<p><em>${caption}</em></p>` : "";
+        return `<video controls${posterAttr}><source src="${src}" type="video/mp4"></video>${captionHtml}`;
+      }
+    );
   });
 
   // Generate search index using a JavaScript template
