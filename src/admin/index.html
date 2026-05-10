@@ -7,14 +7,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css" />
   </head>
   <body>
-    <div style="position:fixed;top:12px;right:12px;z-index:9999;display:flex;gap:8px;">
-      <a href="/" style="padding:6px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#111;text-decoration:none;font:14px/1.2 sans-serif;">Home</a>
-      <a href="https://github.com/MrTang-Yuhan/my-webpage/discussions" target="_blank" rel="noopener noreferrer" style="padding:6px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#111;text-decoration:none;font:14px/1.2 sans-serif;">Manage Comments</a>
-    </div>
     <script src="https://unpkg.com/remark-gfm@^4.0.1/index.js"></script>
     <script src="https://unpkg.com/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
     <script src="https://unpkg.com/markdown-it-footnote@4.0.0/dist/markdown-it-footnote.min.js"></script>
-    <script src="https://unpkg.com/markdown-it-katex@2.0.3/dist/markdown-it-katex.js"></script>
     <script src="https://unpkg.com/decap-cms@^3.5.0/dist/decap-cms.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
@@ -22,7 +17,6 @@
       (function () {
         const md = window.markdownit({ html: true, breaks: false, linkify: true });
         if (window.markdownitFootnote) md.use(window.markdownitFootnote);
-        if (window.markdownitKatex) md.use(window.markdownitKatex);
 
         if (window.CMS && window.remarkGfm) {
           window.CMS.registerRemarkPlugin(window.remarkGfm);
@@ -149,6 +143,19 @@
           });
         }
 
+        function renderMath(root) {
+          if (!root || typeof renderMathInElement !== "function") return;
+          renderMathInElement(root, {
+            delimiters: [
+              { left: "$$", right: "$$", display: true },
+              { left: "$", right: "$", display: false }
+            ],
+            ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+            ignoredClasses: ["katex", "katex-display", "katex-mathml", "katex-html"],
+            throwOnError: false
+          });
+        }
+
         function rewriteRelativeUrls(html, entryPath) {
           if (!entryPath) return html;
           const normalizedPath = String(entryPath).replace(/\\/g, "/");
@@ -180,6 +187,7 @@
             expandVideoShortcodeInDom(this._root);
             normalizeFootnotes(this._root);
             renumberFootnotes(this._root);
+            requestAnimationFrame(() => renderMath(this._root));
 
             this._lastProcessedSignature = signature;
             this._lastRenderDone = true;
