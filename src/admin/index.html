@@ -8,22 +8,11 @@
   </head>
   <body>
     <script src="https://unpkg.com/remark-gfm@^4.0.1/index.js"></script>
-    <script src="https://unpkg.com/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
-    <script src="https://unpkg.com/markdown-it-footnote@4.0.0/dist/markdown-it-footnote.min.js"></script>
     <script src="https://unpkg.com/decap-cms@^3.5.0/dist/decap-cms.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
     <script>
       (function () {
-        const md = window.markdownit({
-          html: true,
-          breaks: false,
-          linkify: true
-        });
-        if (window.markdownitFootnote) {
-          md.use(window.markdownitFootnote);
-        }
-
         if (window.CMS && window.remarkGfm) {
           window.CMS.registerRemarkPlugin(window.remarkGfm);
           window.CMS.registerPreviewStyle("/css/style.css");
@@ -92,21 +81,34 @@
           });
         }
 
-        function rewriteRelativeUrls(html, entryPath) {
-          if (!entryPath) return html;
+        function computeEntryPath(entry, collection) {
+          const direct = entry.get("path");
+          if (direct) return String(direct);
+
+          const folder = collection && collection.get ? collection.get("folder") : null;
+          const slug = entry.get("slug");
+          if (folder && slug) {
+            return String(folder).replace(/\/$/, "") + "/" + String(slug).replace(/^\//, "") + ".md";
+          }
+
+          return "";
+        }
+
+        function rewriteRelativeUrlsInDom(root, entryPath) {
+          if (!root || !entryPath) return;
           const normalizedPath = String(entryPath).replace(/\\/g, "/");
           const baseDir = normalizedPath
             .replace(/^src\//, "/")
             .replace(/\/[^/]*$/, "/");
 
-          return html.replace(
-            /\b(src|href)=["']([^"']+)["']/gi,
-            function(match, attr, value) {
-              if (/^(?:[a-z]+:|\/|#|data:|blob:)/i.test(value)) return match;
-              const abs = new URL(value, window.location.origin + baseDir).pathname;
-              return `${attr}="${abs}"`;
-            }
-          );
+          root.querySelectorAll("img[src], a[href]").forEach(function(el) {
+            const attr = el.tagName.toLowerCase() === "img" ? "src" : "href";
+            const value = el.getAttribute(attr);
+            if (!value) return;
+            if (/^(?:[a-z]+:|\/|#|data:|blob:)/i.test(value)) return;
+            const abs = new URL(value, window.location.origin + baseDir).pathname;
+            el.setAttribute(attr, abs);
+          });
         }
 
         const PostPreview = window.createClass({
@@ -118,6 +120,8 @@
           },
           postProcess: function() {
             if (!this._root) return;
+            const entryPath = computeEntryPath(this.props.entry, this.props.collection);
+            rewriteRelativeUrlsInDom(this._root, entryPath);
             normalizeFootnotes(this._root);
             renumberFootnotes(this._root);
             renderMath(this._root);
@@ -125,9 +129,7 @@
           render: function() {
             const entry = this.props.entry;
             const title = entry.getIn(["data", "title"]) || "";
-            const body = entry.getIn(["data", "body"]) || "";
-            const entryPath = entry.get("path") || entry.getIn(["data", "path"]) || "";
-            const rendered = rewriteRelativeUrls(md.render(body), entryPath);
+            const body = this.props.widgetFor("body");
 
             return window.h(
               "article",
@@ -136,7 +138,7 @@
                 "div",
                 { className: "post-content", ref: (el) => { this._root = el; } },
                 window.h("h1", { className: "post-title" }, title),
-                window.h("div", { dangerouslySetInnerHTML: { __html: rendered } })
+                window.h("div", { className: "post-body-preview" }, body)
               )
             );
           }
