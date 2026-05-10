@@ -13,7 +13,7 @@ module.exports = function(eleventyConfig) {
   eleventyConfig.addPassthroughCopy("src/css");
   eleventyConfig.addPassthroughCopy("src/js");
   eleventyConfig.addPassthroughCopy("src/images");
-  eleventyConfig.addPassthroughCopy("src/logo");
+  eleventyConfig.addPassthroughCopy("logo");
   eleventyConfig.addPassthroughCopy("src/admin/config.yml");
   eleventyConfig.addPassthroughCopy("src/posts/**/img");
   eleventyConfig.addPassthroughCopy("src/posts/**/video");

@@ -7,78 +7,15 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css" />
   </head>
   <body>
-    <a href="/" id="backHomeBtn" style="position:fixed;top:12px;left:12px;z-index:9999;padding:6px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#111;text-decoration:none;font:14px/1.2 sans-serif;">Back Home</a>
-    <div id="adminDenied" style="display:none;max-width:720px;margin:80px auto;padding:16px;border:1px solid #ddd;border-radius:8px;font:14px/1.6 sans-serif;">
-      <h2 style="margin:0 0 8px 0;font-size:20px;">No Admin Permission</h2>
-      <p style="margin:0 0 12px 0;">This account can log in for comments, but cannot access the admin editor.</p>
-      <a href="/" style="display:inline-block;padding:8px 12px;border:1px solid #ddd;border-radius:8px;text-decoration:none;color:#111;">Return Home</a>
-    </div>
-    <div id="adminApp" style="display:none;"></div>
     <script src="https://unpkg.com/remark-gfm@^4.0.1/index.js"></script>
-    <script>
-      window.CMS_MANUAL_INIT = true;
-    </script>
     <script src="https://unpkg.com/decap-cms@^3.5.0/dist/decap-cms.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
     <script>
       (function () {
-        const OWNER_LOGIN = "MrTang-Yuhan";
-        const params = new URLSearchParams(window.location.search);
-        const fromLogin = params.get("from") === "login";
-        const adminDenied = document.getElementById("adminDenied");
-        const adminApp = document.getElementById("adminApp");
-
-        function readToken() {
-          const raw = localStorage.getItem("netlify-cms-user");
-          if (!raw) return null;
-          try {
-            const parsed = JSON.parse(raw);
-            return (parsed && (parsed.token || parsed.access_token)) || null;
-          } catch {
-            return null;
-          }
-        }
-
-        async function currentGithubLogin(token) {
-          if (!token) return null;
-          try {
-            const res = await fetch("https://api.github.com/user", {
-              headers: { Authorization: "token " + token }
-            });
-            if (!res.ok) return null;
-            const user = await res.json();
-            return user && user.login ? user.login : null;
-          } catch {
-            return null;
-          }
-        }
-
-        async function guardAdminAccess() {
-          const token = readToken();
-          const login = await currentGithubLogin(token);
-          const isOwner = login === OWNER_LOGIN;
-
-          if (!isOwner) {
-            adminDenied.style.display = "block";
-            adminApp.style.display = "none";
-            return false;
-          }
-
-          if (fromLogin) {
-            window.location.replace("/");
-            return false;
-          }
-
-          adminDenied.style.display = "none";
-          adminApp.style.display = "block";
-          return true;
-        }
-
         if (window.CMS && window.remarkGfm) {
           window.CMS.registerRemarkPlugin(window.remarkGfm);
           window.CMS.registerPreviewStyle("/css/style.css");
-          window.CMS.registerPreviewStyle("https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css");
         }
 
         function normalizeFootnotes(root) {
@@ -135,19 +72,6 @@
 
         function renderMath(root) {
           if (!root || typeof renderMathInElement !== "function") return;
-          root.querySelectorAll("span.katex, span.katex-display").forEach(function(node) {
-            const parent = node.parentNode;
-            if (!parent) return;
-            const original = parent.getAttribute("data-original-math");
-            if (original) {
-              parent.textContent = original;
-            }
-          });
-          root.querySelectorAll(".math-inline, .math-display").forEach(function(node) {
-            if (!node.getAttribute("data-original-math")) {
-              node.setAttribute("data-original-math", node.textContent || "");
-            }
-          });
           renderMathInElement(root, {
             delimiters: [
               { left: "$$", right: "$$", display: true },
@@ -266,13 +190,6 @@
         });
 
         if (window.CMS) {
-          if (typeof window.CMS.init === "function") {
-            window.CMS.init({
-              config: { load_config_file: true },
-              mountElement: document.getElementById("adminApp")
-            });
-          }
-
           window.CMS.registerEditorComponent({
             id: "video",
             label: "Video",
@@ -303,8 +220,6 @@
 
           window.CMS.registerPreviewTemplate("posts", PostPreview);
         }
-
-        guardAdminAccess();
       })();
     </script>
   </body>
