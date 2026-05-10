@@ -3,7 +3,7 @@ export async function onRequestGet(context) {
   const url = new URL(request.url);
 
   const provider = url.searchParams.get("provider");
-  const origin = url.searchParams.get("origin");
+  const origin = resolveOrigin(request, url);
   if (provider !== "github") {
     return json({ error: "Only github provider is supported" }, 400);
   }
@@ -21,6 +21,31 @@ export async function onRequestGet(context) {
   github.searchParams.set("state", state);
 
   return Response.redirect(github.toString(), 302);
+}
+
+function resolveOrigin(request, url) {
+  const fromQuery = url.searchParams.get("origin");
+  if (fromQuery) return fromQuery;
+
+  const siteDomain = url.searchParams.get("site_domain");
+  if (siteDomain) {
+    if (siteDomain.startsWith("http://") || siteDomain.startsWith("https://")) return siteDomain;
+    return `https://${siteDomain}`;
+  }
+
+  const fromOriginHeader = request.headers.get("origin");
+  if (fromOriginHeader) return fromOriginHeader;
+
+  const referer = request.headers.get("referer");
+  if (referer) {
+    try {
+      return new URL(referer).origin;
+    } catch {
+      // ignore parse errors
+    }
+  }
+
+  return "https://my-webpage-adu.pages.dev";
 }
 
 function makeState(payload) {
