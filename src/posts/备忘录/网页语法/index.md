@@ -19,11 +19,9 @@ tags:
 ### 脚注插入和编号
 
 ```markdown
-<sup class="footnote-ref"><a href="#fn1">[1]</a></sup>
+[^1]
 
-<aside id="fn1" class="footnote">
-  <p>xxxxxx</p>
-</aside>
+
 ```
 
 ### 脚注插入图片
@@ -44,3 +42,5 @@ tags:
 <strong> xxx </strong>
 <em> xxx </em>
 ```
+
+[^1]: xxxxxx

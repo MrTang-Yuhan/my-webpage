@@ -47,11 +47,9 @@ $$C \approx \tau T = 6PD$$
 
 虽然严格来说，你可以用任意多的 token 来训练一个 Transformer 模型，但训练的 token 数量会显著影响计算成本和最终模型性能，因此找到合适的平衡点非常重要。
 
-**先来谈谈房间里的大象：“计算最优”的语言模型。** 这类模型通常被称为“Chinchilla 缩放定律”<sup class="footnote-ref"><a href="#fn1">[1]</a></sup>，源于那篇论文中提出关于参数数量当前认知的模型系列。一个计算最优的语言模型，其**参数数量** ($P$) 和 **数据集大小** ($D$) 满足近似关系 $D = 20P$。这在一个非常特定的意义上是最优的：在使用 1000 块 GPU 训练 1 小时与使用 1 块 GPU 训练 1000 小时成本相同的资源环境下，如果你的目标是最大化性能同时最小化训练模型的 GPU 小时成本，那么你应该使用上述公式。
+**先来谈谈房间里的大象：“计算最优”的语言模型。** 这类模型通常被称为“Chinchilla 缩放定律”[^1]，源于那篇论文中提出关于参数数量当前认知的模型系列。一个计算最优的语言模型，其**参数数量** ($P$) 和 **数据集大小** ($D$) 满足近似关系 $D = 20P$。这在一个非常特定的意义上是最优的：在使用 1000 块 GPU 训练 1 小时与使用 1 块 GPU 训练 1000 小时成本相同的资源环境下，如果你的目标是最大化性能同时最小化训练模型的 GPU 小时成本，那么你应该使用上述公式。
 
-<aside id="fn1" class="footnote">
-  <p>[Chinchilla 缩放定律](https://arxiv.org/abs/2203.15556) 的核心思想就是，参数数量 ($P$) 和 数据集大小 ($D$) 越大，模型训练的效果就越好:</p>
-</aside>
+
 
 **我们不建议在少于 2000 亿 token 的情况下训练大语言模型。** 尽管对于许多模型而言这是“Chinchilla 最优”的，但由此得到的模型通常质量相当差。对于几乎所有应用，我们建议先确定你的用例可接受的推理成本，然后在你能够承受的推理成本范围内，训练尽可能大的模型，并使用尽可能多的 token。
 
@@ -132,12 +130,10 @@ $$
 $$
 \text{memory}_{\text{Full Recomputation activations}} = 2 \cdot \text{sbhL} \text{ bytes}
 $$ 
-<sup class="footnote-ref"><a href="#fn2">[2]</a></sup>
+[^2]
 
 
-<aside id="fn2" class="footnote">
-  <p>一般隐藏层尺寸就是<code>[b, s, h]</code>；FP16 占 2 bytes</p>
-</aside>
+
 
 
 其中：
@@ -156,12 +152,10 @@ $$
 $$
 2PD \leq C_{\text{forward}} \leq 4PD
 $$
-<sup class="footnote-ref"><a href="#fn3">[3]</a></sup>
+[^3]
 
 
-<aside id="fn3" class="footnote">
-  <p>如果没激活重计算，那么计算量就是 $2PD$；如果开启Full激活重计算，那么就额外多 $2PD$，共 $4PD$</p>
-</aside>
+
 
 # 总训练内存
 
@@ -235,12 +229,9 @@ $$
 $$
 \text{memory}_{\text{w/ parallelism gradients}} \approx \frac{\text{Gradient Memory}}{\text{Pipe-Parallel-Size}}
 $$
-<sup class="footnote-ref"><a href="#fn4">[4]</a></sup>
+[^4]
 
-<aside id="fn4" class="footnote">
-  <p>下图展示了 tensor parallelism，可见并未减少每个 GPU 上梯度占用的内存大小</p>
-  <img src="./img/tensor-parallel.png" alt="tensor-parallel">
-</aside>
+
 
 
 
@@ -284,4 +275,11 @@ $$
 
 [VRAM Estimator 估算 VRAM 占用](https://vram.asmirnov.xyz/)
 
+[^1]: [Chinchilla 缩放定律](https://arxiv.org/abs/2203.15556) 的核心思想就是，参数数量 ($P$) 和 数据集大小 ($D$) 越大，模型训练的效果就越好:
 
+[^2]: 一般隐藏层尺寸就是<code>[b, s, h]</code>；FP16 占 2 bytes
+
+[^3]: 如果没激活重计算，那么计算量就是 $2PD$；如果开启Full激活重计算，那么就额外多 $2PD$，共 $4PD$
+
+[^4]: <p>下图展示了 tensor parallelism，可见并未减少每个 GPU 上梯度占用的内存大小</p>
+    <img src="./img/tensor-parallel.png" alt="tensor-parallel">

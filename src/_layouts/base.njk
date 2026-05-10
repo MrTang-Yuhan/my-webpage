@@ -21,7 +21,8 @@
           <a href="/">Home</a>
           <a href="/posts">Archive</a>
           <a href="/about">About</a>
-          <a href="/admin">Write</a>
+          <a href="/admin" id="adminLoginLink">Login</a>
+          <a href="/admin" id="adminWriteLink" style="display:none;">Write</a>
         </div>
         <button class="search-toggle" id="searchToggle" aria-label="Toggle search">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -46,13 +47,68 @@
         <div class="footer-links">
           <a href="https://github.com/MrTang-Yuhan" target="_blank" rel="noopener noreferrer">GitHub</a>
           <a href="/rss.xml">RSS</a>
-          <a href="/admin">Admin</a>
+          <a href="/admin" id="footerAdminLoginLink">Login</a>
+          <a href="/admin" id="footerAdminWriteLink" style="display:none;">Write</a>
         </div>
       </div>
     </footer>
   </div>
 
   <script src="/js/main.js"></script>
+  <script>
+    (function() {
+      const OWNER_LOGIN = "MrTang-Yuhan";
+      const loginLinks = [
+        document.getElementById("adminLoginLink"),
+        document.getElementById("footerAdminLoginLink")
+      ];
+      const writeLinks = [
+        document.getElementById("adminWriteLink"),
+        document.getElementById("footerAdminWriteLink")
+      ];
+
+      function setWriteVisible(isVisible) {
+        loginLinks.forEach(function(el) {
+          if (!el) return;
+          el.style.display = isVisible ? "none" : "";
+        });
+        writeLinks.forEach(function(el) {
+          if (!el) return;
+          el.style.display = isVisible ? "" : "none";
+        });
+      }
+
+      async function detectOwnerLogin() {
+        const raw = localStorage.getItem("netlify-cms-user");
+        if (!raw) return false;
+        let parsed;
+        try {
+          parsed = JSON.parse(raw);
+        } catch {
+          return false;
+        }
+
+        const token =
+          parsed && parsed.token ? parsed.token :
+          parsed && parsed.access_token ? parsed.access_token :
+          null;
+        if (!token) return false;
+
+        try {
+          const res = await fetch("https://api.github.com/user", {
+            headers: { Authorization: "token " + token }
+          });
+          if (!res.ok) return false;
+          const user = await res.json();
+          return user && user.login === OWNER_LOGIN;
+        } catch {
+          return false;
+        }
+      }
+
+      detectOwnerLogin().then(setWriteVisible);
+    })();
+  </script>
   {% block scripts %}{% endblock %}
 </body>
 </html>
