@@ -14,7 +14,7 @@ layout: base.njk
   <div class="post-layout">
     <div class="post-content" id="post-content">
       <nav class="post-toc-inline" id="post-toc-inline"></nav>
-      {{ content | addHeadingIds | renumberFootnotes | safe }}
+      {{ content | videoShortcode | addHeadingIds | renumberFootnotes | safe }}
     </div>
   </div>
 

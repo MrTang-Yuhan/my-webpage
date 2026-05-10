@@ -77,6 +77,7 @@
               { left: "$$", right: "$$", display: true },
               { left: "$", right: "$", display: false }
             ],
+            ignoredClasses: ["katex", "katex-display", "katex-mathml", "katex-html"],
             throwOnError: false
           });
         }
@@ -92,6 +93,43 @@
           }
 
           return "";
+        }
+
+        function expandVideoShortcodeInDom(root) {
+          if (!root) return;
+          const nodes = root.querySelectorAll("p");
+          nodes.forEach(function(p) {
+            const text = (p.textContent || "").trim();
+            const m = text.match(/^::video\{([^}]*)\}$/);
+            if (!m) return;
+            const attrs = m[1];
+            const src = (attrs.match(/src="([^"]+)"/) || [])[1];
+            if (!src) return;
+            const poster = (attrs.match(/poster="([^"]+)"/) || [])[1];
+            const caption = (attrs.match(/caption="([^"]+)"/) || [])[1];
+
+            const wrapper = document.createElement("div");
+            const video = document.createElement("video");
+            video.setAttribute("controls", "");
+            video.style.maxWidth = "100%";
+            video.style.height = "auto";
+            if (poster) video.setAttribute("poster", poster);
+            const source = document.createElement("source");
+            source.setAttribute("src", src);
+            source.setAttribute("type", "video/mp4");
+            video.appendChild(source);
+            wrapper.appendChild(video);
+
+            if (caption) {
+              const cp = document.createElement("p");
+              const em = document.createElement("em");
+              em.textContent = caption;
+              cp.appendChild(em);
+              wrapper.appendChild(cp);
+            }
+
+            p.parentNode.replaceChild(wrapper, p);
+          });
         }
 
         function rewriteRelativeUrlsInDom(root, entryPath) {
@@ -120,8 +158,15 @@
           },
           postProcess: function() {
             if (!this._root) return;
+            const bodyText = this.props.entry.getIn(["data", "body"]) || "";
+            const titleText = this.props.entry.getIn(["data", "title"]) || "";
+            const signature = String(titleText) + "\n---\n" + String(bodyText);
+            if (this._lastProcessedSignature === signature) return;
+            this._lastProcessedSignature = signature;
+
             const entryPath = computeEntryPath(this.props.entry, this.props.collection);
             rewriteRelativeUrlsInDom(this._root, entryPath);
+            expandVideoShortcodeInDom(this._root);
             normalizeFootnotes(this._root);
             renumberFootnotes(this._root);
             renderMath(this._root);
@@ -145,6 +190,34 @@
         });
 
         if (window.CMS) {
+          window.CMS.registerEditorComponent({
+            id: "video",
+            label: "Video",
+            fields: [
+              { name: "src", label: "Video Path/URL", widget: "string" },
+              { name: "poster", label: "Poster (optional)", widget: "string", required: false },
+              { name: "caption", label: "Caption (optional)", widget: "string", required: false }
+            ],
+            pattern: /^<video controls(?: poster="([^"]*)")?>\s*<source src="([^"]+)" type="video\/mp4">\s*<\/video>(?:\s*<p><em>([^<]*)<\/em><\/p>)?/m,
+            fromBlock: function(match) {
+              return {
+                poster: match[1] || "",
+                src: match[2] || "",
+                caption: match[3] || ""
+              };
+            },
+            toBlock: function(data) {
+              const poster = data.poster ? ` poster="${data.poster}"` : "";
+              const caption = data.caption ? `\n<p><em>${data.caption}</em></p>` : "";
+              return `<video controls${poster}>\n  <source src="${data.src}" type="video/mp4">\n</video>${caption}`;
+            },
+            toPreview: function(data) {
+              const poster = data.poster ? ` poster="${data.poster}"` : "";
+              const caption = data.caption ? `<p><em>${data.caption}</em></p>` : "";
+              return `<video controls${poster} style="max-width:100%;height:auto;"><source src="${data.src}" type="video/mp4"></video>${caption}`;
+            }
+          });
+
           window.CMS.registerPreviewTemplate("posts", PostPreview);
         }
       })();
