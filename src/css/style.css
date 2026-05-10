@@ -87,10 +87,24 @@ a:hover {
 }
 
 .nav-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
   font-size: 1.25rem;
   font-weight: 700;
   color: var(--color-text);
   letter-spacing: -0.025em;
+}
+
+.nav-logo-image {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  display: block;
+}
+
+.nav-logo-text {
+  line-height: 1;
 }
 
 .nav-logo:hover {

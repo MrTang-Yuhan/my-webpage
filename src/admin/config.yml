@@ -5,8 +5,8 @@ backend:
   base_url: https://my-webpage-adu.pages.dev
   auth_endpoint: /api/auth
 
-media_folder: "{{media_folder}}/img"
-public_folder: "./img"
+media_folder: "src/images/uploads"
+public_folder: "/images/uploads"
 
 publish_mode: editorial_workflow
 
@@ -14,6 +14,8 @@ collections:
   - name: "posts"
     label: "Posts"
     folder: "src/posts"
+    media_folder: "img"
+    public_folder: "./img"
     create: true
     slug: "{{slug}}/index"
     extension: "md"

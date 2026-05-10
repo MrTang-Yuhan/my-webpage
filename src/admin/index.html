@@ -81,12 +81,36 @@
           });
         }
 
+        function fixRelativeImages(doc) {
+          const origin = window.location.origin;
+          doc.querySelectorAll("img[src]").forEach(function(img) {
+            const src = img.getAttribute("src") || "";
+            if (!src || /^https?:\/\//i.test(src) || src.startsWith("data:") || src.startsWith("blob:") || src.startsWith("/")) {
+              return;
+            }
+            if (src.startsWith("./")) {
+              img.src = origin + "/src/posts/" + src.slice(2);
+            }
+          });
+        }
+
+        function renderPreviewFrame(frame) {
+          const doc = frame && frame.contentDocument;
+          if (!doc || !doc.body) return;
+          fixRelativeImages(doc);
+          normalizeFootnotes(doc.body);
+          renumberFootnotes(doc.body);
+          renderMath(doc.body);
+        }
+
         function renderAllPreviews() {
-          const panes = document.querySelectorAll(".frame-content, .cms-preview-pane");
-          panes.forEach(function(pane) {
-            normalizeFootnotes(pane);
-            renumberFootnotes(pane);
-            renderMath(pane);
+          const frames = document.querySelectorAll("iframe");
+          frames.forEach(function(frame) {
+            try {
+              renderPreviewFrame(frame);
+            } catch {
+              // Ignore cross-origin or loading state issues.
+            }
           });
         }
 
@@ -100,6 +124,7 @@
         });
 
         window.addEventListener("load", renderAllPreviews);
+        document.addEventListener("input", renderAllPreviews, true);
         setInterval(renderAllPreviews, 1000);
       })();
     </script>
