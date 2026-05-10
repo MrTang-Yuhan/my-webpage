@@ -9,6 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/markdown-it-footnote@4.0.0/dist/markdown-it-footnote.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/markdown-it-katex@2.0.3/dist/markdown-it-katex.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
     <script src="https://unpkg.com/decap-cms@^3.5.0/dist/decap-cms.js"></script>
     <script>
       (function () {
@@ -147,6 +148,37 @@
           });
         }
 
+        function renderMathInMarkdown(markdown) {
+          if (!window.katex || !markdown) return markdown;
+          let text = String(markdown);
+
+          // Display math: $$...$$
+          text = text.replace(/\$\$([\s\S]+?)\$\$/g, function (_, expr) {
+            try {
+              return "\n" + window.katex.renderToString(expr.trim(), {
+                displayMode: true,
+                throwOnError: false
+              }) + "\n";
+            } catch {
+              return _;
+            }
+          });
+
+          // Inline math: $...$
+          text = text.replace(/(^|[^\$\\])\$([^\n$]+?)\$/g, function (_, prefix, expr) {
+            try {
+              return prefix + window.katex.renderToString(expr.trim(), {
+                displayMode: false,
+                throwOnError: false
+              });
+            } catch {
+              return _;
+            }
+          });
+
+          return text;
+        }
+
         const PostPreview = window.createClass({
           componentDidMount: function () {
             this.postProcess();
@@ -173,8 +205,9 @@
             const entry = this.props.entry;
             const title = entry.getIn(["data", "title"]) || "";
             const bodyMarkdown = entry.getIn(["data", "body"]) || "";
+            const bodyWithMath = renderMathInMarkdown(bodyMarkdown);
             const entryPath = computeEntryPath(entry, this.props.collection);
-            const bodyHtml = rewriteRelativeUrls(md.render(bodyMarkdown), entryPath);
+            const bodyHtml = rewriteRelativeUrls(md.render(bodyWithMath), entryPath);
 
             return window.h(
               "article",
