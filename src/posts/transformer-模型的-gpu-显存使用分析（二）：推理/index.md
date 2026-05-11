@@ -305,9 +305,9 @@ Prefill 一次性处理 T_p 个 prompt, 每层 transformer-block FLOPs 近似为
 $$
 \begin{aligned}
 FLOPs 
-&\approx  8 \times B \times T_p \times d_{model}^2 \
-&+ 4B \times T_p^2 \times d_{model} \
-&+ 4B \times T_p \times d_{ff} \times d_{model} \
+&\approx  8 \times B \times T_p \times d_{model}^2 \\
+&+ 4B \times T_p^2 \times d_{model} \\
+&+ 4B \times T_p \times d_{ff} \times d_{model} 
 \end{aligned}
 $$[^1]
 
@@ -341,7 +341,7 @@ $$[^1]
 
 
 [^2]: 对于矩阵 `A: [m, k]`, `B: [k, n]`，计算矩阵乘 `C = A @ B` 近似需要 $2 k \times m \times n$ 次 FLOPs。
-  考虑计算任意 `C[i, j]`，需要 $k$ 次乘法， $k-1$ 次加法，故近似为 $2k$ FLOPS
+  考虑计算任意 `C[i, j]`，需要 $k$ 次乘法， $k-1$ 次加法，故近似为 $2k$ FLOPs
 
 
 ### attn_out 计算
@@ -371,8 +371,8 @@ V:      [B, n_head, d_head, T_p]
 
 故 atte-out 计算的 
 $$\begin{aligned}
-FLOPs &\approx (2B \times n_{head} \times T_p^2 \times d_{head}) + (2B \times n_{head} \times T_p^2 \times d_{head}) \
-&= 4B \times n_{head} \times T_p^2 \times d_{head} \
+FLOPs &\approx (2B \times n_{head} \times T_p^2 \times d_{head}) + (2B \times n_{head} \times T_p^2 \times d_{head}) \\
+&= 4B \times n_{head} \times T_p^2 \times d_{head} \\
 &= 4B \times T_p^2 \times d_{model} 
 \end{aligned}$$
 
@@ -386,14 +386,14 @@ FLOPs &\approx (2B \times n_{head} \times T_p^2 \times d_{head}) + (2B \times n_
 ```text
 - up projection:   [B, T_p, d_model] → [B, T_p, d_ff]
 - down projection: [B, T_p, d_ff] → [B, T_p, d_model]
-- 其中d_ff = 4 - d_model
+- 其中d_ff = 4 * d_model
 ```
 
 
 故普通 Feed-Forward 计算的 
 $$
 \begin{aligned}
-FLOPs &\approx (2B \times T_p \times d_{model} \times d_{ff}) + (2B \times T_p \times d_{ff} \times d_{model}) \
+FLOPs &\approx (2B \times T_p \times d_{model} \times d_{ff}) + (2B \times T_p \times d_{ff} \times d_{model}) \\
 &= 4B \times T_p \times d_{ff} \times d_{model}
 \end{aligned}
 $$
@@ -406,7 +406,7 @@ Decode 阶段与 Prefill 阶段有两个不同：
 
 
 - Decode 阶段 每次只处理 1 个新 token。
-- Decode 阶段 使用 KV Cache，我们假设 KV Cache的长度均为 T_c
+- Decode 阶段 使用 KV Cache，我们假设 KV Cache的长度均为 $T_c$
 
 
 相应可得 Attention 的 Decode 阶段的
@@ -415,9 +415,9 @@ Decode 阶段与 Prefill 阶段有两个不同：
 $$
 \begin{aligned}
 FLOPs 
-&\approx  8 \times B  \times d_{model}^2 \
-&+ 4B \times T_c \times d_{model} \
-&+ 4B \times d_{ff} \times d_{model} \
+&\approx  8 \times B  \times d_{model}^2 \\
+&+ 4B \times T_c \times d_{model} \\
+&+ 4B \times d_{ff} \times d_{model}
 \end{aligned}
 $$
 
@@ -458,7 +458,7 @@ $\text{Total Memory} \approx \text{Weight Memory} + \text{KV Cache Memory}$
 ## 模型权重
 
 
-模型参数量为 `P`，则权重显存：
+模型参数量为 $P$，单个浮点数所占字节为$b$，则权重显存：
 
 
 $ \text{Weight Momory} \approx P \times b$
@@ -485,7 +485,7 @@ V_cache: [B, n_head, T_c, d_head]
 $2 \times B \times T_c \times d_{model}$
 
 
-所有层：
+对于所有$L$层：
 
 
 $\text{KV Cache Memory} \approx 2 \times B \times T_c \times d_{model} \times L \times b$
