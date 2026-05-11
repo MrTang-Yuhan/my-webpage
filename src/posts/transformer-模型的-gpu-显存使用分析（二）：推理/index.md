@@ -25,7 +25,7 @@ tags:
 * `n_head`： 注意力头数
 * `d_head`: 每个注意力头的维度。d_head = d_model / n_head
 
-# Transformer-Block 结构
+## Transformer-Block 中的维度
 
 输入 `x`:
 
@@ -35,7 +35,7 @@ tags:
 
 - `[B, T, d_model]`
 
-# Attention 中的维度 
+## Attention 中的维度 
 
 输入 `x`: 
 
@@ -55,4 +55,28 @@ tags:
 
 - `Q, K, V`: `[B, n_head, T, d_head]`
 
+## KV Cache 的维度
 
+KV Cache 存的是每一层的历史 `K` 和 `V`。
+
+对第 `l` 层:
+
+- `k_cache[l], v_cache[l]`: `[B, n_head, T_cache, d_head]`
+
+其中, 
+
+- `T_cache` 是已经处理过的 token 数
+- 每一层都有自己的 K/V cache
+- Q 不缓存，因为每一步只需要当前 token 的 Q
+
+总 KV Cache 结构可以理解为：
+
+```text
+KV Cache:
+[
+  layer 0: K, V
+  layer 1: K, V
+  ...
+  layer L-1: K, V
+]
+```
