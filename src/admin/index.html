@@ -22,6 +22,103 @@
           window.CMS.registerPreviewStyle("https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css");
         }
 
+        const ARCHIVE_CACHE_KEY = "archive_dirs_cache_v1";
+
+        function readCmsToken() {
+          const raw = localStorage.getItem("netlify-cms-user");
+          if (!raw) return null;
+          try {
+            const parsed = JSON.parse(raw);
+            return parsed.token || parsed.access_token || null;
+          } catch {
+            return null;
+          }
+        }
+
+        async function fetchArchiveDirs() {
+          const token = readCmsToken();
+          if (!token) {
+            const cached = localStorage.getItem(ARCHIVE_CACHE_KEY);
+            return cached ? JSON.parse(cached) : [];
+          }
+          const res = await fetch("https://api.github.com/repos/MrTang-Yuhan/my-webpage/contents/src/posts", {
+            headers: { Authorization: "token " + token, Accept: "application/vnd.github+json" }
+          });
+          if (!res.ok) {
+            const cached = localStorage.getItem(ARCHIVE_CACHE_KEY);
+            return cached ? JSON.parse(cached) : [];
+          }
+          const items = await res.json();
+          const dirs = (Array.isArray(items) ? items : [])
+            .filter(x => x.type === "dir")
+            .map(x => x.name)
+            .sort((a, b) => a.localeCompare(b, "zh-Hans-CN"));
+          localStorage.setItem(ARCHIVE_CACHE_KEY, JSON.stringify(dirs));
+          return dirs;
+        }
+
+        async function createArchiveDir(name) {
+          const token = readCmsToken();
+          if (!token) throw new Error("Not logged in");
+          const normalized = String(name || "").trim().replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+          if (!normalized) throw new Error("Archive name is empty");
+          const path = `src/posts/${normalized}/.keep`;
+          const body = {
+            message: `chore: create archive ${normalized}`,
+            content: btoa("archive placeholder"),
+            branch: "main"
+          };
+          const res = await fetch(`https://api.github.com/repos/MrTang-Yuhan/my-webpage/contents/${encodeURIComponent(path).replace(/%2F/g, "/")}`, {
+            method: "PUT",
+            headers: {
+              Authorization: "token " + token,
+              Accept: "application/vnd.github+json",
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(body)
+          });
+          if (res.status === 422) return; // already exists
+          if (!res.ok) {
+            const txt = await res.text();
+            throw new Error(`Create archive failed: ${res.status} ${txt}`);
+          }
+        }
+
+        function ensureNewArchiveButton() {
+          const btnExists = document.getElementById("newArchiveBtn");
+          if (btnExists) return;
+
+          const listHeader = document.querySelector("[data-testid='collection-top-controls'], .css-1f7nhiq-CollectionTopRow, .css-1n4x63w-CollectionTopRow");
+          const newPostBtn = Array.from(document.querySelectorAll("button,a")).find(el => /new posts?/i.test((el.textContent || "").trim()));
+          const anchor = listHeader || (newPostBtn && newPostBtn.parentElement);
+          if (!anchor) return;
+
+          const btn = document.createElement("button");
+          btn.id = "newArchiveBtn";
+          btn.type = "button";
+          btn.textContent = "New Archive";
+          btn.style.marginLeft = "10px";
+          btn.style.padding = "10px 14px";
+          btn.style.borderRadius = "10px";
+          btn.style.border = "1px solid #3b4a52";
+          btn.style.background = "#ffffff";
+          btn.style.color = "#2a3640";
+          btn.style.cursor = "pointer";
+          btn.onclick = async function() {
+            const name = window.prompt("New archive directory name (under src/posts):");
+            if (!name) return;
+            try {
+              await createArchiveDir(name);
+              const dirs = await fetchArchiveDirs();
+              localStorage.setItem(ARCHIVE_CACHE_KEY, JSON.stringify(dirs));
+              window.alert("Archive created.");
+            } catch (e) {
+              window.alert(e.message || String(e));
+            }
+          };
+          anchor.appendChild(btn);
+        }
+
         function normalizeFootnotes(root) {
           const sections = root.querySelectorAll("section.footnotes");
           sections.forEach(function (section) {
@@ -223,6 +320,38 @@
         });
 
         if (window.CMS) {
+          class ArchiveSelectControl extends window.React.Component {
+            constructor(props) {
+              super(props);
+              this.state = { dirs: [], loading: true };
+            }
+            async componentDidMount() {
+              const dirs = await fetchArchiveDirs();
+              this.setState({ dirs, loading: false });
+              if (!this.props.value && dirs.length > 0) {
+                this.props.onChange(dirs[0]);
+              }
+            }
+            render() {
+              const value = this.props.value || "";
+              return window.React.createElement(
+                "select",
+                {
+                  value,
+                  onChange: (e) => this.props.onChange(e.target.value),
+                  style: { width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #ccc" }
+                },
+                this.state.loading
+                  ? [window.React.createElement("option", { key: "_loading", value: "" }, "Loading...")]
+                  : this.state.dirs.map((d) =>
+                      window.React.createElement("option", { key: d, value: d }, d)
+                    )
+              );
+            }
+          }
+
+          window.CMS.registerWidget("archive-select", ArchiveSelectControl);
+
           window.CMS.registerEditorComponent({
             id: "video",
             label: "Video",
@@ -252,6 +381,21 @@
           });
 
           window.CMS.registerPreviewTemplate("posts", PostPreview);
+
+          // Keep archive as UI/path selector only; remove from persisted frontmatter.
+          if (typeof window.CMS.registerEventListener === "function") {
+            window.CMS.registerEventListener({
+              name: "preSave",
+              handler: ({ entry }) => {
+                if (!entry) return entry;
+                return entry.deleteIn(["data", "archive"]);
+              }
+            });
+          }
+
+          const obs = new MutationObserver(function() { ensureNewArchiveButton(); });
+          obs.observe(document.documentElement, { childList: true, subtree: true });
+          ensureNewArchiveButton();
         }
       })();
     </script>

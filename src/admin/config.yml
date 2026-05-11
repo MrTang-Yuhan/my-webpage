@@ -14,10 +14,10 @@ collections:
   - name: "posts"
     label: "Posts"
     folder: "src/posts"
+    path: "{{archive}}/{{slug}}/index"
     media_folder: "img"
     public_folder: "./img"
     create: true
-    slug: "{{slug}}/index"
     extension: "md"
     format: "frontmatter"
     nested:
@@ -26,6 +26,7 @@ collections:
       subfolders: true
     fields:
       - { label: "Layout", name: "layout", widget: "hidden", default: "post.njk" }
+      - { label: "Archive", name: "archive", widget: "archive-select", required: true, hint: "选择归档目录（来自 src/posts 下子目录）" }
       - { label: "Title", name: "title", widget: "string" }
       - { label: "Date", name: "date", widget: "datetime", format: "YYYY-MM-DD", date_format: "YYYY-MM-DD", time_format: false }
       - { label: "Description", name: "description", widget: "string", required: false }
