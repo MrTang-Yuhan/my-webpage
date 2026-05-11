@@ -340,7 +340,7 @@ $ \text{Weight Momory} \approx P \times b$
 
 ## KV Cache
 
-每层存：
+对于 MQA, 每层存：
 
 ```text
 K_cache: [B, n_head, T_c, d_head]
@@ -361,7 +361,10 @@ $\text{KV Cache Memory} \approx 2 \times B \times T_c \times d_{model} \times L 
 $$\begin{aligned}
 \text{KV Cache Memory} &\approx 2 \times B \times T_c \times d_{model} \times L \times 2~ \text{bytes} \\
 &= 4 \times B \times T_c \times d_{model} \times L ~ \text{bytes}
-\end{aligned}$$
+\end{aligned}$$[^3]
+
+[^3]: 对于 GQA，如果 一个 Q 用 N 个 KV，那么相应 KV Cache 就变成原来的 $1/N$。
+  
 
 
 
