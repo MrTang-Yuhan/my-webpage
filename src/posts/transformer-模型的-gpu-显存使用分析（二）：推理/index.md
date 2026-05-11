@@ -223,7 +223,7 @@ attn_out: [B, 1, d_model]
 ```
 
 
-#### MLP 层维度
+### MLP 层维度
 
 
 Attention 输出后进入 MLP。
@@ -251,7 +251,7 @@ Attention 输出后进入 MLP。
 - `d_ff ≈ 4 × d_model`
 
 
-#### 最后输出 logits
+### 最后输出 logits
 
 
 最后一层输出：
