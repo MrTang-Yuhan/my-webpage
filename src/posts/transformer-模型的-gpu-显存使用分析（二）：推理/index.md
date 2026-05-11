@@ -10,6 +10,12 @@ tags:
   - transformer
   - model parallelism
 ---
-![block](img/block.png)
+# 整体架构
 
-推理阶段
+这幅图展示了 Decode-only Transformer 的总体架构图：
+
+![decode-only](img/overview.png)
+
+# 维度分析
+
+符号规则
