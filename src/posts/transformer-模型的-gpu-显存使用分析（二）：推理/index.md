@@ -248,7 +248,7 @@ Attention 输出后进入 MLP。
 通常：
 
 
-- `d_ff ≈ 4 × d_model`
+- `d_ff = 4 × d_model`
 
 
 ### 最后输出 logits
