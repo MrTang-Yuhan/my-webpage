@@ -208,11 +208,25 @@ Decode 阶段只关心最后一个位置：
 
 # FLOPs 分析
 
-## Prefill 阶段
+## Attention 的 Prefill 阶段
 
 Prefill 一次性处理 T_p 个 prompt, 每层 transformer-block FLOPs 近似为:
 
-- $FLOPs = (QKV 投影 + attn_out 计算 + Feed-Forward 计算)$
+- `FLOPs = (QKV 投影 + attn_out 计算 + Feed-Forward 计算)`
+
+下面展开了各个部分的计算，先给个结论，Attention 的 Prefill 阶段的
+
+$$
+\begin{aligned}
+FLOPs 
+&\approx  8 \times B \times T_p \times d_{model}^2 \\
+&+ 4B \times T_p^2 \times d_{model} \\
+&+ 4B \times T_p \times d_{ff} \times d_{model} \\
+\end{aligned}
+$$[^1]
+
+[^1]: 这里假设 Feed-Foward 使用的是最普通的，而非 LLaMA 常见的 SwiGLU。
+
 
 ### QKV 投影
 
@@ -231,9 +245,9 @@ Prefill 一次性处理 T_p 个 prompt, 每层 transformer-block FLOPs 近似为
 - Wq, Wk, Qv: [d_model, n_head, d_head]
 ```
 
-故 QKV 投影的 $FLOPs \approx B \times 8 \times T_p \times d_{model}^2$ [^1]
+故 QKV 投影的 $FLOPs \approx 8 \times B \times T_p \times d_{model}^2$ [^2]
 
-[^1]: 对于矩阵 `A: [m, k]`, `B: [k, n]`，计算矩阵乘 `C = A @ B` 近似需要 $2 k \times m \times n$ 次 FLOPs。
+[^2]: 对于矩阵 `A: [m, k]`, `B: [k, n]`，计算矩阵乘 `C = A @ B` 近似需要 $2 k \times m \times n$ 次 FLOPs。
   考虑计算任意 `C[i, j]`，需要 $k$ 次乘法， $k-1$ 次加法，故近似为 $2k$ FLOPS
 
 ### attn_out 计算
@@ -251,7 +265,51 @@ scores: [B, n_head, T_p, T_p]
 V:      [B, n_head, d_head, T_p]
 ```
 
-故 atte_out 计算的 $FLOPs \approx (2B \times n_{head} \times T_p^2 \times d_{head}) + (2B \times n_{head} \times T_p^2 \times d_{head}) =  4B \times n_{head} \times T_p^2 \times d_{head} $
+故 atte_out 计算的 
+$$\begin{aligned}
+FLOPs &\approx (2B \times n_{head} \times T_p^2 \times d_{head}) + (2B \times n_{head} \times T_p^2 \times d_{head}) \\
+&= 4B \times n_{head} \times T_p^2 \times d_{head} \\
+&= 4B \times T_p^2 \times d_{model} 
+\end{aligned}$$
+
+### Feed-Forward 计算
+
+如果是普通 Feed-Forward 计算, 各自的维度：
+
+```text
+- up projection:   [B, T_p, d_model] → [B, T_p, d_ff]
+- down projection: [B, T_p, d_ff] → [B, T_p, d_model]
+- 其中d_ff = 4 * d_model
+```
+
+故普通 Feed-Forward 计算的 
+$$
+\begin{aligned}
+FLOPs &\approx (2B \times T_p \times d_{model} \times d_{ff}) + (2B \times T_p \times d_{ff} \times d_{model}) \\
+&= 4B \times T_p \times d_{ff} \times d_{model}
+\end{aligned}
+$$
+
+## Attention 的 Decode 阶段
+
+Decode 阶段与 Prefill 阶段有两个不同：
+- Decode 阶段 每次只处理 1 个新 token。
+- Decode 阶段 使用 KV Cache，我们假设 KV Cache的长度均为 T_c
+
+相应可得 Attention 的 Decode 阶段的
+
+$$
+\begin{aligned}
+FLOPs 
+&\approx  8 \times B  \times d_{model}^2 \\
+&+ 4B \times T_c \times d_{model} \\
+&+ 4B \times d_{ff} \times d_{model} \\
+\end{aligned}
+$$
+
+
+
+
 
 
 
