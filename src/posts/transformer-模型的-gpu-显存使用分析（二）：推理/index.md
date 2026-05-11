@@ -330,6 +330,10 @@ $FLOPs \approx 2 B \times d*{model} \times vocab*{size} \times N$
 
 # 显存分析
 
+推理时的显存主要由两部分组成：
+
+$\text{Total Memory} \approx \text{Weight Memory} + \text{KV Cache Memory}$
+
 ## 模型权重
 
 模型参数量为 `P`，则权重显存：
@@ -349,7 +353,7 @@ V_cache: [B, n_head, T_c, d_head]
 
 由于 `d_model = n_head * d_head`，所以每层 KV cache 元素数：
 
-`2 × B × T_c × d_model`
+$2 \times B \times T_c \times d_{model}$
 
 所有层：
 
@@ -358,10 +362,14 @@ $\text{KV Cache Memory} \approx 2 \times B \times T*c \times d*{model} \times L 
 如果是 FP16/BF16：
 
 $$\begin{aligned}
-\text{KV Cache Memory} &\approx 2 \times B \times T*c \times d*{model} \times L \times 2~ \text{bytes} \
+\text{KV Cache Memory} &\approx 2 \times B \times T*c \times d*{model} \times L \times 2~ \text{bytes} \\
 &= 4 \times B \times T*c \times d*{model} \times L ~ \text{bytes}
 \end{aligned}$$[^3]
 
 [^3]: 对于 GQA，如果 一个 Q 用 N 个 KV，那么相应 KV Cache 就变成原来的 $1/N$。
   下面这幅图分别展示了 MHA, MQA, GQA 和 MLA：
   ![GQA, MQA](img/head_num.png)
+
+## 激活显存
+
+推理时不需要保存反向传播激活，所以激活显存通常较小。
