@@ -166,3 +166,51 @@ attn_out: [B, n_head, 1, d_head]
 attn_out: [B, 1, d_model]
 ```
 
+#### MLP 层维度
+
+Attention 输出后进入 MLP。
+
+输入：
+
+- `[B, T, d_model]`
+
+常见 FFN 维度：
+
+```text
+- up projection:   [B, T, d_model] → [B, T, d_ff]
+- activation
+- down projection: [B, T, d_ff] → [B, T, d_model]
+```
+
+通常：
+
+- `d_ff ≈ 4 × d_model`
+
+
+
+#### 最后输出 logits
+
+最后一层输出：
+
+- `hidden: [B, T, d_model]`
+
+经过 LM Head：
+
+- `logits = hidden @ W_vocab`
+
+其中：
+
+- `W_vocab: [d_model, vocab_size]`
+
+输出：
+
+- `logits: [B, T, vocab_size]`
+
+Decode 阶段只关心最后一个位置：
+
+- `logits: [B, 1, vocab_size]`
+
+然后采样得到下一个 token。
+
+
+
