@@ -43,17 +43,17 @@ tags:
 
 经过线性层，得到`Q`, `K`, `V`:
 
-- `Q` = `x @ Wq`
-- `K` = `x @ Wk`
-- `V` = `x @ Wv`
+- `Q = x @ Wq`
+- `K = x @ Wk`
+- `V = x @ Wv`
 
 如果是标准多头注意力 MHA，则
 
-- `Q, K, V`: `[B, T, n_head, d_head]`
+- `Q, K, V: [B, T, n_head, d_head]`
 
 一般会转置成：
 
-- `Q, K, V`: `[B, n_head, T, d_head]`
+- `Q, K, V: [B, n_head, T, d_head]`
 
 ### KV Cache 的维度
 
@@ -61,7 +61,7 @@ KV Cache 存的是每一层的历史 `K` 和 `V`。
 
 对第 `l` 层:
 
-- `k_cache[l], v_cache[l]`: `[B, n_head, T_cache, d_head]`
+- `k_cache[l], v_cache[l]: [B, n_head, T_cache, d_head]`
 
 其中, 
 
@@ -89,22 +89,16 @@ KV Cache:
 
 输入：
 
-- ```text
-  x: [B, T_prompt, d_model]
-  ```
+- `x: [B, T_prompt, d_model]`
+  
 
 每层生成：
 
-
-- ```text
-  K, V: [B, n_head, T_prompt, d_head]
-  ```
+- ` K, V: [B, n_head, T_prompt, d_head]`
 
 并写入 cache：
 
-- ```text
-  K_cache, V_cache: [B, n_head, T_prompt, d_head]
-  ```
+- `K_cache, V_cache: [B, n_head, T_prompt, d_head]`
 
 Attention 计算：
 
@@ -213,6 +207,34 @@ Decode 阶段只关心最后一个位置：
 然后采样得到下一个 token。
 
 # FLOPs 分析
+
+## Prefill 阶段
+
+Prefill 一次性处理 T_p 个 prompt, 每层 transformer-block FLOPs 近似为:
+
+- $FLOPs = (QKV 投影 + Scores 计算 + Feed-Forward 计算)$
+
+### QKV 投影
+
+其中，QKV 投影计算为:
+
+```text
+- Q = x @ Wq
+- K = x @ Wk
+- V = x @ Wv
+```
+
+其中各自维度:
+
+```text
+- x: [B, T_p, d_model]
+- Wq, Wk, Qv: [d_model, n_head, d_head]
+```
+
+故 QKV 投影的 $FLOPs \approx B \times 8 \times T_p \times d_{model}^2$ [^1]
+
+[^1]: 对于矩阵 `A: [m, k]`, `B: [k, n]`，计算矩阵乘 `C = A @ B` 近似需要 $2 k \times m \times n$ 次 FLOPs。
+  考虑计算任意 `C[i, j]`，需要 $k$ 次乘法， $k-1$ 次加法，故近似为 $2k$ FLOPS
 
 
 
