@@ -307,7 +307,61 @@ FLOPs
 \end{aligned}
 $$
 
+# LM Head FLOPs
 
+最后 hidden 映射到词表：
+
+- `[B, 1, d_model] × [d_model, vocab_size] → [B, 1, vocab_size]`
+
+每个生成 token 的 LM Head 的
+
+$ FLOPs \approx 2 B \times d_{model} \times vocab_{size} $
+
+
+生成 `N` 个 token，则 LM Head 的
+
+$FLOPs \approx 2 B \times d_{model} \times vocab_{size} \times N$
+
+
+如果 vocab 很大，比如 32k、50k，这部分也不小。
+
+
+
+# 显存分析
+
+## 模型权重
+
+模型参数量为 `P`，则权重显存：
+
+$ \text{Weight Momory} \approx P \times b$
+
+对于FP16 / BF16格式，b = 2 bytes。
+
+
+## KV Cache
+
+每层存：
+
+```text
+K_cache: [B, n_head, T_c, d_head]
+V_cache: [B, n_head, T_c, d_head]
+```
+
+由于 `d_model = n_head * d_head`，所以每层 KV cache 元素数：
+
+`2 × B × T_c × d_model`
+
+所有层：
+
+$\text{KV Cache Memory} \approx 2 \times B \times T_c \times d_{model} \times L \times b$
+
+
+如果是 FP16/BF16：
+
+$$\begin{aligned}
+\text{KV Cache Memory} &\approx 2 \times B \times T_c \times d_{model} \times L \times 2~ \text{bytes} \\
+&= 4 \times B \times T_c \times d_{model} \times L ~ \text{bytes}
+\end{aligned}$$
 
 
 
