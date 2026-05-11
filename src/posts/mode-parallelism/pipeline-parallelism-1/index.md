@@ -7,6 +7,7 @@ tags:
   - post
   - pipeline parallelism
   - model parallelism
+
 ---
 
 [Pipeline-Parallelism: Distributed Training via Model Partitioning](https://siboehm.com/articles/22/pipeline-parallel-training) 的中文翻译版本。

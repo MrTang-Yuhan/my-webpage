@@ -8,6 +8,7 @@ tags:
   - GPU memory usage
   - transformer
   - model parallelism
+
 ---
 
 本文讲述 transformer 模型训练阶段的显存（VRAM）占用情况分析。主要参考 [Transformer Math 101](https://blog.eleuther.ai/transformer-math/)。

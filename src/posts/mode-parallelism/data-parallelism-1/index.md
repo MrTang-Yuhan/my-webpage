@@ -7,6 +7,7 @@ tags:
   - post
   - data parallelism
   - model parallelism
+
 ---
 
 
