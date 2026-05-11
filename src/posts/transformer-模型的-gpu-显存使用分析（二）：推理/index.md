@@ -43,19 +43,19 @@ tags:
 
 经过线性层，得到`Q`, `K`, `V`:
 
-- `Q` = x @ Wq`
-- `K` = x @ Wk`
-- `V` = x @ Wv`
+- `Q` = `x @ Wq`
+- `K` = `x @ Wk`
+- `V` = `x @ Wv`
 
 如果是标准多头注意力 MHA，则
 
-- `Q, K, V`: [B, T, n_head, d_head]
+- `Q, K, V`: `[B, T, n_head, d_head]`
 
 一般会转置成：
 
 - `Q, K, V`: `[B, n_head, T, d_head]`
 
-## KV Cache 的维度
+### KV Cache 的维度
 
 KV Cache 存的是每一层的历史 `K` 和 `V`。
 
@@ -80,3 +80,89 @@ KV Cache:
   layer L-1: K, V
 ]
 ```
+
+### Attention 在 Prefill 和 Decode 阶段的区别
+
+#### Prefill 阶段
+
+假设 prompt 长度是 `T_prompt`。
+
+输入：
+
+- ```text
+  x: [B, T_prompt, d_model]
+  ```
+
+每层生成：
+
+
+- ```text
+  K, V: [B, n_head, T_prompt, d_head]
+  ```
+
+并写入 cache：
+
+- ```text
+  K_cache, V_cache: [B, n_head, T_prompt, d_head]
+  ```
+
+Attention 计算：
+
+- ```text
+  scores = Q @ K^T
+  ```
+
+维度：
+
+- ```text
+  Q:      [B, n_head, T_prompt, d_head]
+  K^T:    [B, n_head, d_head, T_prompt]
+  
+  scores: [B, n_head, T_prompt, T_prompt]
+  ```
+
+输出：
+
+- ```text
+  attn_out: [B, n_head, T_prompt, d_head]
+  合并 heads 后: [B, T_prompt, d_model]
+  ```
+
+#### Decode 阶段
+
+每次只输入一个新 token：
+
+-  `x_new: [B, 1, d_model]`
+
+当前 token 生成：
+
+- `Q_new, K_new, V_new: [B, n_head, 1, d_head]`
+
+把新的 K/V 追加到 cache：
+
+- `K_cache, v_cache : [B, n_head, T_cache + 1, d_head]`
+
+Attention 使用 Q_new 和完整的 K_cache/V_cache 做注意力，计算维度：
+
+```text
+Q_new:    [B, n_head, 1, d_head]
+K_cache:  [B, n_head, T_cache + 1, d_head]
+
+scores = Q_new @ K_cache^T
+scores:   [B, n_head, 1, T_cache + 1]
+```
+
+再乘以 V：
+
+```text
+V_cache:  [B, n_head, T_cache + 1, d_head]
+
+attn_out: [B, n_head, 1, d_head]
+```
+
+合并 heads：
+
+```text
+attn_out: [B, 1, d_model]
+```
+
