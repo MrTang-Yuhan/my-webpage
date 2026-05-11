@@ -303,13 +303,12 @@ Prefill 一次性处理 T_p 个 prompt, 每层 transformer-block FLOPs 近似为
 
 
 $$
-\begin{array}{rl}
-FLOPs 
+\begin{aligned}FLOPs 
 &\approx  8 \times B \times T_p \times d_{model}^2 \\
 &+ 4B \times T_p^2 \times d_{model} \\
 &+ 4B \times T_p \times d_{ff} \times d_{model} 
-\end{array}
-$$[^1]
+\end{aligned}$$
+[^1]
 
 
 [^1]: 这里假设 Feed-Foward 使用的是最普通的，而非 LLaMA 常见的 SwiGLU。
@@ -391,12 +390,10 @@ FLOPs &\approx (2B \times n_{head} \times T_p^2 \times d_{head}) + (2B \times n_
 
 
 故普通 Feed-Forward 计算的 
-$$
-\begin{aligned}
+$$\begin{aligned}
 FLOPs &\approx (2B \times T_p \times d_{model} \times d_{ff}) + (2B \times T_p \times d_{ff} \times d_{model}) \\
 &= 4B \times T_p \times d_{ff} \times d_{model}
-\end{aligned}
-$$
+\end{aligned}$$
 
 
 ## Attention 的 Decode 阶段
@@ -412,14 +409,12 @@ Decode 阶段与 Prefill 阶段有两个不同：
 相应可得 Attention 的 Decode 阶段的
 
 
-$$
-\begin{aligned}
+$$\begin{aligned}
 FLOPs 
 &\approx  8 \times B  \times d_{model}^2 \\
 &+ 4B \times T_c \times d_{model} \\
 &+ 4B \times d_{ff} \times d_{model}
-\end{aligned}
-$$
+\end{aligned}$$
 
 
 # LM Head FLOPs
@@ -497,7 +492,8 @@ $\text{KV Cache Memory} \approx 2 \times B \times T_c \times d_{model} \times L 
 $$\begin{aligned}
 \text{KV Cache Memory} &\approx 2 \times B \times T_c \times d_{model} \times L \times 2~ \text{bytes} \\
 &= 4 \times B \times T_c \times d_{model} \times L ~ \text{bytes}
-\end{aligned}$$[^3]
+\end{aligned}$$
+[^3]
 
 
 [^3]: 对于 GQA，如果 一个 Q 用 N 个 KV，那么相应 KV Cache 就变成原来的 $1/N$。

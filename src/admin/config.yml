@@ -34,14 +34,14 @@ collections:
         widget: select
         required: true
         options:
-          - label: mode-parallelism
+          - label: 模型并行
             value: mode-parallelism
-          - label: notes
-            value: notes
-          - label: interconnect
+          - label: 备忘录
+            value: 备忘录
+          - label: 互联网络
             value: interconnect
-          - label: triosim
-            value: triosim
+          - label: triosim模拟器
+            value: triosim模拟器
         hint: Choose archive directory. Create a new one with New Archive, then refresh.
       - label: Title
         name: title
