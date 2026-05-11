@@ -31,7 +31,7 @@ collections:
         widget: "select"
         required: false
         options:
-          - { label: "mode-parallelism", value: "mode-parallelism" }
+          - { label: "你好", value: "你好" }\n          - { label: "mode-parallelism", value: "mode-parallelism" }
           - { label: "备忘录", value: "备忘录" }
           - { label: "interconnect", value: "interconnect" }
           - { label: "triosim模拟器", value: "triosim模拟器" }
