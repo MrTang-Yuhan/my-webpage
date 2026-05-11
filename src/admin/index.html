@@ -54,43 +54,6 @@
           return null;
         }
 
-        async function upsertArchiveOptionInConfig(name, token) {
-          const path = "src/admin/config.yml";
-          const apiPath = encodeURIComponent(path).replace(/%2F/g, "/");
-          const getRes = await fetch(`https://api.github.com/repos/MrTang-Yuhan/my-webpage/contents/${apiPath}`, {
-            headers: { Authorization: "token " + token, Accept: "application/vnd.github+json" }
-          });
-          if (!getRes.ok) return;
-          const file = await getRes.json();
-          const content = decodeURIComponent(escape(atob(file.content.replace(/\n/g, ""))));
-          if (new RegExp(`value:\\s*\"${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\"`).test(content)) return;
-
-          const marker = "        options:\n";
-          const idx = content.indexOf(marker);
-          if (idx < 0) return;
-          const insertAt = idx + marker.length;
-          const line = `          - { label: \"${name}\", value: \"${name}\" }\\n`;
-          const next = content.slice(0, insertAt) + line + content.slice(insertAt);
-          const putRes = await fetch(`https://api.github.com/repos/MrTang-Yuhan/my-webpage/contents/${apiPath}`, {
-            method: "PUT",
-            headers: {
-              Authorization: "token " + token,
-              Accept: "application/vnd.github+json",
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              message: `chore: add archive option ${name}`,
-              content: btoa(unescape(encodeURIComponent(next))),
-              sha: file.sha,
-              branch: "main"
-            })
-          });
-          if (!putRes.ok) {
-            const t = await putRes.text();
-            throw new Error(`Update config failed: ${putRes.status} ${t}`);
-          }
-        }
-
         async function createArchiveDir(name) {
           const token = await readCmsToken();
           if (!token) throw new Error("Not logged in");
@@ -145,8 +108,7 @@
               const token = await readCmsToken();
               if (!token) throw new Error("Not logged in");
               await createArchiveDir(name);
-              await upsertArchiveOptionInConfig(String(name).trim(), token);
-              window.alert("Archive created and added to Archive options. Refresh page.");
+              window.alert("Archive created. Refresh page.");
             } catch (e) {
               window.alert(e.message || String(e));
             }

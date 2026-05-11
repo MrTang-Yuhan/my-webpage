@@ -5,39 +5,62 @@ backend:
   base_url: https://my-webpage-adu.pages.dev
   auth_endpoint: /api/auth
 
-media_folder: "src/images/uploads"
-public_folder: "/images/uploads"
+media_folder: src/images/uploads
+public_folder: /images/uploads
 
 publish_mode: editorial_workflow
 
 collections:
-  - name: "posts"
-    label: "Posts"
-    folder: "src/posts"
+  - name: posts
+    label: Posts
+    folder: src/posts
     path: "{{archive}}/{{slug}}/index"
-    media_folder: "img"
-    public_folder: "./img"
+    media_folder: img
+    public_folder: ./img
     create: true
-    extension: "md"
-    format: "frontmatter"
+    extension: md
+    format: frontmatter
     nested:
       depth: 10
       summary: "{{title}}"
       subfolders: true
     fields:
-      - { label: "Layout", name: "layout", widget: "hidden", default: "post.njk" }
-      - label: "Archive"
-        name: "archive"
-        widget: "select"
+      - label: Layout
+        name: layout
+        widget: hidden
+        default: post.njk
+      - label: Archive
+        name: archive
+        widget: select
         required: true
         options:
-          - { label: "你好", value: "你好" }\n          - { label: "mode-parallelism", value: "mode-parallelism" }
-          - { label: "备忘录", value: "备忘录" }
-          - { label: "interconnect", value: "interconnect" }
-          - { label: "triosim模拟器", value: "triosim模拟器" }
-        hint: "选择归档目录。新建目录请点击 New Archive，创建后刷新页面。"
-      - { label: "Title", name: "title", widget: "string" }
-      - { label: "Date", name: "date", widget: "datetime", format: "YYYY-MM-DD", date_format: "YYYY-MM-DD", time_format: false }
-      - { label: "Description", name: "description", widget: "string", required: false }
-      - { label: "Tags", name: "tags", widget: "list", default: ["post"] }
-      - { label: "Body", name: "body", widget: "markdown" }
+          - label: mode-parallelism
+            value: mode-parallelism
+          - label: notes
+            value: notes
+          - label: interconnect
+            value: interconnect
+          - label: triosim
+            value: triosim
+        hint: Choose archive directory. Create a new one with New Archive, then refresh.
+      - label: Title
+        name: title
+        widget: string
+      - label: Date
+        name: date
+        widget: datetime
+        format: YYYY-MM-DD
+        date_format: YYYY-MM-DD
+        time_format: false
+      - label: Description
+        name: description
+        widget: string
+        required: false
+      - label: Tags
+        name: tags
+        widget: list
+        default:
+          - post
+      - label: Body
+        name: body
+        widget: markdown
