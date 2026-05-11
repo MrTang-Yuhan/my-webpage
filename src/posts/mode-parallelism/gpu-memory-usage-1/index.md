@@ -1,14 +1,14 @@
 ---
 layout: post.njk
-title: "transformer 模型的 GPU 显存使用分析（一）"
+archive: mode-parallelism
+title: transformer 模型的 GPU 显存使用分析（一）
 date: 2026-05-03
-description: "transformer 模型的 GPU 显存使用分析：训练阶段分析"
+description: transformer 模型的 GPU 显存使用分析：训练阶段分析
 tags:
   - post
   - GPU memory usage
   - transformer
   - model parallelism
-
 ---
 
 本文讲述 transformer 模型训练阶段的显存（VRAM）占用情况分析。主要参考 [Transformer Math 101](https://blog.eleuther.ai/transformer-math/)。
