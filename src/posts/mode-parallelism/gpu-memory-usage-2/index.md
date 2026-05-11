@@ -303,9 +303,10 @@ Prefill 一次性处理 T_p 个 prompt, 每层 transformer-block FLOPs 近似为
 
 
 $$
-\begin{aligned}FLOPs 
-&\approx  8 \times B \times T_p \times d_{model}^2 \\
-&+ 4B \times T_p^2 \times d_{model} \\
+\begin{aligned}
+FLOPs 
+&\approx  8 \times B \times T_p \times d_{model}^2 \cr
+&+ 4B \times T_p^2 \times d_{model} \cr
 &+ 4B \times T_p \times d_{ff} \times d_{model} 
 \end{aligned}$$
 [^1]
@@ -370,8 +371,8 @@ V:      [B, n_head, d_head, T_p]
 
 故 atte-out 计算的 
 $$\begin{aligned}
-FLOPs &\approx (2B \times n_{head} \times T_p^2 \times d_{head}) + (2B \times n_{head} \times T_p^2 \times d_{head}) \\
-&= 4B \times n_{head} \times T_p^2 \times d_{head} \\
+FLOPs &\approx (2B \times n_{head} \times T_p^2 \times d_{head}) + (2B \times n_{head} \times T_p^2 \times d_{head}) \cr
+&= 4B \times n_{head} \times T_p^2 \times d_{head} \cr
 &= 4B \times T_p^2 \times d_{model} 
 \end{aligned}$$
 
@@ -391,7 +392,7 @@ FLOPs &\approx (2B \times n_{head} \times T_p^2 \times d_{head}) + (2B \times n_
 
 故普通 Feed-Forward 计算的 
 $$\begin{aligned}
-FLOPs &\approx (2B \times T_p \times d_{model} \times d_{ff}) + (2B \times T_p \times d_{ff} \times d_{model}) \\
+FLOPs &\approx (2B \times T_p \times d_{model} \times d_{ff}) + (2B \times T_p \times d_{ff} \times d_{model}) \cr
 &= 4B \times T_p \times d_{ff} \times d_{model}
 \end{aligned}$$
 
@@ -411,8 +412,8 @@ Decode 阶段与 Prefill 阶段有两个不同：
 
 $$\begin{aligned}
 FLOPs 
-&\approx  8 \times B  \times d_{model}^2 \\
-&+ 4B \times T_c \times d_{model} \\
+&\approx  8 \times B  \times d_{model}^2 \cr
+&+ 4B \times T_c \times d_{model} \cr
 &+ 4B \times d_{ff} \times d_{model}
 \end{aligned}$$
 
@@ -429,7 +430,7 @@ FLOPs
 每个生成 token 的 LM Head 的
 
 
-$ FLOPs \approx 2 B \times d_{model} \times vocab_{size} $
+$FLOPs \approx 2 B \times d_{model} \times vocab_{size}$
 
 
 生成 `N` 个 token，则 LM Head 的
@@ -456,7 +457,7 @@ $\text{Total Memory} \approx \text{Weight Memory} + \text{KV Cache Memory}$
 模型参数量为 $P$，单个浮点数所占字节为$b$，则权重显存：
 
 
-$ \text{Weight Momory} \approx P \times b$
+$\text{Weight Momory} \approx P \times b$
 
 
 对于FP16 / BF16格式，b = 2 bytes。
@@ -490,7 +491,7 @@ $\text{KV Cache Memory} \approx 2 \times B \times T_c \times d_{model} \times L 
 
 
 $$\begin{aligned}
-\text{KV Cache Memory} &\approx 2 \times B \times T_c \times d_{model} \times L \times 2~ \text{bytes} \\
+\text{KV Cache Memory} &\approx 2 \times B \times T_c \times d_{model} \times L \times 2~ \text{bytes} \cr
 &= 4 \times B \times T_c \times d_{model} \times L ~ \text{bytes}
 \end{aligned}$$
 [^3]
