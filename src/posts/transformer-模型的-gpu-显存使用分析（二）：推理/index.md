@@ -303,12 +303,12 @@ Prefill 一次性处理 T_p 个 prompt, 每层 transformer-block FLOPs 近似为
 
 
 $$
-\begin{aligned}
+\begin{array}{rl}
 FLOPs 
 &\approx  8 \times B \times T_p \times d_{model}^2 \\
 &+ 4B \times T_p^2 \times d_{model} \\
 &+ 4B \times T_p \times d_{ff} \times d_{model} 
-\end{aligned}
+\end{array}
 $$[^1]
 
 
