@@ -10,16 +10,82 @@
     <script src="https://cdn.jsdelivr.net/npm/markdown-it-footnote@4.0.0/dist/markdown-it-footnote.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/markdown-it-katex@2.0.3/dist/markdown-it-katex.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+    <script>window.CMS_MANUAL_INIT = true;</script>
     <script src="https://unpkg.com/decap-cms@^3.5.0/dist/decap-cms.js"></script>
     <script>
       (function () {
+        const GITHUB_OWNER = "MrTang-Yuhan";
+        const GITHUB_REPO = "my-webpage";
+        const GITHUB_BRANCH = "main";
         const md = window.markdownit({ html: true, breaks: false, linkify: true });
         if (window.markdownitFootnote) md.use(window.markdownitFootnote);
         if (window.markdownitKatex) md.use(window.markdownitKatex);
 
-        if (window.CMS) {
+        async function fetchArchiveDirs() {
+          const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/src/posts?ref=${encodeURIComponent(GITHUB_BRANCH)}`;
+          const res = await fetch(url, { headers: { Accept: "application/vnd.github+json" } });
+          if (!res.ok) throw new Error(`Load archives failed: ${res.status}`);
+          const items = await res.json();
+          return (Array.isArray(items) ? items : [])
+            .filter((it) => it && it.type === "dir" && it.name)
+            .map((it) => String(it.name).trim())
+            .filter(Boolean);
+        }
+
+        function applyArchiveOptions(runtimeConfig, dirs) {
+          if (!runtimeConfig || !Array.isArray(runtimeConfig.collections)) return;
+          const posts = runtimeConfig.collections.find((c) => c && c.name === "posts");
+          if (!posts || !Array.isArray(posts.fields)) return;
+          const archiveField = posts.fields.find((f) => f && f.name === "archive");
+          if (!archiveField) return;
+
+          const existingLabelByValue = {};
+          (archiveField.options || []).forEach((opt) => {
+            if (typeof opt === "string") {
+              existingLabelByValue[opt] = opt;
+              return;
+            }
+            if (opt && opt.value) existingLabelByValue[String(opt.value)] = opt.label || String(opt.value);
+          });
+
+          const uniqueDirs = Array.from(new Set(dirs)).sort((a, b) => a.localeCompare(b, "zh-Hans-CN"));
+          archiveField.options = uniqueDirs.map((name) => ({
+            label: existingLabelByValue[name] || name,
+            value: name
+          }));
+        }
+
+        async function loadRuntimeConfig() {
+          const res = await fetch("/admin/config.yml?ts=" + Date.now(), { cache: "no-store" });
+          if (!res.ok) throw new Error(`Load config failed: ${res.status}`);
+          const configText = await res.text();
+          const config = window.jsyaml.load(configText);
+          if (!config || typeof config !== "object") throw new Error("Invalid config.yml");
+
+          try {
+            const dirs = await fetchArchiveDirs();
+            if (dirs.length > 0) applyArchiveOptions(config, dirs);
+          } catch (e) {
+            console.warn("[admin] archive directory fetch failed, keep static options", e);
+          }
+
+          return config;
+        }
+
+        async function initCms() {
+          if (!window.CMS || typeof window.initCMS !== "function") return;
           window.CMS.registerPreviewStyle("/css/style.css");
           window.CMS.registerPreviewStyle("https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css");
+
+          try {
+            const runtimeConfig = await loadRuntimeConfig();
+            runtimeConfig.load_config_file = false;
+            window.initCMS({ config: runtimeConfig });
+          } catch (e) {
+            console.error("[admin] runtime init failed", e);
+            window.alert("CMS 初始化失败：" + (e && e.message ? e.message : String(e)));
+          }
         }
 
         async function readCmsToken() {
@@ -65,9 +131,9 @@
           const body = {
             message: `chore: create archive ${normalized}`,
             content: btoa("archive placeholder"),
-            branch: "main"
+            branch: GITHUB_BRANCH
           };
-          const res = await fetch(`https://api.github.com/repos/MrTang-Yuhan/my-webpage/contents/${apiPath}`, {
+          const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${apiPath}`, {
             method: "PUT",
             headers: {
               Authorization: "token " + token,
@@ -108,7 +174,7 @@
               const token = await readCmsToken();
               if (!token) throw new Error("Not logged in");
               await createArchiveDir(name);
-              window.alert("Archive created. Refresh page.");
+              window.location.reload();
             } catch (e) {
               window.alert(e.message || String(e));
             }
@@ -344,6 +410,10 @@
           const obs = new MutationObserver(function () { injectNewArchiveButton(); });
           obs.observe(document.documentElement, { childList: true, subtree: true });
           injectNewArchiveButton();
+        }
+        if (!window.__cmsStarted) {
+          window.__cmsStarted = true;
+          initCms();
         }
       })();
     </script>
