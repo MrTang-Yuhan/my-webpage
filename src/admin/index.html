@@ -22,19 +22,77 @@
           window.CMS.registerPreviewStyle("https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css");
         }
 
-        function readCmsToken() {
-          const raw = localStorage.getItem("netlify-cms-user");
-          if (!raw) return null;
+        async function readCmsToken() {
           try {
-            const parsed = JSON.parse(raw);
-            return parsed.token || parsed.access_token || null;
+            if (window.CMS && typeof window.CMS.getBackend === "function") {
+              const backend = window.CMS.getBackend();
+              if (backend && backend.authStore && typeof backend.authStore.retrieve === "function") {
+                const user = await backend.authStore.retrieve();
+                if (user && (user.token || user.access_token || user.jwt)) {
+                  return user.token || user.access_token || user.jwt;
+                }
+              }
+            }
           } catch {
-            return null;
+            // ignore and fallback
+          }
+
+          const keys = ["netlify-cms-user", "decap-cms-user", "cms-user"];
+          for (const store of [localStorage, sessionStorage]) {
+            for (const key of keys) {
+              try {
+                const raw = store.getItem(key);
+                if (!raw) continue;
+                const parsed = JSON.parse(raw);
+                const token = parsed && (parsed.token || parsed.access_token || parsed.jwt);
+                if (token) return token;
+              } catch {
+                // ignore
+              }
+            }
+          }
+          return null;
+        }
+
+        async function upsertArchiveOptionInConfig(name, token) {
+          const path = "src/admin/config.yml";
+          const apiPath = encodeURIComponent(path).replace(/%2F/g, "/");
+          const getRes = await fetch(`https://api.github.com/repos/MrTang-Yuhan/my-webpage/contents/${apiPath}`, {
+            headers: { Authorization: "token " + token, Accept: "application/vnd.github+json" }
+          });
+          if (!getRes.ok) return;
+          const file = await getRes.json();
+          const content = decodeURIComponent(escape(atob(file.content.replace(/\n/g, ""))));
+          if (new RegExp(`value:\\s*\"${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\"`).test(content)) return;
+
+          const marker = "        options:\n";
+          const idx = content.indexOf(marker);
+          if (idx < 0) return;
+          const insertAt = idx + marker.length;
+          const line = `          - { label: \"${name}\", value: \"${name}\" }\\n`;
+          const next = content.slice(0, insertAt) + line + content.slice(insertAt);
+          const putRes = await fetch(`https://api.github.com/repos/MrTang-Yuhan/my-webpage/contents/${apiPath}`, {
+            method: "PUT",
+            headers: {
+              Authorization: "token " + token,
+              Accept: "application/vnd.github+json",
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              message: `chore: add archive option ${name}`,
+              content: btoa(unescape(encodeURIComponent(next))),
+              sha: file.sha,
+              branch: "main"
+            })
+          });
+          if (!putRes.ok) {
+            const t = await putRes.text();
+            throw new Error(`Update config failed: ${putRes.status} ${t}`);
           }
         }
 
         async function createArchiveDir(name) {
-          const token = readCmsToken();
+          const token = await readCmsToken();
           if (!token) throw new Error("Not logged in");
           const normalized = String(name || "").trim().replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
           if (!normalized) throw new Error("Archive name is empty");
@@ -84,8 +142,11 @@
             const name = window.prompt("New archive directory name (under src/posts):");
             if (!name) return;
             try {
+              const token = await readCmsToken();
+              if (!token) throw new Error("Not logged in");
               await createArchiveDir(name);
-              window.alert("Archive created. Refresh page to see it in sidebar.");
+              await upsertArchiveOptionInConfig(String(name).trim(), token);
+              window.alert("Archive created and added to Archive options. Refresh page.");
             } catch (e) {
               window.alert(e.message || String(e));
             }

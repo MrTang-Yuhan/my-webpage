@@ -14,10 +14,10 @@ collections:
   - name: "posts"
     label: "Posts"
     folder: "src/posts"
+    path: "{{archive}}/{{slug}}/index"
     media_folder: "img"
     public_folder: "./img"
     create: true
-    slug: "{{slug}}/index"
     extension: "md"
     format: "frontmatter"
     nested:
@@ -29,13 +29,13 @@ collections:
       - label: "Archive"
         name: "archive"
         widget: "select"
-        required: false
+        required: true
         options:
           - { label: "mode-parallelism", value: "mode-parallelism" }
           - { label: "备忘录", value: "备忘录" }
           - { label: "interconnect", value: "interconnect" }
           - { label: "triosim模拟器", value: "triosim模拟器" }
-        hint: "用于标注归档目录。新归档目录请先用 New Archive 创建后再手动补充到此列表。"
+        hint: "选择归档目录。新建目录请点击 New Archive，创建后刷新页面。"
       - { label: "Title", name: "title", widget: "string" }
       - { label: "Date", name: "date", widget: "datetime", format: "YYYY-MM-DD", date_format: "YYYY-MM-DD", time_format: false }
       - { label: "Description", name: "description", widget: "string", required: false }
