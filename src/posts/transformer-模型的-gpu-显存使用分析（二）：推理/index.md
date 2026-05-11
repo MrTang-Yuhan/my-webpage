@@ -212,7 +212,7 @@ Decode 阶段只关心最后一个位置：
 
 Prefill 一次性处理 T_p 个 prompt, 每层 transformer-block FLOPs 近似为:
 
-- $FLOPs = (QKV 投影 + Scores 计算 + Feed-Forward 计算)$
+- $FLOPs = (QKV 投影 + attn_out 计算 + Feed-Forward 计算)$
 
 ### QKV 投影
 
@@ -235,6 +235,23 @@ Prefill 一次性处理 T_p 个 prompt, 每层 transformer-block FLOPs 近似为
 
 [^1]: 对于矩阵 `A: [m, k]`, `B: [k, n]`，计算矩阵乘 `C = A @ B` 近似需要 $2 k \times m \times n$ 次 FLOPs。
   考虑计算任意 `C[i, j]`，需要 $k$ 次乘法， $k-1$ 次加法，故近似为 $2k$ FLOPS
+
+### attn_out 计算
+
+attn_out 计算包括两部分：
+- $Q @ K^T$ 计算 scores （此处省略了方差归一化）
+- $scores @ V$ 计算 atte_out
+
+其中各自维度：
+
+```text
+Q:      [B, n_head, T_p, d_head]
+K^T:    [B, n_head, d_head, T_p]
+scores: [B, n_head, T_p, T_p]
+V:      [B, n_head, d_head, T_p]
+```
+
+故 atte_out 计算的 $FLOPs \approx (2B \times n_{head} \times T_p^2 \times d_{head}) + (2B \times n_{head} \times T_p^2 \times d_{head}) =  4B \times n_{head} \times T_p^2 \times d_{head} $
 
 
 
