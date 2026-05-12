@@ -46,6 +46,9 @@ collections:
       - label: Title
         name: title
         widget: string
+      - label: Slug
+        name: slug
+        widget: hidden
       - label: Date
         name: date
         widget: datetime

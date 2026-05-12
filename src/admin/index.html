@@ -678,20 +678,30 @@
                 throw new Error(ARCHIVE_NAME_ERROR);
               }
 
-              await ensureTitleUnique(entry, token);
+              const titleText = String(entry.getIn(["data", "title"]) || "").trim();
+              const nextSlugFolder = slugifyTitle(titleText);
+              if (!nextSlugFolder) {
+                throw new Error("保存失败：标题不能为空。");
+              }
+
+              // Decap-native path sync: always keep slug in frontmatter aligned to title.
+              // With path: "{{archive}}/{{slug}}/index", Decap will save to the title-aligned folder.
+              const currentData = entry.get("data");
+              const nextData = currentData && typeof currentData.set === "function"
+                ? currentData.set("slug", nextSlugFolder)
+                : { ...(currentData || {}), slug: nextSlugFolder };
+              const slugSyncedEntry = entry.set ? entry.set("data", nextData) : entry;
+
+              await ensureTitleUnique(slugSyncedEntry, token);
 
               const currentPath = String(entry.get("path") || "").replace(/\\/g, "/");
               const currentArchive = extractArchiveFromPath(currentPath);
               const currentSlugFolder = extractSlugFolderFromPath(currentPath);
-              const nextSlugFolder = slugifyTitle(String(entry.getIn(["data", "title"]) || ""));
               const isEdit = Boolean(currentPath);
               if (isEdit && currentArchive && archive) {
-                if (!nextSlugFolder) {
-                  throw new Error("保存失败：标题不能为空。");
-                }
                 const archiveChanged = currentArchive !== archive;
                 const slugChanged = currentSlugFolder !== nextSlugFolder;
-                if (!archiveChanged && !slugChanged) return entry.get("data");
+                if (!archiveChanged && !slugChanged) return nextData;
                 const targetPath = buildPostTargetPathBySlug(archive, nextSlugFolder);
                 if (!targetPath) {
                   throw new Error("Archive 变更失败：无法确定目标路径。");
@@ -699,7 +709,7 @@
                 pendingMoves.set(currentPath, { oldPath: currentPath, newPath: targetPath });
               }
 
-              return entry.get("data");
+              return nextData;
             }
           });
 
