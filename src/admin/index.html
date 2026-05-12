@@ -20,17 +20,46 @@
         const GITHUB_BRANCH = "main";
         const ARCHIVE_NAME_RE = /^[a-z0-9-\u4e00-\u9fff]+$/;
         const ARCHIVE_NAME_ERROR = "Archive 目录名称仅支持小写字母、数字、连字符和汉字，不允许使用空格和大写字母";
-        const TITLE_DUP_ERROR = "标题已存在，请使用其他标题。";
+        const TITLE_DUP_ERROR = "创建失败：已存在相同标题的 Post，请修改标题后重试。";
+        const TITLE_CHECK_FAIL_ERROR = "创建失败：标题校验失败，请稍后重试。";
+        const ARCHIVE_SYNC_TIP = "Archive 创建成功，数据正在同步到 GitHub，请稍等片刻后再刷新页面查看。";
         const TITLE_CACHE_TTL_MS = 30 * 1000;
         let titleCache = { ts: 0, items: [] };
         const pendingMoves = new Map();
+        let runtimeConfigCache = null;
+        const createdArchivesKey = "admin_created_archives";
         const md = window.markdownit({ html: true, breaks: false, linkify: true });
         if (window.markdownitFootnote) md.use(window.markdownitFootnote);
         if (window.markdownitKatex) md.use(window.markdownitKatex);
 
-        async function fetchArchiveDirs() {
-          const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/src/posts?ref=${encodeURIComponent(GITHUB_BRANCH)}`;
-          const res = await fetch(url, { headers: { Accept: "application/vnd.github+json" } });
+        function getCollectionName(collection) {
+          if (!collection) return "";
+          if (typeof collection.get === "function") return String(collection.get("name") || "");
+          if (typeof collection.name === "string") return collection.name;
+          return "";
+        }
+
+        function getCreatedArchives() {
+          try {
+            const raw = localStorage.getItem(createdArchivesKey);
+            const arr = raw ? JSON.parse(raw) : [];
+            return Array.isArray(arr) ? arr.filter(Boolean) : [];
+          } catch {
+            return [];
+          }
+        }
+
+        function rememberCreatedArchive(name) {
+          const current = new Set(getCreatedArchives());
+          current.add(name);
+          localStorage.setItem(createdArchivesKey, JSON.stringify(Array.from(current)));
+        }
+
+        async function fetchArchiveDirs(token) {
+          const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/src/posts?ref=${encodeURIComponent(GITHUB_BRANCH)}&t=${Date.now()}`;
+          const headers = { Accept: "application/vnd.github+json" };
+          if (token) headers.Authorization = "token " + token;
+          const res = await fetch(url, { headers: headers, cache: "no-store" });
           if (!res.ok) throw new Error(`Load archives failed: ${res.status}`);
           const items = await res.json();
           return (Array.isArray(items) ? items : [])
@@ -69,14 +98,47 @@
           const config = window.jsyaml.load(configText);
           if (!config || typeof config !== "object") throw new Error("Invalid config.yml");
 
+          const token = await readCmsToken();
+          const localArchives = getCreatedArchives();
           try {
-            const dirs = await fetchArchiveDirs();
-            if (dirs.length > 0) applyArchiveOptions(config, dirs);
+            const dirs = await fetchArchiveDirs(token);
+            const merged = Array.from(new Set([...(dirs || []), ...localArchives]));
+            if (merged.length > 0) applyArchiveOptions(config, merged);
           } catch (e) {
             console.warn("[admin] archive directory fetch failed, keep static options", e);
+            if (localArchives.length > 0) applyArchiveOptions(config, localArchives);
           }
 
           return config;
+        }
+
+        function applyArchiveToRuntimeConfig(name) {
+          if (!runtimeConfigCache) return;
+          const posts = Array.isArray(runtimeConfigCache.collections)
+            ? runtimeConfigCache.collections.find((c) => c && c.name === "posts")
+            : null;
+          if (!posts || !Array.isArray(posts.fields)) return;
+          const archiveField = posts.fields.find((f) => f && f.name === "archive");
+          if (!archiveField) return;
+          const values = new Set(
+            (archiveField.options || []).map((opt) => (typeof opt === "string" ? opt : (opt && opt.value))).filter(Boolean)
+          );
+          values.add(name);
+          archiveField.options = Array.from(values)
+            .sort((a, b) => String(a).localeCompare(String(b), "zh-Hans-CN"))
+            .map((v) => ({ label: String(v), value: String(v) }));
+        }
+
+        function softReloadCms() {
+          try {
+            if (window.CMS && typeof window.CMS.init === "function" && runtimeConfigCache) {
+              const cfg = JSON.parse(JSON.stringify(runtimeConfigCache));
+              cfg.load_config_file = false;
+              window.CMS.init({ config: cfg, load_config_file: false });
+            }
+          } catch (e) {
+            console.warn("[admin] soft reload cms failed", e);
+          }
         }
 
         async function initCms() {
@@ -87,6 +149,7 @@
           try {
             const runtimeConfig = await loadRuntimeConfig();
             runtimeConfig.load_config_file = false;
+            runtimeConfigCache = runtimeConfig;
             window.initCMS({ config: runtimeConfig });
           } catch (e) {
             console.error("[admin] runtime init failed", e);
@@ -148,13 +211,19 @@
 
         function parseTitleFromMarkdown(text) {
           const src = String(text || "");
+          const fm = src.match(/^---\s*\n([\s\S]*?)\n---\s*(?:\n|$)/);
+          if (fm) {
+            try {
+              const obj = window.jsyaml.load(fm[1]);
+              const t = obj && obj.title ? String(obj.title).trim() : "";
+              if (t) return t;
+            } catch {
+              // fallback below
+            }
+          }
           const m = src.match(/(?:^|\n)title:\s*(.+)\s*(?:\n|$)/i);
           if (!m) return "";
-          let raw = m[1].trim();
-          if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
-            raw = raw.slice(1, -1);
-          }
-          return raw.trim();
+          return String(m[1] || "").trim().replace(/^["']|["']$/g, "");
         }
 
         async function githubGetJson(url, token) {
@@ -196,8 +265,8 @@
               const title = parseTitleFromMarkdown(text);
               if (!title) continue;
               items.push({ path: p, key: normalizeTitleKey(title), title: title });
-            } catch {
-              // skip bad files
+            } catch (e) {
+              throw new Error(`${TITLE_CHECK_FAIL_ERROR} (${p})`);
             }
           }
           titleCache = { ts: now, items };
@@ -345,7 +414,10 @@
               const token = await readCmsToken();
               if (!token) throw new Error("Not logged in");
               await createArchiveDir(name);
-              window.location.reload();
+              rememberCreatedArchive(String(name).trim());
+              applyArchiveToRuntimeConfig(String(name).trim());
+              softReloadCms();
+              window.alert(ARCHIVE_SYNC_TIP);
             } catch (e) {
               window.alert(e.message || String(e));
             }
@@ -551,7 +623,7 @@
           window.CMS.registerEventListener({
             name: "preSave",
             handler: async function ({ entry, collection }) {
-              if (!collection || collection.get("name") !== "posts") return entry.get("data");
+              if (getCollectionName(collection) !== "posts") return entry.get("data");
               const token = await readCmsToken();
               if (!token) throw new Error("Not logged in");
 
@@ -580,7 +652,7 @@
           window.CMS.registerEventListener({
             name: "postSave",
             handler: async function ({ entry, collection }) {
-              if (!collection || collection.get("name") !== "posts") return;
+              if (getCollectionName(collection) !== "posts") return;
               const token = await readCmsToken();
               if (!token) return;
               const currentPath = String(entry.get("path") || "").replace(/\\/g, "/");
