@@ -37,12 +37,75 @@
           return "";
         }
 
+        function getCreatedArchives() {
+          try {
+            const raw = localStorage.getItem("admin_created_archives");
+            const arr = raw ? JSON.parse(raw) : [];
+            return Array.isArray(arr) ? arr.filter(Boolean) : [];
+          } catch {
+            return [];
+          }
+        }
+
+        function rememberCreatedArchive(name) {
+          const current = new Set(getCreatedArchives());
+          current.add(name);
+          localStorage.setItem("admin_created_archives", JSON.stringify(Array.from(current)));
+        }
+
+        async function fetchArchiveDirs(token) {
+          const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/src/posts?ref=${encodeURIComponent(GITHUB_BRANCH)}&t=${Date.now()}`;
+          const headers = { Accept: "application/vnd.github+json" };
+          if (token) headers.Authorization = "token " + token;
+          const res = await fetch(url, { headers: headers, cache: "no-store" });
+          if (!res.ok) throw new Error(`Load archives failed: ${res.status}`);
+          const items = await res.json();
+          return (Array.isArray(items) ? items : [])
+            .filter((it) => it && it.type === "dir" && it.name)
+            .map((it) => String(it.name).trim())
+            .filter(Boolean);
+        }
+
+        function applyArchiveOptions(runtimeConfig, dirs) {
+          if (!runtimeConfig || !Array.isArray(runtimeConfig.collections)) return;
+          const posts = runtimeConfig.collections.find((c) => c && c.name === "posts");
+          if (!posts || !Array.isArray(posts.fields)) return;
+          const archiveField = posts.fields.find((f) => f && f.name === "archive");
+          if (!archiveField) return;
+
+          const existingLabelByValue = {};
+          (archiveField.options || []).forEach((opt) => {
+            if (typeof opt === "string") {
+              existingLabelByValue[opt] = opt;
+              return;
+            }
+            if (opt && opt.value) existingLabelByValue[String(opt.value)] = opt.label || String(opt.value);
+          });
+
+          const uniqueDirs = Array.from(new Set(dirs)).sort((a, b) => a.localeCompare(b, "zh-Hans-CN"));
+          archiveField.options = uniqueDirs.map((name) => ({
+            label: existingLabelByValue[name] || name,
+            value: name
+          }));
+        }
+
         async function loadRuntimeConfig() {
           const res = await fetch("/admin/config.yml?ts=" + Date.now(), { cache: "no-store" });
           if (!res.ok) throw new Error(`Load config failed: ${res.status}`);
           const configText = await res.text();
           const config = window.jsyaml.load(configText);
           if (!config || typeof config !== "object") throw new Error("Invalid config.yml");
+
+          const token = await readCmsToken();
+          const localArchives = getCreatedArchives();
+          try {
+            const dirs = await fetchArchiveDirs(token);
+            const merged = Array.from(new Set([...(dirs || []), ...localArchives]));
+            if (merged.length > 0) applyArchiveOptions(config, merged);
+          } catch (e) {
+            console.warn("[admin] archive directory fetch failed, keep static options", e);
+            if (localArchives.length > 0) applyArchiveOptions(config, localArchives);
+          }
           return config;
         }
 
