@@ -56,7 +56,7 @@ $$
 | Embedding | $x = \mathrm{Embed}(\mathrm{tokens})$ | embedding 输出 $x$ | $B \times T \times D$ | 中等 |
 | LayerNorm 1 | $u = \mathrm{LN}_1(x)$ | 输入 $x$ 或归一化结果 $\hat{x}$ | $x: B \times T \times D$ | 中等 |
 | QKV Linear | $Q = uW_Q,\ K = uW_K,\ V = uW_V$ | 输入 $u$，以及输出 $Q,K,V$ | $u: B \times T \times D$，$Q,K,V: B \times h \times T \times d$ | 较大 |
-| Attention scores | $S = \frac{QK^\top}{\sqrt{d}}$ | 通常不一定保存 $S$，但可能保存 mask 后的 scores | $B \times h \times T \times T$ | 很大 |
+| Attention scores | $S = \frac{QK^T}{\sqrt{d}}$ | 通常不一定保存 $S$，但可能保存 mask 后的 scores | $B \times h \times T \times T$ | 很大 |
 | Softmax | $P = \mathrm{softmax}(S)$ | softmax 概率 $P$ | $B \times h \times T \times T$ | 极大 |
 | Attention Dropout | $\tilde{P} = \mathrm{Dropout}(P)$ | dropout mask，或 dropout 后的 $\tilde{P}$ | $B \times h \times T \times T$ | 极大 |
 | Attention Value 聚合 | $O = \tilde{P}V$ | $\tilde{P}$，$V$，有时保存 $O$ | $O: B \times h \times T \times d$ | 较大 |
