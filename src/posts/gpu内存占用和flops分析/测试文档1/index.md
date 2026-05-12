@@ -1,6 +1,6 @@
 ---
 layout: post.njk
-archive: gpu内存占用和flops分析
+archive: 测试目录
 title: 测试文档-A sdaasd
 date: 2026-05-12
 description: 测试文档
