@@ -54,6 +54,28 @@
           localStorage.setItem(createdArchivesKey, JSON.stringify(Array.from(current)));
         }
 
+        function pruneCreatedArchives(validNames) {
+          const valid = new Set((Array.isArray(validNames) ? validNames : []).map((name) => String(name || "").trim()).filter(Boolean));
+          const current = getCreatedArchives().filter((name) => valid.has(String(name || "").trim()));
+          localStorage.setItem(createdArchivesKey, JSON.stringify(current));
+          return current;
+        }
+
+        function getStaticArchiveOptions(config) {
+          const posts = config && Array.isArray(config.collections)
+            ? config.collections.find((c) => c && c.name === "posts")
+            : null;
+          const archiveField = posts && Array.isArray(posts.fields)
+            ? posts.fields.find((f) => f && f.name === "archive")
+            : null;
+          const opts = archiveField && Array.isArray(archiveField.options) ? archiveField.options : [];
+          return opts
+            .map((opt) => (typeof opt === "string" ? opt : (opt && opt.value)))
+            .filter(Boolean)
+            .map((name) => String(name).trim())
+            .filter(Boolean);
+        }
+
         async function fetchArchiveDirs(token) {
           const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/src/posts?ref=${encodeURIComponent(GITHUB_BRANCH)}&t=${Date.now()}`;
           const headers = { Accept: "application/vnd.github+json" };
@@ -99,13 +121,16 @@
 
           const token = await readCmsToken();
           const localArchives = getCreatedArchives();
+          const staticArchives = getStaticArchiveOptions(config);
           try {
             const dirs = await fetchArchiveDirs(token);
-            const merged = Array.from(new Set([...(dirs || []), ...localArchives]));
-            if (merged.length > 0) applyArchiveOptions(config, merged);
+            const merged = Array.from(new Set([...(dirs || []), ...localArchives, ...staticArchives]));
+            const valid = pruneCreatedArchives(dirs || []);
+            if (merged.length > 0) applyArchiveOptions(config, merged.filter((name) => (dirs || []).includes(name) || valid.includes(name) || staticArchives.includes(name)));
           } catch (e) {
             console.warn("[admin] archive directory fetch failed, keep static options", e);
-            if (localArchives.length > 0) applyArchiveOptions(config, localArchives);
+            const merged = Array.from(new Set([...staticArchives, ...localArchives]));
+            if (merged.length > 0) applyArchiveOptions(config, merged);
           }
 
           return config;
