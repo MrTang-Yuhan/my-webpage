@@ -14,7 +14,6 @@ collections:
   - name: posts
     label: Posts
     folder: src/posts
-    path: "{{archive}}/{{slug}}/index"
     media_folder: img
     public_folder: ./img
     create: true
@@ -24,28 +23,16 @@ collections:
       depth: 10
       summary: "{{title}}"
       subfolders: true
+    meta:
+      path:
+        widget: string
+        label: 归档路径
+        index_file: index
     fields:
       - label: Layout
         name: layout
         widget: hidden
         default: post.njk
-      - label: Archive
-        name: archive
-        widget: select
-        required: true
-        options:
-          - label: 模型并行
-            value: mode-parallelism
-          - label: 备忘录
-            value: 备忘录
-          - label: 互联网络
-            value: interconnect
-          - label: triosim模拟器
-            value: triosim模拟器
-        hint: Choose archive directory. Create a new one with New Archive, then refresh.
-      - label: Post ID
-        name: post_id
-        widget: hidden
       - label: Title
         name: title
         widget: string

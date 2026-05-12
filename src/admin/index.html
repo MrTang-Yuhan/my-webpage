@@ -26,7 +26,6 @@
         const TITLE_CACHE_TTL_MS = 30 * 1000;
         let titleCache = { ts: 0, items: [] };
         let runtimeConfigCache = null;
-        const createdArchivesKey = "admin_created_archives";
         const md = window.markdownit({ html: true, breaks: false, linkify: true });
         if (window.markdownitFootnote) md.use(window.markdownitFootnote);
         if (window.markdownitKatex) md.use(window.markdownitKatex);
@@ -38,119 +37,13 @@
           return "";
         }
 
-        function getCreatedArchives() {
-          try {
-            const raw = localStorage.getItem(createdArchivesKey);
-            const arr = raw ? JSON.parse(raw) : [];
-            return Array.isArray(arr) ? arr.filter(Boolean) : [];
-          } catch {
-            return [];
-          }
-        }
-
-        function rememberCreatedArchive(name) {
-          const current = new Set(getCreatedArchives());
-          current.add(name);
-          localStorage.setItem(createdArchivesKey, JSON.stringify(Array.from(current)));
-        }
-
-        function pruneCreatedArchives(validNames) {
-          const valid = new Set((Array.isArray(validNames) ? validNames : []).map((name) => String(name || "").trim()).filter(Boolean));
-          const current = getCreatedArchives().filter((name) => valid.has(String(name || "").trim()));
-          localStorage.setItem(createdArchivesKey, JSON.stringify(current));
-          return current;
-        }
-
-        function getStaticArchiveOptions(config) {
-          const posts = config && Array.isArray(config.collections)
-            ? config.collections.find((c) => c && c.name === "posts")
-            : null;
-          const archiveField = posts && Array.isArray(posts.fields)
-            ? posts.fields.find((f) => f && f.name === "archive")
-            : null;
-          const opts = archiveField && Array.isArray(archiveField.options) ? archiveField.options : [];
-          return opts
-            .map((opt) => (typeof opt === "string" ? opt : (opt && opt.value)))
-            .filter(Boolean)
-            .map((name) => String(name).trim())
-            .filter(Boolean);
-        }
-
-        async function fetchArchiveDirs(token) {
-          const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/src/posts?ref=${encodeURIComponent(GITHUB_BRANCH)}&t=${Date.now()}`;
-          const headers = { Accept: "application/vnd.github+json" };
-          if (token) headers.Authorization = "token " + token;
-          const res = await fetch(url, { headers: headers, cache: "no-store" });
-          if (!res.ok) throw new Error(`Load archives failed: ${res.status}`);
-          const items = await res.json();
-          return (Array.isArray(items) ? items : [])
-            .filter((it) => it && it.type === "dir" && it.name)
-            .map((it) => String(it.name).trim())
-            .filter(Boolean);
-        }
-
-        function applyArchiveOptions(runtimeConfig, dirs) {
-          if (!runtimeConfig || !Array.isArray(runtimeConfig.collections)) return;
-          const posts = runtimeConfig.collections.find((c) => c && c.name === "posts");
-          if (!posts || !Array.isArray(posts.fields)) return;
-          const archiveField = posts.fields.find((f) => f && f.name === "archive");
-          if (!archiveField) return;
-
-          const existingLabelByValue = {};
-          (archiveField.options || []).forEach((opt) => {
-            if (typeof opt === "string") {
-              existingLabelByValue[opt] = opt;
-              return;
-            }
-            if (opt && opt.value) existingLabelByValue[String(opt.value)] = opt.label || String(opt.value);
-          });
-
-          const uniqueDirs = Array.from(new Set(dirs)).sort((a, b) => a.localeCompare(b, "zh-Hans-CN"));
-          archiveField.options = uniqueDirs.map((name) => ({
-            label: existingLabelByValue[name] || name,
-            value: name
-          }));
-        }
-
         async function loadRuntimeConfig() {
           const res = await fetch("/admin/config.yml?ts=" + Date.now(), { cache: "no-store" });
           if (!res.ok) throw new Error(`Load config failed: ${res.status}`);
           const configText = await res.text();
           const config = window.jsyaml.load(configText);
           if (!config || typeof config !== "object") throw new Error("Invalid config.yml");
-
-          const token = await readCmsToken();
-          const localArchives = getCreatedArchives();
-          const staticArchives = getStaticArchiveOptions(config);
-          try {
-            const dirs = await fetchArchiveDirs(token);
-            const merged = Array.from(new Set([...(dirs || []), ...localArchives, ...staticArchives]));
-            const valid = pruneCreatedArchives(dirs || []);
-            if (merged.length > 0) applyArchiveOptions(config, merged.filter((name) => (dirs || []).includes(name) || valid.includes(name) || staticArchives.includes(name)));
-          } catch (e) {
-            console.warn("[admin] archive directory fetch failed, keep static options", e);
-            const merged = Array.from(new Set([...staticArchives, ...localArchives]));
-            if (merged.length > 0) applyArchiveOptions(config, merged);
-          }
-
           return config;
-        }
-
-        function applyArchiveToRuntimeConfig(name) {
-          if (!runtimeConfigCache) return;
-          const posts = Array.isArray(runtimeConfigCache.collections)
-            ? runtimeConfigCache.collections.find((c) => c && c.name === "posts")
-            : null;
-          if (!posts || !Array.isArray(posts.fields)) return;
-          const archiveField = posts.fields.find((f) => f && f.name === "archive");
-          if (!archiveField) return;
-          const values = new Set(
-            (archiveField.options || []).map((opt) => (typeof opt === "string" ? opt : (opt && opt.value))).filter(Boolean)
-          );
-          values.add(name);
-          archiveField.options = Array.from(values)
-            .sort((a, b) => String(a).localeCompare(String(b), "zh-Hans-CN"))
-            .map((v) => ({ label: String(v), value: String(v) }));
         }
 
         function softReloadCms() {
@@ -221,22 +114,6 @@
           return String(title || "").trim().toLocaleLowerCase("zh-Hans-CN");
         }
 
-        function normalizePostIdKey(postId) {
-          return String(postId || "").trim();
-        }
-
-        function extractArchiveFromPath(filePath) {
-          const path = String(filePath || "").replace(/\\/g, "/");
-          const m = path.match(/^src\/posts\/([^/]+)\//);
-          return m ? m[1] : "";
-        }
-
-        function extractSlugFolderFromPath(filePath) {
-          const path = String(filePath || "").replace(/\\/g, "/");
-          const m = path.match(/^src\/posts\/[^/]+\/([^/]+)\/index\.md$/);
-          return m ? m[1] : "";
-        }
-
         function parseFrontmatterFromMarkdown(text) {
           const src = String(text || "");
           const fm = src.match(/^---\s*\n([\s\S]*?)\n---\s*(?:\n|$)/);
@@ -298,14 +175,7 @@
               const meta = parseFrontmatterFromMarkdown(text);
               const title = meta && meta.title ? String(meta.title).trim() : parseTitleFromMarkdown(text);
               if (!title) continue;
-              const postId = meta && meta.post_id ? String(meta.post_id).trim() : extractSlugFolderFromPath(p);
-              items.push({
-                path: p,
-                key: normalizeTitleKey(title),
-                title: title,
-                postId: postId,
-                postIdKey: normalizePostIdKey(postId)
-              });
+              items.push({ path: p, key: normalizeTitleKey(title), title: title });
             } catch (e) {
               throw new Error(`${TITLE_CHECK_FAIL_ERROR} (${p})`);
             }
@@ -314,189 +184,16 @@
           return items;
         }
 
-        async function findPostPathByPostId(postId, token) {
-          const key = normalizePostIdKey(postId);
-          if (!key) return "";
-          const records = await loadAllPostRecords(token, true);
-          const found = records.find((it) => it.postIdKey === key);
-          return found ? found.path : "";
-        }
-
-        async function findPostPathByTitle(title, token, currentPath) {
-          const key = normalizeTitleKey(title);
-          if (!key) return "";
-          const records = await loadAllPostRecords(token, true);
-          const found = records.find((it) => it.key === key && it.path !== currentPath);
-          return found ? found.path : "";
-        }
-
         async function ensureTitleUnique(entry, token) {
           const title = entry.getIn(["data", "title"]) || "";
           const targetKey = normalizeTitleKey(title);
           if (!targetKey) return;
           const currentPath = String(entry.get("path") || "").replace(/\\/g, "/");
-          const currentPostId = normalizePostIdKey(entry.getIn(["data", "post_id"]) || extractSlugFolderFromPath(currentPath));
           const allTitles = await loadAllPostRecords(token, true);
-          const conflict = allTitles.find((it) => it.key === targetKey && it.postIdKey !== currentPostId && it.path !== currentPath);
+          const conflict = allTitles.find((it) => it.key === targetKey && it.path !== currentPath);
           if (conflict) {
             throw new Error(TITLE_DUP_ERROR);
           }
-        }
-
-        function buildPostTargetPathBySlug(newArchive, slugFolder) {
-          if (!newArchive || !slugFolder) return "";
-          return `src/posts/${newArchive}/${slugFolder}/index.md`;
-        }
-
-        function generatePostId(title) {
-          const base = String(title || "")
-            .trim()
-            .toLocaleLowerCase("zh-Hans-CN")
-            .replace(/\s+/g, "-")
-            .replace(/[\\/]+/g, "-")
-            .replace(/[^\w\u4e00-\u9fff-]+/g, "-")
-            .replace(/-+/g, "-")
-            .replace(/^-|-$/g, "");
-          const suffix = window.crypto && typeof window.crypto.randomUUID === "function"
-            ? window.crypto.randomUUID().slice(0, 8)
-            : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-          if (base) return `${base}-${suffix}`;
-          return `post-${suffix}`;
-        }
-
-        function buildPostDir(path) {
-          const normalized = String(path || "").replace(/\\/g, "/");
-          return normalized.replace(/\/index\.md$/i, "");
-        }
-
-        async function moveRepoDirectory(oldIndexPath, newIndexPath, token) {
-          if (!oldIndexPath || !newIndexPath || oldIndexPath === newIndexPath) return;
-          const oldDir = buildPostDir(oldIndexPath);
-          const newDir = buildPostDir(newIndexPath);
-          if (!oldDir || !newDir || oldDir === newDir) return;
-
-          const newIndexApiPath = encodeURIComponent(newIndexPath).replace(/%2F/g, "/");
-          const newIndexUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${newIndexApiPath}?ref=${encodeURIComponent(GITHUB_BRANCH)}`;
-          const indexProbe = await fetch(newIndexUrl, {
-            headers: {
-              Authorization: "token " + token,
-              Accept: "application/vnd.github+json"
-            }
-          });
-          if (indexProbe.status === 200) {
-            throw new Error(TITLE_DUP_ERROR);
-          }
-          if (indexProbe.status !== 404) {
-            throw new Error(`检查目标目录失败：${indexProbe.status}`);
-          }
-
-          const allFiles = await githubListPostFiles(token);
-          const postDirFiles = allFiles.filter((p) => p.startsWith(oldDir + "/"));
-          if (postDirFiles.length === 0) {
-            throw new Error("源 Post 目录不存在或已被移动。");
-          }
-
-          // Also move resource files under the same post directory.
-          const treeUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/trees/${encodeURIComponent(GITHUB_BRANCH)}?recursive=1`;
-          const treeData = await githubGetJson(treeUrl, token);
-          const tree = Array.isArray(treeData && treeData.tree) ? treeData.tree : [];
-          const allPostFiles = tree
-            .filter((n) => n && n.type === "blob" && typeof n.path === "string")
-            .map((n) => n.path)
-            .filter((p) => p.startsWith(oldDir + "/"));
-          const filesToMove = Array.from(new Set(allPostFiles));
-
-          const filePayloads = [];
-          for (const oldPath of filesToMove) {
-            const oldApiPath = encodeURIComponent(oldPath).replace(/%2F/g, "/");
-            const oldUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${oldApiPath}?ref=${encodeURIComponent(GITHUB_BRANCH)}`;
-            const oldRes = await fetch(oldUrl, {
-              headers: {
-                Authorization: "token " + token,
-                Accept: "application/vnd.github+json"
-              }
-            });
-            if (!oldRes.ok) throw new Error(`读取源文件失败：${oldPath} (${oldRes.status})`);
-            const oldData = await oldRes.json();
-            const content = String(oldData.content || "").replace(/\n/g, "");
-            const sha = oldData.sha;
-            const newPath = oldPath.replace(oldDir + "/", newDir + "/");
-            filePayloads.push({ oldPath, newPath, content, sha });
-          }
-
-          for (const item of filePayloads) {
-            const newApiPath = encodeURIComponent(item.newPath).replace(/%2F/g, "/");
-            const putUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${newApiPath}`;
-            const putRes = await fetch(putUrl, {
-              method: "PUT",
-              headers: {
-                Authorization: "token " + token,
-                Accept: "application/vnd.github+json",
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-                message: `chore: move post file to ${item.newPath}`,
-                content: item.content,
-                branch: GITHUB_BRANCH
-              })
-            });
-            if (!putRes.ok) {
-              const txt = await putRes.text();
-              throw new Error(`创建目标文件失败：${item.newPath} (${putRes.status}) ${txt}`);
-            }
-          }
-
-          for (const item of filePayloads) {
-            const oldApiPath = encodeURIComponent(item.oldPath).replace(/%2F/g, "/");
-            const delUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${oldApiPath}`;
-            const delRes = await fetch(delUrl, {
-              method: "DELETE",
-              headers: {
-                Authorization: "token " + token,
-                Accept: "application/vnd.github+json",
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-                message: `chore: delete old post file ${item.oldPath}`,
-                sha: item.sha,
-                branch: GITHUB_BRANCH
-              })
-            });
-            if (!delRes.ok) {
-              const txt = await delRes.text();
-              throw new Error(`删除旧文件失败：${item.oldPath} (${delRes.status}) ${txt}`);
-            }
-          }
-        }
-
-        async function syncPublishedPostLocation(entry, token) {
-          let data = entry.get("data");
-          const currentPath = String(entry.get("path") || "").replace(/\\/g, "/");
-          let postId = normalizePostIdKey(data.get("post_id"));
-          if (!postId) {
-            postId = extractSlugFolderFromPath(currentPath) || generatePostId(data.get("title"));
-            data = data.set("post_id", postId);
-          }
-
-          const archive = String(data.get("archive") || "").trim();
-          if (!archive) return data;
-
-          const titleText = String(data.get("title") || "").trim();
-          const currentArchive = extractArchiveFromPath(currentPath);
-          const existingPath = await findPostPathByPostId(postId, token);
-          const fallbackPath = existingPath || await findPostPathByTitle(titleText, token, currentPath) || currentPath;
-          const oldPath = fallbackPath;
-          const targetSlug = String(entry.get("slug") || "").trim() || extractSlugFolderFromPath(currentPath) || postId;
-          const targetPath = buildPostTargetPathBySlug(archive, targetSlug);
-
-          if (!oldPath || !targetPath || oldPath === targetPath) return data;
-          if (currentArchive && archive && currentArchive !== archive) {
-            await moveRepoDirectory(oldPath, targetPath, token);
-          } else if (existingPath || currentPath) {
-            await moveRepoDirectory(oldPath, targetPath, token);
-          }
-
-          return data;
         }
 
         async function createArchiveDir(name) {
@@ -554,8 +251,6 @@
               const token = await readCmsToken();
               if (!token) throw new Error("Not logged in");
               await createArchiveDir(name);
-              rememberCreatedArchive(String(name).trim());
-              applyArchiveToRuntimeConfig(String(name).trim());
               softReloadCms();
               window.alert(ARCHIVE_SYNC_TIP);
             } catch (e) {
@@ -620,12 +315,6 @@
         function computeEntryPath(entry, collection) {
           const direct = entry.get("path");
           if (direct) return String(direct);
-
-          const archive = entry.getIn ? entry.getIn(["data", "archive"]) : null;
-          const postId = entry.getIn ? entry.getIn(["data", "post_id"]) : null;
-          if (archive && postId) {
-            return `src/posts/${String(archive).trim()}/${String(postId).trim()}/index.md`;
-          }
 
           const folder = collection && collection.get ? collection.get("folder") : null;
           const slug = entry.get("slug");
@@ -773,32 +462,9 @@
               const token = await readCmsToken();
               if (!token) throw new Error("Not logged in");
 
-              let data = entry.get("data");
-              const currentPath = String(entry.get("path") || "").replace(/\\/g, "/");
-              let postId = normalizePostIdKey(data.get("post_id"));
-              if (!postId) {
-                postId = extractSlugFolderFromPath(currentPath) || generatePostId(data.get("title"));
-                data = data.set("post_id", postId);
-              }
-
-              const archive = String(data.get("archive") || "").trim();
-              if (!validateArchiveName(archive)) {
-                throw new Error(ARCHIVE_NAME_ERROR);
-              }
-
-              await ensureTitleUnique(entry.set("data", data), token);
-
+              const data = entry.get("data");
+              await ensureTitleUnique(entry, token);
               return data;
-            }
-          });
-
-          window.CMS.registerEventListener({
-            name: "postPublish",
-            handler: async function ({ entry, collection }) {
-              if (getCollectionName(collection) !== "posts") return;
-              const token = await readCmsToken();
-              if (!token) throw new Error("Not logged in");
-              await syncPublishedPostLocation(entry, token);
             }
           });
 
