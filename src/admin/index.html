@@ -18,6 +18,12 @@
         const GITHUB_OWNER = "MrTang-Yuhan";
         const GITHUB_REPO = "my-webpage";
         const GITHUB_BRANCH = "main";
+        const ARCHIVE_NAME_RE = /^[a-z0-9-\u4e00-\u9fff]+$/;
+        const ARCHIVE_NAME_ERROR = "Archive directory name only supports lowercase letters, numbers, hyphens, and Chinese characters. Spaces and uppercase letters are not allowed.";
+        const TITLE_DUP_ERROR = "标题已存在，请使用其他标题。";
+        const TITLE_CACHE_TTL_MS = 30 * 1000;
+        let titleCache = { ts: 0, items: [] };
+        const pendingMoves = new Map();
         const md = window.markdownit({ html: true, breaks: false, linkify: true });
         if (window.markdownitFootnote) md.use(window.markdownitFootnote);
         if (window.markdownitKatex) md.use(window.markdownitKatex);
@@ -120,11 +126,176 @@
           return null;
         }
 
+        function validateArchiveName(name) {
+          return ARCHIVE_NAME_RE.test(String(name || "").trim());
+        }
+
+        function normalizeTitleKey(title) {
+          return String(title || "").trim().toLocaleLowerCase("zh-Hans-CN");
+        }
+
+        function extractArchiveFromPath(filePath) {
+          const path = String(filePath || "").replace(/\\/g, "/");
+          const m = path.match(/^src\/posts\/([^/]+)\//);
+          return m ? m[1] : "";
+        }
+
+        function extractSlugFolderFromPath(filePath) {
+          const path = String(filePath || "").replace(/\\/g, "/");
+          const m = path.match(/^src\/posts\/[^/]+\/([^/]+)\/index\.md$/);
+          return m ? m[1] : "";
+        }
+
+        function parseTitleFromMarkdown(text) {
+          const src = String(text || "");
+          const m = src.match(/(?:^|\n)title:\s*(.+)\s*(?:\n|$)/i);
+          if (!m) return "";
+          let raw = m[1].trim();
+          if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
+            raw = raw.slice(1, -1);
+          }
+          return raw.trim();
+        }
+
+        async function githubGetJson(url, token) {
+          const headers = { Accept: "application/vnd.github+json" };
+          if (token) headers.Authorization = "token " + token;
+          const res = await fetch(url, { headers });
+          if (!res.ok) throw new Error(`GitHub API failed: ${res.status}`);
+          return res.json();
+        }
+
+        async function githubGetTextFile(path, token) {
+          const apiPath = encodeURIComponent(path).replace(/%2F/g, "/");
+          const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${apiPath}?ref=${encodeURIComponent(GITHUB_BRANCH)}`;
+          const data = await githubGetJson(url, token);
+          const content = (data && data.content) ? String(data.content).replace(/\n/g, "") : "";
+          return content ? atob(content) : "";
+        }
+
+        async function githubListPostFiles(token) {
+          const treeUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/trees/${encodeURIComponent(GITHUB_BRANCH)}?recursive=1`;
+          const data = await githubGetJson(treeUrl, token);
+          const tree = Array.isArray(data && data.tree) ? data.tree : [];
+          return tree
+            .map((n) => n && n.path)
+            .filter((p) => typeof p === "string" && /^src\/posts\/.+\/index\.md$/.test(p));
+        }
+
+        async function loadAllPostTitles(token, forceRefresh) {
+          const now = Date.now();
+          if (!forceRefresh && now - titleCache.ts < TITLE_CACHE_TTL_MS && Array.isArray(titleCache.items) && titleCache.items.length > 0) {
+            return titleCache.items;
+          }
+
+          const files = await githubListPostFiles(token);
+          const items = [];
+          for (const p of files) {
+            try {
+              const text = await githubGetTextFile(p, token);
+              const title = parseTitleFromMarkdown(text);
+              if (!title) continue;
+              items.push({ path: p, key: normalizeTitleKey(title), title: title });
+            } catch {
+              // skip bad files
+            }
+          }
+          titleCache = { ts: now, items };
+          return items;
+        }
+
+        async function ensureTitleUnique(entry, token) {
+          const title = entry.getIn(["data", "title"]) || "";
+          const targetKey = normalizeTitleKey(title);
+          if (!targetKey) return;
+          const currentPath = String(entry.get("path") || "").replace(/\\/g, "/");
+          const allTitles = await loadAllPostTitles(token, true);
+          const conflict = allTitles.find((it) => it.key === targetKey && it.path !== currentPath);
+          if (conflict) {
+            throw new Error(TITLE_DUP_ERROR);
+          }
+        }
+
+        function buildPostTargetPath(oldPath, newArchive) {
+          const slugFolder = extractSlugFolderFromPath(oldPath);
+          if (!slugFolder) return "";
+          return `src/posts/${newArchive}/${slugFolder}/index.md`;
+        }
+
+        async function moveRepoFile(oldPath, newPath, token) {
+          if (!oldPath || !newPath || oldPath === newPath) return;
+          const oldApiPath = encodeURIComponent(oldPath).replace(/%2F/g, "/");
+          const oldUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${oldApiPath}?ref=${encodeURIComponent(GITHUB_BRANCH)}`;
+          const oldRes = await fetch(oldUrl, {
+            headers: {
+              Authorization: "token " + token,
+              Accept: "application/vnd.github+json"
+            }
+          });
+          if (!oldRes.ok) throw new Error(`Read source file failed: ${oldRes.status}`);
+          const oldData = await oldRes.json();
+          const content = String(oldData.content || "").replace(/\n/g, "");
+          const sourceSha = oldData.sha;
+
+          const newApiPath = encodeURIComponent(newPath).replace(/%2F/g, "/");
+          const newUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${newApiPath}`;
+          const probe = await fetch(`${newUrl}?ref=${encodeURIComponent(GITHUB_BRANCH)}`, {
+            headers: {
+              Authorization: "token " + token,
+              Accept: "application/vnd.github+json"
+            }
+          });
+          if (probe.status === 200) {
+            throw new Error(`目标路径已存在：${newPath}`);
+          }
+          if (probe.status !== 404) {
+            throw new Error(`检查目标路径失败：${probe.status}`);
+          }
+
+          const createRes = await fetch(newUrl, {
+            method: "PUT",
+            headers: {
+              Authorization: "token " + token,
+              Accept: "application/vnd.github+json",
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              message: `chore: move post to ${newPath}`,
+              content: content,
+              branch: GITHUB_BRANCH
+            })
+          });
+          if (!createRes.ok) {
+            const txt = await createRes.text();
+            throw new Error(`创建目标文件失败：${createRes.status} ${txt}`);
+          }
+
+          const oldDeleteUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${oldApiPath}`;
+          const deleteRes = await fetch(oldDeleteUrl, {
+            method: "DELETE",
+            headers: {
+              Authorization: "token " + token,
+              Accept: "application/vnd.github+json",
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              message: `chore: delete old post path ${oldPath}`,
+              sha: sourceSha,
+              branch: GITHUB_BRANCH
+            })
+          });
+          if (!deleteRes.ok) {
+            const txt = await deleteRes.text();
+            throw new Error(`删除旧文件失败：${deleteRes.status} ${txt}`);
+          }
+        }
+
         async function createArchiveDir(name) {
           const token = await readCmsToken();
           if (!token) throw new Error("Not logged in");
           const normalized = String(name || "").trim().replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
           if (!normalized) throw new Error("Archive name is empty");
+          if (!validateArchiveName(normalized)) throw new Error(ARCHIVE_NAME_ERROR);
 
           const filePath = `src/posts/${normalized}/.keep`;
           const apiPath = encodeURIComponent(filePath).replace(/%2F/g, "/");
@@ -377,6 +548,58 @@
         });
 
         if (window.CMS) {
+          window.CMS.registerEventListener({
+            name: "preSave",
+            handler: async function ({ entry, collection }) {
+              if (!collection || collection.get("name") !== "posts") return entry.get("data");
+              const token = await readCmsToken();
+              if (!token) throw new Error("Not logged in");
+
+              const archive = String(entry.getIn(["data", "archive"]) || "").trim();
+              if (!validateArchiveName(archive)) {
+                throw new Error(ARCHIVE_NAME_ERROR);
+              }
+
+              await ensureTitleUnique(entry, token);
+
+              const currentPath = String(entry.get("path") || "").replace(/\\/g, "/");
+              const currentArchive = extractArchiveFromPath(currentPath);
+              const isEdit = Boolean(currentPath);
+              if (isEdit && currentArchive && archive && currentArchive !== archive) {
+                const targetPath = buildPostTargetPath(currentPath, archive);
+                if (!targetPath) {
+                  throw new Error("Archive 变更失败：无法确定目标路径。");
+                }
+                pendingMoves.set(currentPath, { oldPath: currentPath, newPath: targetPath });
+              }
+
+              return entry.get("data");
+            }
+          });
+
+          window.CMS.registerEventListener({
+            name: "postSave",
+            handler: async function ({ entry, collection }) {
+              if (!collection || collection.get("name") !== "posts") return;
+              const token = await readCmsToken();
+              if (!token) return;
+              const currentPath = String(entry.get("path") || "").replace(/\\/g, "/");
+              let pending = pendingMoves.get(currentPath);
+              if (!pending) {
+                pending = Array.from(pendingMoves.values()).find((it) => it.oldPath === currentPath);
+              }
+              if (!pending) return;
+              try {
+                await moveRepoFile(pending.oldPath, pending.newPath, token);
+                pendingMoves.delete(pending.oldPath);
+                window.alert("Archive 已变更，Post 文件已同步移动。请刷新后继续编辑。");
+              } catch (e) {
+                pendingMoves.delete(pending.oldPath);
+                window.alert("Archive 已修改但文件移动失败：" + (e.message || String(e)));
+              }
+            }
+          });
+
           window.CMS.registerEditorComponent({
             id: "video",
             label: "Video",
