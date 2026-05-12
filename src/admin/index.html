@@ -310,9 +310,9 @@
           }
         }
 
-        function buildPostTargetPath(newArchive, postId) {
-          if (!newArchive || !postId) return "";
-          return `src/posts/${newArchive}/${postId}/index.md`;
+        function buildPostTargetPathBySlug(newArchive, slugFolder) {
+          if (!newArchive || !slugFolder) return "";
+          return `src/posts/${newArchive}/${slugFolder}/index.md`;
         }
 
         function generatePostId(title) {
@@ -728,7 +728,8 @@
               const currentArchive = extractArchiveFromPath(currentPath);
               const existingPath = await findPostPathByPostId(postId, token);
               const oldPath = existingPath || currentPath;
-              const targetPath = buildPostTargetPath(archive, postId);
+              const targetSlug = String(entry.get("slug") || "").trim() || extractSlugFolderFromPath(currentPath) || postId;
+              const targetPath = buildPostTargetPathBySlug(archive, targetSlug);
               if (!oldPath) {
                 return data;
               }

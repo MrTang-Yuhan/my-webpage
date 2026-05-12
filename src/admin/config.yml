@@ -14,7 +14,7 @@ collections:
   - name: posts
     label: Posts
     folder: src/posts
-    path: "{{archive}}/{{post_id}}/index"
+    path: "{{archive}}/{{slug}}/index"
     media_folder: img
     public_folder: ./img
     create: true
