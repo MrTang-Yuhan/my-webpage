@@ -10,6 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/markdown-it-footnote@4.0.0/dist/markdown-it-footnote.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/markdown-it-katex@2.0.3/dist/markdown-it-katex.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
     <script>window.CMS_MANUAL_INIT = true;</script>
     <script src="https://unpkg.com/decap-cms@^3.5.0/dist/decap-cms.js"></script>
@@ -177,18 +178,6 @@
           return String(title || "").trim().toLocaleLowerCase("zh-Hans-CN");
         }
 
-        function slugifyPathSegment(text) {
-          const base = String(text || "")
-            .trim()
-            .toLocaleLowerCase("zh-Hans-CN")
-            .replace(/\s+/g, "-")
-            .replace(/[\\/]+/g, "-")
-            .replace(/[^\w\u4e00-\u9fff-]+/g, "-")
-            .replace(/-+/g, "-")
-            .replace(/^-|-$/g, "");
-          return base;
-        }
-
         function parseFrontmatterFromMarkdown(text) {
           const src = String(text || "");
           const fm = src.match(/^---\s*\n([\s\S]*?)\n---\s*(?:\n|$)/);
@@ -269,12 +258,6 @@
           if (conflict) {
             throw new Error(TITLE_DUP_ERROR);
           }
-        }
-
-        function getPostDirFromEntry(entry) {
-          const current = entry.getIn(["data", "post_dir"]);
-          if (current) return String(current).trim();
-          return slugifyPathSegment(entry.getIn(["data", "title"]) || "");
         }
 
         async function createArchiveDir(name) {
@@ -398,9 +381,9 @@
           if (direct) return String(direct);
 
           const archive = entry.getIn ? entry.getIn(["data", "archive"]) : null;
-          const postDir = entry.getIn ? entry.getIn(["data", "post_dir"]) : null;
-          if (archive && postDir) {
-            return `src/posts/${String(archive).trim()}/${String(postDir).trim()}/index.md`;
+          const title = entry.getIn ? entry.getIn(["data", "title"]) : null;
+          if (archive && title) {
+            return `src/posts/${String(archive).trim()}/${String(title).trim()}/index.md`;
           }
 
           const folder = collection && collection.get ? collection.get("folder") : null;
@@ -473,30 +456,21 @@
           });
         }
 
-        function renderMathInMarkdown(markdown) {
-          if (!window.katex || !markdown) return markdown;
-          let text = String(markdown);
-          text = text.replace(/\$\$([\s\S]+?)\$\$/g, function (_, expr) {
-            try {
-              return "\n" + window.katex.renderToString(expr.trim(), {
-                displayMode: true,
-                throwOnError: false
-              }) + "\n";
-            } catch {
-              return _;
-            }
-          });
-          text = text.replace(/(^|[^\$\\])\$([^\n$]+?)\$/g, function (_, prefix, expr) {
-            try {
-              return prefix + window.katex.renderToString(expr.trim(), {
-                displayMode: false,
-                throwOnError: false
-              });
-            } catch {
-              return _;
-            }
-          });
-          return text;
+        function renderMathInNode(root) {
+          if (!root || !window.renderMathInElement) return;
+          try {
+            window.renderMathInElement(root, {
+              delimiters: [
+                { left: "$$", right: "$$", display: true },
+                { left: "$", right: "$", display: false }
+              ],
+              throwOnError: false,
+              ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+              ignoredClasses: ["katex"]
+            });
+          } catch (e) {
+            console.warn("[admin] renderMathInNode failed", e);
+          }
         }
 
         const PostPreview = window.createClass({
@@ -518,15 +492,15 @@
             expandVideoShortcodeInDom(this._root);
             normalizeFootnotes(this._root);
             renumberFootnotes(this._root);
+            renderMathInNode(this._root);
             this._lastProcessedSignature = signature;
           },
           render: function () {
             const entry = this.props.entry;
             const title = entry.getIn(["data", "title"]) || "";
             const bodyMarkdown = entry.getIn(["data", "body"]) || "";
-            const bodyWithMath = renderMathInMarkdown(bodyMarkdown);
             const entryPath = computeEntryPath(entry, this.props.collection);
-            const bodyHtml = rewriteRelativeUrls(md.render(bodyWithMath), entryPath);
+            const bodyHtml = rewriteRelativeUrls(md.render(bodyMarkdown), entryPath);
 
             return window.h(
               "article",
@@ -549,14 +523,9 @@
               const token = await readCmsToken();
               if (!token) throw new Error("Not logged in");
 
-              let data = entry.get("data");
               await ensureTitleUnique(entry, token);
 
-              const postDir = getPostDirFromEntry(entry);
-              if (postDir) {
-                data = data.set("post_dir", postDir);
-              }
-
+              const data = entry.get("data");
               const archive = String(data.get("archive") || "").trim();
               if (!validateArchiveName(archive)) {
                 throw new Error(ARCHIVE_NAME_ERROR);
@@ -565,6 +534,14 @@
               return data;
             }
           });
+
+          const mathObserver = new MutationObserver(function () {
+            renderMathInNode(document.body);
+          });
+          mathObserver.observe(document.documentElement, { childList: true, subtree: true });
+          setTimeout(function () {
+            renderMathInNode(document.body);
+          }, 0);
 
           window.CMS.registerEditorComponent({
             id: "video",

@@ -148,10 +148,11 @@ module.exports = function(eleventyConfig) {
     posts.forEach(post => {
       const title = post.data.title;
       if (title) {
-        if (titles[title]) {
-          throw new Error(`Duplicate post title found: "${title}" in ${post.filePathStem} conflicts with ${titles[title].filePathStem}. Please rename one of them.`);
+        const key = String(title).trim().toLocaleLowerCase('zh-Hans-CN');
+        if (titles[key]) {
+          throw new Error(`Duplicate post title found: "${title}" in ${post.filePathStem} conflicts with ${titles[key].filePathStem}. Please rename one of them.`);
         }
-        titles[title] = post;
+        titles[key] = post;
       }
     });
 

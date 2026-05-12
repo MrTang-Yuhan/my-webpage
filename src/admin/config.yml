@@ -14,7 +14,7 @@ collections:
   - name: posts
     label: Posts
     folder: src/posts
-    path: "{{archive}}/{{fields.post_dir}}/index"
+    path: "{{archive}}/{{title}}/index"
     media_folder: img
     public_folder: ./img
     create: true
@@ -42,10 +42,9 @@ collections:
             value: interconnect
           - label: triosim模拟器
             value: triosim模拟器
+          - label: 大模型显存和flops分析
+            value: 大模型显存和flops分析
         hint: Choose archive directory. Create a new one with New Archive, then refresh.
-      - label: Post Dir
-        name: post_dir
-        widget: hidden
       - label: Title
         name: title
         widget: string
