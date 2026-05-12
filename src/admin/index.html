@@ -322,6 +322,14 @@
           return found ? found.path : "";
         }
 
+        async function findPostPathByTitle(title, token, currentPath) {
+          const key = normalizeTitleKey(title);
+          if (!key) return "";
+          const records = await loadAllPostRecords(token, true);
+          const found = records.find((it) => it.key === key && it.path !== currentPath);
+          return found ? found.path : "";
+        }
+
         async function ensureTitleUnique(entry, token) {
           const title = entry.getIn(["data", "title"]) || "";
           const targetKey = normalizeTitleKey(title);
@@ -751,8 +759,10 @@
               await ensureTitleUnique(entry.set("data", data), token);
 
               const currentArchive = extractArchiveFromPath(currentPath);
+              const titleText = String(data.get("title") || "").trim();
               const existingPath = await findPostPathByPostId(postId, token);
-              const oldPath = existingPath || currentPath;
+              const fallbackPath = existingPath || currentPath || await findPostPathByTitle(titleText, token, currentPath);
+              const oldPath = fallbackPath;
               const targetSlug = String(entry.get("slug") || "").trim() || extractSlugFolderFromPath(currentPath) || postId;
               const targetPath = buildPostTargetPathBySlug(archive, targetSlug);
               if (!oldPath) {
