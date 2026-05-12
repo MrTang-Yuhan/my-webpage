@@ -177,6 +177,18 @@
           return String(title || "").trim().toLocaleLowerCase("zh-Hans-CN");
         }
 
+        function slugifyPathSegment(text) {
+          const base = String(text || "")
+            .trim()
+            .toLocaleLowerCase("zh-Hans-CN")
+            .replace(/\s+/g, "-")
+            .replace(/[\\/]+/g, "-")
+            .replace(/[^\w\u4e00-\u9fff-]+/g, "-")
+            .replace(/-+/g, "-")
+            .replace(/^-|-$/g, "");
+          return base;
+        }
+
         function parseFrontmatterFromMarkdown(text) {
           const src = String(text || "");
           const fm = src.match(/^---\s*\n([\s\S]*?)\n---\s*(?:\n|$)/);
@@ -257,6 +269,12 @@
           if (conflict) {
             throw new Error(TITLE_DUP_ERROR);
           }
+        }
+
+        function getPostDirFromEntry(entry) {
+          const current = entry.getIn(["data", "post_dir"]);
+          if (current) return String(current).trim();
+          return slugifyPathSegment(entry.getIn(["data", "title"]) || "");
         }
 
         async function createArchiveDir(name) {
@@ -378,6 +396,12 @@
         function computeEntryPath(entry, collection) {
           const direct = entry.get("path");
           if (direct) return String(direct);
+
+          const archive = entry.getIn ? entry.getIn(["data", "archive"]) : null;
+          const postDir = entry.getIn ? entry.getIn(["data", "post_dir"]) : null;
+          if (archive && postDir) {
+            return `src/posts/${String(archive).trim()}/${String(postDir).trim()}/index.md`;
+          }
 
           const folder = collection && collection.get ? collection.get("folder") : null;
           const slug = entry.get("slug");
@@ -525,8 +549,19 @@
               const token = await readCmsToken();
               if (!token) throw new Error("Not logged in");
 
-              const data = entry.get("data");
+              let data = entry.get("data");
               await ensureTitleUnique(entry, token);
+
+              const postDir = getPostDirFromEntry(entry);
+              if (postDir) {
+                data = data.set("post_dir", postDir);
+              }
+
+              const archive = String(data.get("archive") || "").trim();
+              if (!validateArchiveName(archive)) {
+                throw new Error(ARCHIVE_NAME_ERROR);
+              }
+
               return data;
             }
           });

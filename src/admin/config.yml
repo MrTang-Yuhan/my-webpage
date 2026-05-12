@@ -14,8 +14,7 @@ collections:
   - name: posts
     label: Posts
     folder: src/posts
-    slug: "{{archive}}/{{slug}}"
-    path: "{{slug}}/index"
+    path: "{{archive}}/{{fields.post_dir}}/index"
     media_folder: img
     public_folder: ./img
     create: true
@@ -44,6 +43,9 @@ collections:
           - label: triosim模拟器
             value: triosim模拟器
         hint: Choose archive directory. Create a new one with New Archive, then refresh.
+      - label: Post Dir
+        name: post_dir
+        widget: hidden
       - label: Title
         name: title
         widget: string
