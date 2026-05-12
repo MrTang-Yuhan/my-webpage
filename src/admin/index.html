@@ -761,7 +761,7 @@
               const currentArchive = extractArchiveFromPath(currentPath);
               const titleText = String(data.get("title") || "").trim();
               const existingPath = await findPostPathByPostId(postId, token);
-              const fallbackPath = existingPath || currentPath || await findPostPathByTitle(titleText, token, currentPath);
+              const fallbackPath = existingPath || await findPostPathByTitle(titleText, token, currentPath) || currentPath;
               const oldPath = fallbackPath;
               const targetSlug = String(entry.get("slug") || "").trim() || extractSlugFolderFromPath(currentPath) || postId;
               const targetPath = buildPostTargetPathBySlug(archive, targetSlug);
