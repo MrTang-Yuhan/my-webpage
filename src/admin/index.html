@@ -469,6 +469,36 @@
           }
         }
 
+        async function syncPublishedPostLocation(entry, token) {
+          let data = entry.get("data");
+          const currentPath = String(entry.get("path") || "").replace(/\\/g, "/");
+          let postId = normalizePostIdKey(data.get("post_id"));
+          if (!postId) {
+            postId = extractSlugFolderFromPath(currentPath) || generatePostId(data.get("title"));
+            data = data.set("post_id", postId);
+          }
+
+          const archive = String(data.get("archive") || "").trim();
+          if (!archive) return data;
+
+          const titleText = String(data.get("title") || "").trim();
+          const currentArchive = extractArchiveFromPath(currentPath);
+          const existingPath = await findPostPathByPostId(postId, token);
+          const fallbackPath = existingPath || await findPostPathByTitle(titleText, token, currentPath) || currentPath;
+          const oldPath = fallbackPath;
+          const targetSlug = String(entry.get("slug") || "").trim() || extractSlugFolderFromPath(currentPath) || postId;
+          const targetPath = buildPostTargetPathBySlug(archive, targetSlug);
+
+          if (!oldPath || !targetPath || oldPath === targetPath) return data;
+          if (currentArchive && archive && currentArchive !== archive) {
+            await moveRepoDirectory(oldPath, targetPath, token);
+          } else if (existingPath || currentPath) {
+            await moveRepoDirectory(oldPath, targetPath, token);
+          }
+
+          return data;
+        }
+
         async function createArchiveDir(name) {
           const token = await readCmsToken();
           if (!token) throw new Error("Not logged in");
@@ -758,27 +788,17 @@
 
               await ensureTitleUnique(entry.set("data", data), token);
 
-              const currentArchive = extractArchiveFromPath(currentPath);
-              const titleText = String(data.get("title") || "").trim();
-              const existingPath = await findPostPathByPostId(postId, token);
-              const fallbackPath = existingPath || await findPostPathByTitle(titleText, token, currentPath) || currentPath;
-              const oldPath = fallbackPath;
-              const targetSlug = String(entry.get("slug") || "").trim() || extractSlugFolderFromPath(currentPath) || postId;
-              const targetPath = buildPostTargetPathBySlug(archive, targetSlug);
-              if (!oldPath) {
-                return data;
-              }
-              if (!targetPath) {
-                throw new Error("保存失败：无法计算目标目录。");
-              }
-              if (oldPath && oldPath !== targetPath) {
-                const archiveChanged = currentArchive && archive && currentArchive !== archive;
-                if (archiveChanged || existingPath || currentPath) {
-                  await moveRepoDirectory(oldPath, targetPath, token);
-                }
-              }
-
               return data;
+            }
+          });
+
+          window.CMS.registerEventListener({
+            name: "postPublish",
+            handler: async function ({ entry, collection }) {
+              if (getCollectionName(collection) !== "posts") return;
+              const token = await readCmsToken();
+              if (!token) throw new Error("Not logged in");
+              await syncPublishedPostLocation(entry, token);
             }
           });
 
