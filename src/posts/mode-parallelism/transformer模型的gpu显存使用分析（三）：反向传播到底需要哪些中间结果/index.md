@@ -44,7 +44,7 @@ $$
 |---|---|
 | `B` | batch size |
 | `T` | sequence length |
-| `D` | hidden size / model dimension |
+| `D` | hidden size |
 | `h` | attention heads 数 |
 | `d` | 每个 head 的维度，`d = D / h` |
 | `M` | FFN 中间层维度，常见为 `4D` |
