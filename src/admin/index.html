@@ -209,6 +209,16 @@
           return m ? m[1] : "";
         }
 
+        function slugifyTitle(title) {
+          return String(title || "")
+            .trim()
+            .toLocaleLowerCase("zh-Hans-CN")
+            .replace(/\s+/g, "-")
+            .replace(/[^a-z0-9\u4e00-\u9fff-_]/g, "-")
+            .replace(/-+/g, "-")
+            .replace(/^-+|-+$/g, "");
+        }
+
         function parseTitleFromMarkdown(text) {
           const src = String(text || "");
           const fm = src.match(/^---\s*\n([\s\S]*?)\n---\s*(?:\n|$)/);
@@ -285,77 +295,113 @@
           }
         }
 
-        function buildPostTargetPath(oldPath, newArchive) {
-          const slugFolder = extractSlugFolderFromPath(oldPath);
+        function buildPostTargetPathBySlug(newArchive, slugFolder) {
           if (!slugFolder) return "";
           return `src/posts/${newArchive}/${slugFolder}/index.md`;
         }
 
-        async function moveRepoFile(oldPath, newPath, token) {
-          if (!oldPath || !newPath || oldPath === newPath) return;
-          const oldApiPath = encodeURIComponent(oldPath).replace(/%2F/g, "/");
-          const oldUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${oldApiPath}?ref=${encodeURIComponent(GITHUB_BRANCH)}`;
-          const oldRes = await fetch(oldUrl, {
+        function buildPostDir(path) {
+          const normalized = String(path || "").replace(/\\/g, "/");
+          return normalized.replace(/\/index\.md$/i, "");
+        }
+
+        async function moveRepoDirectory(oldIndexPath, newIndexPath, token) {
+          if (!oldIndexPath || !newIndexPath || oldIndexPath === newIndexPath) return;
+          const oldDir = buildPostDir(oldIndexPath);
+          const newDir = buildPostDir(newIndexPath);
+          if (!oldDir || !newDir || oldDir === newDir) return;
+
+          const newIndexApiPath = encodeURIComponent(newIndexPath).replace(/%2F/g, "/");
+          const newIndexUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${newIndexApiPath}?ref=${encodeURIComponent(GITHUB_BRANCH)}`;
+          const indexProbe = await fetch(newIndexUrl, {
             headers: {
               Authorization: "token " + token,
               Accept: "application/vnd.github+json"
             }
           });
-          if (!oldRes.ok) throw new Error(`Read source file failed: ${oldRes.status}`);
-          const oldData = await oldRes.json();
-          const content = String(oldData.content || "").replace(/\n/g, "");
-          const sourceSha = oldData.sha;
+          if (indexProbe.status === 200) {
+            throw new Error(TITLE_DUP_ERROR);
+          }
+          if (indexProbe.status !== 404) {
+            throw new Error(`检查目标目录失败：${indexProbe.status}`);
+          }
 
-          const newApiPath = encodeURIComponent(newPath).replace(/%2F/g, "/");
-          const newUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${newApiPath}`;
-          const probe = await fetch(`${newUrl}?ref=${encodeURIComponent(GITHUB_BRANCH)}`, {
-            headers: {
-              Authorization: "token " + token,
-              Accept: "application/vnd.github+json"
+          const allFiles = await githubListPostFiles(token);
+          const postDirFiles = allFiles.filter((p) => p.startsWith(oldDir + "/"));
+          if (postDirFiles.length === 0) {
+            throw new Error("源 Post 目录不存在或已被移动。");
+          }
+
+          // Also move resource files under the same post directory.
+          const treeUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/trees/${encodeURIComponent(GITHUB_BRANCH)}?recursive=1`;
+          const treeData = await githubGetJson(treeUrl, token);
+          const tree = Array.isArray(treeData && treeData.tree) ? treeData.tree : [];
+          const allPostFiles = tree
+            .filter((n) => n && n.type === "blob" && typeof n.path === "string")
+            .map((n) => n.path)
+            .filter((p) => p.startsWith(oldDir + "/"));
+          const filesToMove = Array.from(new Set(allPostFiles));
+
+          const filePayloads = [];
+          for (const oldPath of filesToMove) {
+            const oldApiPath = encodeURIComponent(oldPath).replace(/%2F/g, "/");
+            const oldUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${oldApiPath}?ref=${encodeURIComponent(GITHUB_BRANCH)}`;
+            const oldRes = await fetch(oldUrl, {
+              headers: {
+                Authorization: "token " + token,
+                Accept: "application/vnd.github+json"
+              }
+            });
+            if (!oldRes.ok) throw new Error(`读取源文件失败：${oldPath} (${oldRes.status})`);
+            const oldData = await oldRes.json();
+            const content = String(oldData.content || "").replace(/\n/g, "");
+            const sha = oldData.sha;
+            const newPath = oldPath.replace(oldDir + "/", newDir + "/");
+            filePayloads.push({ oldPath, newPath, content, sha });
+          }
+
+          for (const item of filePayloads) {
+            const newApiPath = encodeURIComponent(item.newPath).replace(/%2F/g, "/");
+            const putUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${newApiPath}`;
+            const putRes = await fetch(putUrl, {
+              method: "PUT",
+              headers: {
+                Authorization: "token " + token,
+                Accept: "application/vnd.github+json",
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                message: `chore: move post file to ${item.newPath}`,
+                content: item.content,
+                branch: GITHUB_BRANCH
+              })
+            });
+            if (!putRes.ok) {
+              const txt = await putRes.text();
+              throw new Error(`创建目标文件失败：${item.newPath} (${putRes.status}) ${txt}`);
             }
-          });
-          if (probe.status === 200) {
-            throw new Error(`目标路径已存在：${newPath}`);
-          }
-          if (probe.status !== 404) {
-            throw new Error(`检查目标路径失败：${probe.status}`);
           }
 
-          const createRes = await fetch(newUrl, {
-            method: "PUT",
-            headers: {
-              Authorization: "token " + token,
-              Accept: "application/vnd.github+json",
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              message: `chore: move post to ${newPath}`,
-              content: content,
-              branch: GITHUB_BRANCH
-            })
-          });
-          if (!createRes.ok) {
-            const txt = await createRes.text();
-            throw new Error(`创建目标文件失败：${createRes.status} ${txt}`);
-          }
-
-          const oldDeleteUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${oldApiPath}`;
-          const deleteRes = await fetch(oldDeleteUrl, {
-            method: "DELETE",
-            headers: {
-              Authorization: "token " + token,
-              Accept: "application/vnd.github+json",
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              message: `chore: delete old post path ${oldPath}`,
-              sha: sourceSha,
-              branch: GITHUB_BRANCH
-            })
-          });
-          if (!deleteRes.ok) {
-            const txt = await deleteRes.text();
-            throw new Error(`删除旧文件失败：${deleteRes.status} ${txt}`);
+          for (const item of filePayloads) {
+            const oldApiPath = encodeURIComponent(item.oldPath).replace(/%2F/g, "/");
+            const delUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${oldApiPath}`;
+            const delRes = await fetch(delUrl, {
+              method: "DELETE",
+              headers: {
+                Authorization: "token " + token,
+                Accept: "application/vnd.github+json",
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                message: `chore: delete old post file ${item.oldPath}`,
+                sha: item.sha,
+                branch: GITHUB_BRANCH
+              })
+            });
+            if (!delRes.ok) {
+              const txt = await delRes.text();
+              throw new Error(`删除旧文件失败：${item.oldPath} (${delRes.status}) ${txt}`);
+            }
           }
         }
 
@@ -636,9 +682,17 @@
 
               const currentPath = String(entry.get("path") || "").replace(/\\/g, "/");
               const currentArchive = extractArchiveFromPath(currentPath);
+              const currentSlugFolder = extractSlugFolderFromPath(currentPath);
+              const nextSlugFolder = slugifyTitle(String(entry.getIn(["data", "title"]) || ""));
               const isEdit = Boolean(currentPath);
-              if (isEdit && currentArchive && archive && currentArchive !== archive) {
-                const targetPath = buildPostTargetPath(currentPath, archive);
+              if (isEdit && currentArchive && archive) {
+                if (!nextSlugFolder) {
+                  throw new Error("保存失败：标题不能为空。");
+                }
+                const archiveChanged = currentArchive !== archive;
+                const slugChanged = currentSlugFolder !== nextSlugFolder;
+                if (!archiveChanged && !slugChanged) return entry.get("data");
+                const targetPath = buildPostTargetPathBySlug(archive, nextSlugFolder);
                 if (!targetPath) {
                   throw new Error("Archive 变更失败：无法确定目标路径。");
                 }
@@ -662,12 +716,12 @@
               }
               if (!pending) return;
               try {
-                await moveRepoFile(pending.oldPath, pending.newPath, token);
+                await moveRepoDirectory(pending.oldPath, pending.newPath, token);
                 pendingMoves.delete(pending.oldPath);
-                window.alert("Archive 已变更，Post 文件已同步移动。请刷新后继续编辑。");
+                window.alert("保存成功，Post 目录已同步更新。");
               } catch (e) {
                 pendingMoves.delete(pending.oldPath);
-                window.alert("Archive 已修改但文件移动失败：" + (e.message || String(e)));
+                window.alert("保存失败：Post 标题已更新，但目录重命名失败，请稍后重试或检查 GitHub 同步状态。\n" + (e.message || String(e)));
               }
             }
           });
