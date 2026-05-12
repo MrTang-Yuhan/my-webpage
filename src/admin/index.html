@@ -19,7 +19,7 @@
         const GITHUB_REPO = "my-webpage";
         const GITHUB_BRANCH = "main";
         const ARCHIVE_NAME_RE = /^[a-z0-9-\u4e00-\u9fff]+$/;
-        const ARCHIVE_NAME_ERROR = "Archive directory name only supports lowercase letters, numbers, hyphens, and Chinese characters. Spaces and uppercase letters are not allowed.";
+        const ARCHIVE_NAME_ERROR = "Archive 目录名称仅支持小写字母、数字、连字符和汉字，不允许使用空格和大写字母";
         const TITLE_DUP_ERROR = "标题已存在，请使用其他标题。";
         const TITLE_CACHE_TTL_MS = 30 * 1000;
         let titleCache = { ts: 0, items: [] };
