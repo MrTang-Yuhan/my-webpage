@@ -1,6 +1,6 @@
 ---
 layout: post.njk
-archive: mode-parallelism
+archive: GPU 显存和 FLOPs 分析
 title: transformer 模型的 GPU 显存使用分析（一）：训练
 date: 2026-05-03
 description: transformer 模型的 GPU 显存使用分析：训练阶段分析
