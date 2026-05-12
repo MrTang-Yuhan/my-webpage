@@ -1,6 +1,7 @@
 ---
 layout: post.njk
 archive: gpu内存占用和flops分析
+post_id: transformer模型的gpu显存使用分析（二）：推理
 title: transformer 模型的 GPU 显存使用分析（二）：推理
 date: 2026-05-11
 description: transformer 模型的 GPU 显存使用分析：推理阶段分析

@@ -1,5 +1,6 @@
 ---
 layout: post.njk
+post_id: 互联网络
 title: "互联网络"
 date: 2026-04-30
 description: "AI 加速卡的互联介绍"

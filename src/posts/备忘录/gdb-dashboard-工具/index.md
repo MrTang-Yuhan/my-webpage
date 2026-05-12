@@ -1,5 +1,6 @@
 ---
 layout: post.njk
+post_id: gdb-dashboard-工具
 title: "gdb-dashboard-工具"
 date: 2026-05-01
 description: "gdb dashboard 工具指南"

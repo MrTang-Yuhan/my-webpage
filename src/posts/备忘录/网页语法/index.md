@@ -1,5 +1,6 @@
 ---
 layout: post.njk
+post_id: 网页语法
 title: "网页语法"
 date: 2026-05-01
 description: "写网页的一些语法介绍"

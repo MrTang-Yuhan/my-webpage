@@ -1,5 +1,6 @@
 ---
 layout: post.njk
+post_id: triosim 模拟器 （一）
 title: "triosim 模拟器 （一）"
 date: 2026-05-10
 description: "triosim 模拟器（一）"

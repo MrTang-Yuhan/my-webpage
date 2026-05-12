@@ -1,5 +1,6 @@
 ---
 layout: post.njk
+post_id: Pipeline-Parallelism流水线并行（一）
 title: "Pipeline-Parallelism流水线并行（一）"
 date: 2026-05-03
 description: "Model Parallelism 之 Pipeline Parallelism: Naive Pipeline Parallelism, Gpipe, PipeDream"

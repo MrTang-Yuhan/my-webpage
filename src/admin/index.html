@@ -25,7 +25,6 @@
         const ARCHIVE_SYNC_TIP = "Archive 创建成功，数据正在同步到 GitHub，请稍等片刻后再刷新页面查看。";
         const TITLE_CACHE_TTL_MS = 30 * 1000;
         let titleCache = { ts: 0, items: [] };
-        const pendingMoves = new Map();
         let runtimeConfigCache = null;
         const createdArchivesKey = "admin_created_archives";
         const md = window.markdownit({ html: true, breaks: false, linkify: true });
@@ -197,6 +196,10 @@
           return String(title || "").trim().toLocaleLowerCase("zh-Hans-CN");
         }
 
+        function normalizePostIdKey(postId) {
+          return String(postId || "").trim();
+        }
+
         function extractArchiveFromPath(filePath) {
           const path = String(filePath || "").replace(/\\/g, "/");
           const m = path.match(/^src\/posts\/([^/]+)\//);
@@ -209,28 +212,23 @@
           return m ? m[1] : "";
         }
 
-        function slugifyTitle(title) {
-          return String(title || "")
-            .trim()
-            .toLocaleLowerCase("zh-Hans-CN")
-            .replace(/\s+/g, "-")
-            .replace(/[^a-z0-9\u4e00-\u9fff-_]/g, "-")
-            .replace(/-+/g, "-")
-            .replace(/^-+|-+$/g, "");
+        function parseFrontmatterFromMarkdown(text) {
+          const src = String(text || "");
+          const fm = src.match(/^---\s*\n([\s\S]*?)\n---\s*(?:\n|$)/);
+          if (!fm) return {};
+          try {
+            const obj = window.jsyaml.load(fm[1]);
+            return obj && typeof obj === "object" ? obj : {};
+          } catch {
+            return {};
+          }
         }
 
         function parseTitleFromMarkdown(text) {
+          const obj = parseFrontmatterFromMarkdown(text);
+          const t = obj && obj.title ? String(obj.title).trim() : "";
+          if (t) return t;
           const src = String(text || "");
-          const fm = src.match(/^---\s*\n([\s\S]*?)\n---\s*(?:\n|$)/);
-          if (fm) {
-            try {
-              const obj = window.jsyaml.load(fm[1]);
-              const t = obj && obj.title ? String(obj.title).trim() : "";
-              if (t) return t;
-            } catch {
-              // fallback below
-            }
-          }
           const m = src.match(/(?:^|\n)title:\s*(.+)\s*(?:\n|$)/i);
           if (!m) return "";
           return String(m[1] || "").trim().replace(/^["']|["']$/g, "");
@@ -261,7 +259,7 @@
             .filter((p) => typeof p === "string" && /^src\/posts\/.+\/index\.md$/.test(p));
         }
 
-        async function loadAllPostTitles(token, forceRefresh) {
+        async function loadAllPostRecords(token, forceRefresh) {
           const now = Date.now();
           if (!forceRefresh && now - titleCache.ts < TITLE_CACHE_TTL_MS && Array.isArray(titleCache.items) && titleCache.items.length > 0) {
             return titleCache.items;
@@ -272,9 +270,17 @@
           for (const p of files) {
             try {
               const text = await githubGetTextFile(p, token);
-              const title = parseTitleFromMarkdown(text);
+              const meta = parseFrontmatterFromMarkdown(text);
+              const title = meta && meta.title ? String(meta.title).trim() : parseTitleFromMarkdown(text);
               if (!title) continue;
-              items.push({ path: p, key: normalizeTitleKey(title), title: title });
+              const postId = meta && meta.post_id ? String(meta.post_id).trim() : extractSlugFolderFromPath(p);
+              items.push({
+                path: p,
+                key: normalizeTitleKey(title),
+                title: title,
+                postId: postId,
+                postIdKey: normalizePostIdKey(postId)
+              });
             } catch (e) {
               throw new Error(`${TITLE_CHECK_FAIL_ERROR} (${p})`);
             }
@@ -283,21 +289,46 @@
           return items;
         }
 
+        async function findPostPathByPostId(postId, token) {
+          const key = normalizePostIdKey(postId);
+          if (!key) return "";
+          const records = await loadAllPostRecords(token, true);
+          const found = records.find((it) => it.postIdKey === key);
+          return found ? found.path : "";
+        }
+
         async function ensureTitleUnique(entry, token) {
           const title = entry.getIn(["data", "title"]) || "";
           const targetKey = normalizeTitleKey(title);
           if (!targetKey) return;
           const currentPath = String(entry.get("path") || "").replace(/\\/g, "/");
-          const allTitles = await loadAllPostTitles(token, true);
-          const conflict = allTitles.find((it) => it.key === targetKey && it.path !== currentPath);
+          const currentPostId = normalizePostIdKey(entry.getIn(["data", "post_id"]) || extractSlugFolderFromPath(currentPath));
+          const allTitles = await loadAllPostRecords(token, true);
+          const conflict = allTitles.find((it) => it.key === targetKey && it.postIdKey !== currentPostId && it.path !== currentPath);
           if (conflict) {
             throw new Error(TITLE_DUP_ERROR);
           }
         }
 
-        function buildPostTargetPathBySlug(newArchive, slugFolder) {
-          if (!slugFolder) return "";
-          return `src/posts/${newArchive}/${slugFolder}/index.md`;
+        function buildPostTargetPath(newArchive, postId) {
+          if (!newArchive || !postId) return "";
+          return `src/posts/${newArchive}/${postId}/index.md`;
+        }
+
+        function generatePostId(title) {
+          const base = String(title || "")
+            .trim()
+            .toLocaleLowerCase("zh-Hans-CN")
+            .replace(/\s+/g, "-")
+            .replace(/[\\/]+/g, "-")
+            .replace(/[^\w\u4e00-\u9fff-]+/g, "-")
+            .replace(/-+/g, "-")
+            .replace(/^-|-$/g, "");
+          const suffix = window.crypto && typeof window.crypto.randomUUID === "function"
+            ? window.crypto.randomUUID().slice(0, 8)
+            : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+          if (base) return `${base}-${suffix}`;
+          return `post-${suffix}`;
         }
 
         function buildPostDir(path) {
@@ -527,6 +558,12 @@
           const direct = entry.get("path");
           if (direct) return String(direct);
 
+          const archive = entry.getIn ? entry.getIn(["data", "archive"]) : null;
+          const postId = entry.getIn ? entry.getIn(["data", "post_id"]) : null;
+          if (archive && postId) {
+            return `src/posts/${String(archive).trim()}/${String(postId).trim()}/index.md`;
+          }
+
           const folder = collection && collection.get ? collection.get("folder") : null;
           const slug = entry.get("slug");
           if (folder && slug) {
@@ -673,66 +710,39 @@
               const token = await readCmsToken();
               if (!token) throw new Error("Not logged in");
 
-              const archive = String(entry.getIn(["data", "archive"]) || "").trim();
+              let data = entry.get("data");
+              const currentPath = String(entry.get("path") || "").replace(/\\/g, "/");
+              let postId = normalizePostIdKey(data.get("post_id"));
+              if (!postId) {
+                postId = extractSlugFolderFromPath(currentPath) || generatePostId(data.get("title"));
+                data = data.set("post_id", postId);
+              }
+
+              const archive = String(data.get("archive") || "").trim();
               if (!validateArchiveName(archive)) {
                 throw new Error(ARCHIVE_NAME_ERROR);
               }
 
-              const titleText = String(entry.getIn(["data", "title"]) || "").trim();
-              const nextSlugFolder = slugifyTitle(titleText);
-              if (!nextSlugFolder) {
-                throw new Error("保存失败：标题不能为空。");
-              }
+              await ensureTitleUnique(entry.set("data", data), token);
 
-              // Decap-native path sync: always keep slug in frontmatter aligned to title.
-              // With path: "{{archive}}/{{slug}}/index", Decap will save to the title-aligned folder.
-              const currentData = entry.get("data");
-              const nextData = currentData && typeof currentData.set === "function"
-                ? currentData.set("slug", nextSlugFolder)
-                : { ...(currentData || {}), slug: nextSlugFolder };
-              const slugSyncedEntry = entry.set ? entry.set("data", nextData) : entry;
-
-              await ensureTitleUnique(slugSyncedEntry, token);
-
-              const currentPath = String(entry.get("path") || "").replace(/\\/g, "/");
               const currentArchive = extractArchiveFromPath(currentPath);
-              const currentSlugFolder = extractSlugFolderFromPath(currentPath);
-              const isEdit = Boolean(currentPath);
-              if (isEdit && currentArchive && archive) {
-                const archiveChanged = currentArchive !== archive;
-                const slugChanged = currentSlugFolder !== nextSlugFolder;
-                if (!archiveChanged && !slugChanged) return nextData;
-                const targetPath = buildPostTargetPathBySlug(archive, nextSlugFolder);
-                if (!targetPath) {
-                  throw new Error("Archive 变更失败：无法确定目标路径。");
+              const existingPath = await findPostPathByPostId(postId, token);
+              const oldPath = existingPath || currentPath;
+              const targetPath = buildPostTargetPath(archive, postId);
+              if (!oldPath) {
+                return data;
+              }
+              if (!targetPath) {
+                throw new Error("保存失败：无法计算目标目录。");
+              }
+              if (oldPath && oldPath !== targetPath) {
+                const archiveChanged = currentArchive && archive && currentArchive !== archive;
+                if (archiveChanged || existingPath || currentPath) {
+                  await moveRepoDirectory(oldPath, targetPath, token);
                 }
-                pendingMoves.set(currentPath, { oldPath: currentPath, newPath: targetPath });
               }
 
-              return nextData;
-            }
-          });
-
-          window.CMS.registerEventListener({
-            name: "postSave",
-            handler: async function ({ entry, collection }) {
-              if (getCollectionName(collection) !== "posts") return;
-              const token = await readCmsToken();
-              if (!token) return;
-              const currentPath = String(entry.get("path") || "").replace(/\\/g, "/");
-              let pending = pendingMoves.get(currentPath);
-              if (!pending) {
-                pending = Array.from(pendingMoves.values()).find((it) => it.oldPath === currentPath);
-              }
-              if (!pending) return;
-              try {
-                await moveRepoDirectory(pending.oldPath, pending.newPath, token);
-                pendingMoves.delete(pending.oldPath);
-                window.alert("保存成功，Post 目录已同步更新。");
-              } catch (e) {
-                pendingMoves.delete(pending.oldPath);
-                window.alert("保存失败：Post 标题已更新，但目录重命名失败，请稍后重试或检查 GitHub 同步状态。\n" + (e.message || String(e)));
-              }
+              return data;
             }
           });
 

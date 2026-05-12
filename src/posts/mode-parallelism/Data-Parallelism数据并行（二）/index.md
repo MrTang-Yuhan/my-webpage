@@ -1,5 +1,6 @@
 ---
 layout: post.njk
+post_id: Data-Parallelism数据并行（二）
 title: "Data-Parallelism数据并行（二）"
 date: 2026-05-03
 description: "Model Parallelism 之 Data Parallelism: Naive Data Parallelism, Distributed Data Parallelism (DDP), ZeRO Data Parallelism"
