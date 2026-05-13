@@ -32,9 +32,8 @@ collections:
         default: post.njk
       - label: 归档目录
         name: archive
-        widget: select
+        widget: archive-combobox
         required: true
-        accept_additional_values: true
         options:
           - mode-parallelism
           - interconnect

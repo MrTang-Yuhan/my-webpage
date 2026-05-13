@@ -192,6 +192,62 @@
           }
         });
 
+        const ArchiveComboboxControl = window.createClass({
+          getInitialState: function () {
+            return { currentValue: this.props.value || '' };
+          },
+          componentDidUpdate: function (prevProps) {
+            const prev = prevProps.value || '';
+            const next = this.props.value || '';
+            if (prev !== next && next !== this.state.currentValue) {
+              this.setState({ currentValue: next });
+            }
+          },
+          getOptions: function () {
+            const field = this.props.field;
+            if (!field || typeof field.get !== 'function') return [];
+            const raw = field.get('options');
+            if (!raw) return [];
+            if (typeof raw.toJS === 'function') {
+              const arr = raw.toJS();
+              return Array.isArray(arr) ? arr.map(function (item) { return String(item); }) : [];
+            }
+            return Array.isArray(raw) ? raw.map(function (item) { return String(item); }) : [];
+          },
+          onInputChange: function (e) {
+            const value = String(e.target.value || '');
+            this.setState({ currentValue: value });
+            this.props.onChange(value);
+          },
+          render: function () {
+            const options = this.getOptions();
+            const listId = 'archive-combobox-options';
+            return window.h('div', { style: { display: 'grid', gap: '8px' } }, [
+              window.h('input', {
+                key: 'archive-input',
+                type: 'text',
+                list: listId,
+                value: this.state.currentValue,
+                onChange: this.onInputChange,
+                placeholder: '选择已有目录或输入新目录',
+                style: {
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  padding: '10px 12px',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px'
+                }
+              }),
+              window.h('datalist', { key: 'archive-datalist', id: listId },
+                options.map(function (opt) {
+                  return window.h('option', { key: opt, value: opt });
+                })
+              )
+            ]);
+          }
+        });
+
+        window.CMS.registerWidget('archive-combobox', ArchiveComboboxControl);
         window.CMS.registerPreviewStyle(scopedPreviewCss, { raw: true });
         window.CMS.registerPreviewStyle('https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css');
         window.CMS.registerPreviewTemplate('posts', PostPreview);
