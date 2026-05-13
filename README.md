@@ -33,6 +33,14 @@
 - 保留 GitHub backend + OAuth 接入（`/api/auth`）
 - Admin 回归检查清单：`docs/admin-regression-checklist.md`
 
+### OAuth 实现与部署建议
+
+- 主方案（推荐）：Cloudflare Pages Functions
+- 使用 `functions/api/auth.js` + `functions/api/callback.js` 提供 `/api/auth` 与 `/api/callback`。
+- `src/admin/config.yml` 中保持 `auth_endpoint: /api/auth` 不变。
+- 需配置环境变量：`GITHUB_CLIENT_ID`、`GITHUB_CLIENT_SECRET`，可选 `AUTH_BASE_URL`（用于固定回调域名）。
+- 备用方案：`oauth-worker/` 独立 Worker。仅在无法使用 Pages Functions 时启用，避免两套 OAuth 同时对外暴露造成漂移。
+
 ### 新建归档目录
 
 - `archive` 字段使用 `archive-combobox`，下拉只合并三类来源并做严格清洗：
@@ -46,9 +54,12 @@
 
 - Decap 默认仅更新 front matter 的 `archive` 字段，不会移动既有文件路径。
 - `/admin` 内置“移动文章归档”面板（仅在编辑已有文章且路径可识别时显示）。
-- 面板读取当前 entry 路径，并按 `src/posts/<targetArchive>/<slug>/index.md` 计算目标路径。
-- 使用当前登录 GitHub token 调用 Contents API：读取旧文件 -> 写入新路径 -> 删除旧路径，形成提交。
+- 面板读取当前 entry 路径，并按 `src/posts/<targetArchive>/<slug>/` 目录迁移。
+- 使用当前登录 GitHub token 调用 Contents API：递归复制该文章目录内所有文件（含 `index.md`、`img/**`、`video/**`）到新目录，再删除旧目录文件。
+- 对大于 1MB 导致 Contents API `content` 不可用的文件，迁移逻辑会自动回退到 Git Blobs API 按 `sha` 读取 base64 内容。
+- 若目标目录任一文件已存在会中止迁移并报错，避免覆盖。
 - 成功后提示刷新并从新路径继续编辑。
+- 仍受 GitHub API 与仓库单文件大小限制约束；超限文件无法通过该流程迁移。
 
 ### Markdown / HTML / 公式 / 脚注
 
@@ -70,4 +81,5 @@
 ## 发布前检查
 
 - 构建检查：`npm.cmd run build`
+- Admin 一致性检查：`npm.cmd run check:admin`（需先 build 生成 `_site/admin-archives.json`）
 - 本地预览：`npm.cmd run start`

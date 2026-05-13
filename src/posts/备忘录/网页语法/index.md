@@ -8,6 +8,7 @@ tags:
   - post
   - 网页语法
 
+archive: 备忘录
 ---
 
 总体而言，正文支持 markdown 和 html 语法，而脚注的使用仅支持 html 语法 和 部分 markdown 语法。

@@ -475,6 +475,18 @@
           return res.json();
         }
 
+        function normalizeBase64Value(value) {
+          return String(value || '').replace(/\s+/g, '');
+        }
+
+        function isUsableBase64Content(content, encoding) {
+          const normalizedEncoding = String(encoding || '').toLowerCase();
+          const normalizedContent = normalizeBase64Value(content);
+          if (normalizedEncoding !== 'base64') return false;
+          if (!normalizedContent) return false;
+          return /^[a-z0-9+/=]+$/i.test(normalizedContent);
+        }
+
         function base64ToUtf8(base64) {
           const clean = String(base64 || '').replace(/\s+/g, '');
           const binary = atob(clean);
@@ -509,6 +521,162 @@
             ? body.replace(/^archive\s*:.*$/m, targetLine)
             : body + '\n' + targetLine;
           return text.replace(/^---\r?\n[\s\S]*?\r?\n---/, '---\n' + nextBody + '\n---');
+        }
+
+        function encodeGitHubPath(path) {
+          return encodeURIComponent(String(path || '').replace(/\\/g, '/')).replace(/%2F/g, '/');
+        }
+
+        function joinRepoPath(base, tail) {
+          const left = String(base || '').replace(/\\/g, '/').replace(/\/+$/, '');
+          const right = String(tail || '').replace(/\\/g, '/').replace(/^\/+/, '');
+          return left + '/' + right;
+        }
+
+        async function listDirectoryFiles(repo, branch, dirPath, token) {
+          const files = [];
+          async function walk(currentPath) {
+            const entries = await githubApi('/repos/' + repo + '/contents/' + encodeGitHubPath(currentPath) + '?ref=' + encodeURIComponent(branch), {
+              method: 'GET'
+            }, token);
+            if (!Array.isArray(entries)) {
+              throw new Error('路径不是目录: ' + currentPath);
+            }
+            for (let i = 0; i < entries.length; i += 1) {
+              const item = entries[i];
+              if (!item || !item.path || !item.type) continue;
+              if (item.type === 'file') {
+                files.push({ path: item.path, sha: item.sha || '', size: item.size || 0 });
+                continue;
+              }
+              if (item.type === 'dir') {
+                await walk(item.path);
+              }
+            }
+          }
+          await walk(dirPath);
+          return files.sort(function(a, b) {
+            return a.path.localeCompare(b.path, 'en');
+          });
+        }
+
+        async function getExistingFile(repo, branch, filePath, token) {
+          try {
+            return await githubApi('/repos/' + repo + '/contents/' + encodeGitHubPath(filePath) + '?ref=' + encodeURIComponent(branch), {
+              method: 'GET'
+            }, token);
+          } catch (err) {
+            const message = String((err && err.message) || err || '');
+            if (/GitHub API 404/.test(message)) return null;
+            throw err;
+          }
+        }
+
+        async function getFileBase64Content(repo, branch, filePath, fileSha, token) {
+          let contentPayload = null;
+          try {
+            contentPayload = await githubApi('/repos/' + repo + '/contents/' + encodeGitHubPath(filePath) + '?ref=' + encodeURIComponent(branch), {
+              method: 'GET'
+            }, token);
+          } catch (err) {
+            throw new Error('读取文件内容失败（Contents API）: ' + filePath + '；' + String((err && err.message) || err || 'unknown error'));
+          }
+
+          if (isUsableBase64Content(contentPayload && contentPayload.content, contentPayload && contentPayload.encoding)) {
+            return normalizeBase64Value(contentPayload.content);
+          }
+
+          const sha = String((contentPayload && contentPayload.sha) || fileSha || '').trim();
+          if (!sha) {
+            throw new Error('读取文件内容失败：缺少 blob sha，无法回退读取：' + filePath);
+          }
+
+          let blobPayload = null;
+          try {
+            blobPayload = await githubApi('/repos/' + repo + '/git/blobs/' + encodeURIComponent(sha), {
+              method: 'GET'
+            }, token);
+          } catch (err) {
+            throw new Error('读取文件内容失败（Blob fallback）: ' + filePath + '；' + String((err && err.message) || err || 'unknown error'));
+          }
+
+          if (!isUsableBase64Content(blobPayload && blobPayload.content, blobPayload && blobPayload.encoding)) {
+            throw new Error('读取文件内容失败：Blob API 未返回可用 base64 内容：' + filePath);
+          }
+          return normalizeBase64Value(blobPayload.content);
+        }
+
+        async function movePostDirectoryWithAssets(args) {
+          const repo = args.repo;
+          const branch = args.branch;
+          const token = args.token;
+          const oldArchive = args.oldArchive;
+          const targetArchive = args.targetArchive;
+          const slug = args.slug;
+
+          const oldDir = 'src/posts/' + oldArchive + '/' + slug;
+          const newDir = 'src/posts/' + targetArchive + '/' + slug;
+          const allFiles = await listDirectoryFiles(repo, branch, oldDir, token);
+          if (!allFiles.length) throw new Error('未找到可迁移文件: ' + oldDir);
+
+          const movePairs = allFiles.map(function(file) {
+            const suffix = file.path.slice(oldDir.length).replace(/^\/+/, '');
+            return {
+              oldPath: file.path,
+              newPath: joinRepoPath(newDir, suffix),
+              oldSha: file.sha
+            };
+          });
+
+          const indexPair = movePairs.find(function(pair) {
+            return /\/index\.md$/i.test(pair.oldPath);
+          });
+          if (!indexPair) throw new Error('未找到 index.md，无法确认文章目录。');
+
+          for (let i = 0; i < movePairs.length; i += 1) {
+            const pair = movePairs[i];
+            const existing = await getExistingFile(repo, branch, pair.newPath, token);
+            if (!existing) continue;
+            throw new Error('目标路径已存在文件，已中止迁移: ' + pair.newPath);
+          }
+
+          const commitMsg = 'chore(admin): move post archive ' + slug + ' to ' + targetArchive;
+          for (let i = 0; i < movePairs.length; i += 1) {
+            const pair = movePairs[i];
+            let contentB64 = await getFileBase64Content(repo, branch, pair.oldPath, pair.oldSha, token);
+            if (pair.oldPath === indexPair.oldPath) {
+              const movedMarkdown = updateFrontMatterArchive(base64ToUtf8(contentB64), targetArchive);
+              contentB64 = utf8ToBase64(movedMarkdown);
+            }
+            await githubApi('/repos/' + repo + '/contents/' + encodeGitHubPath(pair.newPath), {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                message: commitMsg,
+                content: contentB64,
+                branch: branch
+              })
+            }, token);
+          }
+
+          for (let i = 0; i < movePairs.length; i += 1) {
+            const pair = movePairs[i];
+            await githubApi('/repos/' + repo + '/contents/' + encodeGitHubPath(pair.oldPath), {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                message: commitMsg,
+                sha: pair.oldSha,
+                branch: branch
+              })
+            }, token);
+          }
+
+          return {
+            movedCount: movePairs.length,
+            oldDir: oldDir,
+            newDir: newDir
+          };
         }
 
         function ensureMovePanel() {
@@ -594,48 +762,18 @@
             statusEl.textContent = '正在提交移动...';
             try {
               const cfg = await parseRepoAndBranch();
-              const oldPath = latest.path;
-              const newPath = 'src/posts/' + targetArchive + '/' + latest.slug + '/index.md';
-              const oldFile = await githubApi('/repos/' + cfg.repo + '/contents/' + encodeURIComponent(oldPath).replace(/%2F/g, '/'), {
-                method: 'GET'
-              }, token);
-
-              let newSha = '';
-              try {
-                const existingNew = await githubApi('/repos/' + cfg.repo + '/contents/' + encodeURIComponent(newPath).replace(/%2F/g, '/'), {
-                  method: 'GET'
-                }, token);
-                newSha = existingNew && existingNew.sha ? existingNew.sha : '';
-              } catch (_) {
-                newSha = '';
-              }
-
-              const commitMsg = 'chore(admin): move post archive ' + latest.slug + ' to ' + targetArchive;
-              const movedMarkdown = updateFrontMatterArchive(base64ToUtf8(oldFile.content), targetArchive);
-              await githubApi('/repos/' + cfg.repo + '/contents/' + encodeURIComponent(newPath).replace(/%2F/g, '/'), {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  message: commitMsg,
-                  content: utf8ToBase64(movedMarkdown),
-                  sha: newSha || undefined,
-                  branch: cfg.branch
-                })
-              }, token);
-
-              await githubApi('/repos/' + cfg.repo + '/contents/' + encodeURIComponent(oldPath).replace(/%2F/g, '/'), {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  message: commitMsg,
-                  sha: oldFile.sha,
-                  branch: cfg.branch
-                })
-              }, token);
+              const moved = await movePostDirectoryWithAssets({
+                repo: cfg.repo,
+                branch: cfg.branch,
+                token: token,
+                oldArchive: latest.archive,
+                targetArchive: targetArchive,
+                slug: latest.slug
+              });
 
               rememberArchiveHistory(targetArchive);
               statusEl.style.color = '#065f46';
-              statusEl.textContent = '移动成功。请刷新列表并重新打开新路径文章继续编辑。';
+              statusEl.textContent = '迁移成功，共移动 ' + moved.movedCount + ' 个文件。请刷新列表并重新打开新路径文章继续编辑。';
             } catch (err) {
               statusEl.style.color = '#b91c1c';
               statusEl.textContent = '移动失败: ' + String((err && err.message) || err || 'unknown error');

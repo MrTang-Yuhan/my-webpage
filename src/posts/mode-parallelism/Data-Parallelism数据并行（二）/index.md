@@ -9,6 +9,7 @@ tags:
   - data parallelism
   - model parallelism
 
+archive: mode-parallelism
 ---
 
 在 [Data Parallelism 数据并行 （一）](../data-parallelism-1/) 中已经详细描述了数据并行。

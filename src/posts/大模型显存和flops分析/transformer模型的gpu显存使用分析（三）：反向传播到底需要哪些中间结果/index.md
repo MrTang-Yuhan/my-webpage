@@ -1,6 +1,6 @@
 ---
 layout: post.njk
-archive: mode-parallelism
+archive: 大模型显存和flops分析
 post_id: transformer模型的gpu显存使用分析（三）：反向传播到底需要哪些中间结果
 title: transformer模型的GPU显存使用分析（三）：反向传播到底需要哪些中间结果
 date: 2026-05-12

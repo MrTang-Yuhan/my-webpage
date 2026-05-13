@@ -7,6 +7,7 @@
 - 打开 `/admin`，可正常进入 Decap CMS。
 - GitHub OAuth 登录成功，页面无空白或报错。
 - 后台首页 `Contents / Workflow / Media` 导航可见且可点击。
+- OAuth 路由使用 `/api/auth`（Pages Functions 主方案），回调为同域 `/api/callback` 或 `AUTH_BASE_URL` 指定域名。
 
 ## 2. 进入文章编辑器
 
@@ -26,7 +27,7 @@
 ## 3.1 已发布文章归档移动
 
 - 编辑已有文章时应出现“移动文章归档”面板，并显示当前 `src/posts/<archive>/<slug>/index.md` 路径。
-- 输入目标 archive 后点击移动，成功后应在 GitHub 看到一次“新建新路径 + 删除旧路径”的提交。
+- 输入目标 archive 后点击移动，成功后应在 GitHub 看到“文章目录内全部文件迁移”的提交（至少包含 `index.md`，如存在 `img/`、`video/` 也应迁移）。
 - 移动后重新打开条目时路径应更新到 `src/posts/<targetArchive>/<slug>/index.md`。
 
 ## 4. Markdown / HTML / 公式 / 脚注
@@ -41,6 +42,7 @@
 - 上传图片成功，无权限或路径错误。
 - 图片引用路径为 `./img/<filename>`。
 - 预览中图片可显示。
+- 对含大媒体（>1MB）的文章执行归档迁移时应成功（Contents API 不可用内容会走 Blob fallback）。
 
 ## 6. 草稿与发布
 
@@ -51,4 +53,5 @@
 ## 7. 回归与构建
 
 - 执行 `npm.cmd run build` 成功。
+- 执行 `npm.cmd run check:admin` 成功（archive/front matter 一致、`admin-archives.json` 可解析且目录集合一致）。
 - 不修改文章正文的前提下，前台构建不受 Admin 逻辑影响。

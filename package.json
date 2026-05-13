@@ -5,7 +5,8 @@
   "scripts": {
     "start": "npx @11ty/eleventy --serve",
     "build": "npx @11ty/eleventy",
-    "dev": "npx @11ty/eleventy --serve --watch"
+    "dev": "npx @11ty/eleventy --serve --watch",
+    "check:admin": "node scripts/admin-check.js"
   },
   "keywords": [
     "blog",

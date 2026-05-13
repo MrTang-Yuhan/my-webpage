@@ -8,6 +8,7 @@ tags:
   - post
   - gdb dashboard
 
+archive: 备忘录
 ---
 
 # 仓库

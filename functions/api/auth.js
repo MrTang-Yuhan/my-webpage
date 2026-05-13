@@ -12,7 +12,7 @@ export async function onRequestGet(context) {
   }
 
   const state = makeState({ origin });
-  const callback = "https://my-webpage-adu.pages.dev/api/callback";
+  const callback = new URL("/api/callback", resolveAuthBaseUrl(request, env)).toString();
 
   const github = new URL("https://github.com/login/oauth/authorize");
   github.searchParams.set("client_id", env.GITHUB_CLIENT_ID || "");
@@ -46,6 +46,18 @@ function resolveOrigin(request, url) {
   }
 
   return "https://my-webpage-adu.pages.dev";
+}
+
+function resolveAuthBaseUrl(request, env) {
+  const configured = String(env.AUTH_BASE_URL || "").trim();
+  if (configured) {
+    try {
+      return new URL(configured).origin;
+    } catch {
+      // ignore invalid configured URL
+    }
+  }
+  return new URL(request.url).origin;
 }
 
 function makeState(payload) {

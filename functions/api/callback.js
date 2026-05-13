@@ -13,6 +13,8 @@ export async function onRequestGet(context) {
     return html(errorPage("Invalid OAuth state"));
   }
 
+  const callbackUrl = new URL("/api/callback", resolveAuthBaseUrl(request, env)).toString();
+
   const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
     method: "POST",
     headers: {
@@ -24,7 +26,7 @@ export async function onRequestGet(context) {
       client_id: env.GITHUB_CLIENT_ID,
       client_secret: env.GITHUB_CLIENT_SECRET,
       code,
-      redirect_uri: "https://my-webpage-adu.pages.dev/api/callback",
+      redirect_uri: callbackUrl,
       state,
     }),
   });
@@ -66,6 +68,18 @@ function parseState(state) {
   } catch {
     return null;
   }
+}
+
+function resolveAuthBaseUrl(request, env) {
+  const configured = String(env.AUTH_BASE_URL || "").trim();
+  if (configured) {
+    try {
+      return new URL(configured).origin;
+    } catch {
+      // ignore invalid configured URL
+    }
+  }
+  return new URL(request.url).origin;
 }
 
 function fromBase64Url(input) {

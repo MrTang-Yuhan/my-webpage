@@ -8,6 +8,7 @@ tags:
   - post
   - triosim-cpp
 
+archive: triosim模拟器
 ---
 
 ## 1. 互斥锁 `std::mutex`
