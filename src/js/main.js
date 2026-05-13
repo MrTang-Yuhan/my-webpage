@@ -79,7 +79,11 @@
     }
 
     const results = this.posts.filter((post) => {
-      const text = `${post.title || ''} ${post.content || ''} ${(post.tags || []).join(' ')}`.toLowerCase();
+      const tags = Array.isArray(post.tags)
+        ? post.tags.join(' ')
+        : (post.tags ? String(post.tags) : '');
+      const excerpt = post.excerpt ? String(post.excerpt) : '';
+      const text = `${post.title || ''} ${post.content || ''} ${tags} ${excerpt}`.toLowerCase();
       return text.includes(q);
     }).slice(0, 8);
 

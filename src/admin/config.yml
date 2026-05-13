@@ -32,9 +32,16 @@ collections:
         default: post.njk
       - label: 归档目录
         name: archive
-        widget: string
+        widget: select
         required: true
-        hint: 可直接输入新目录名（示例：mode-parallelism、interconnect、备忘录）。建议使用小写英文/数字/连字符或中文；文章将写入 src/posts/<归档目录>/<slug>/index.md。
+        accept_additional_values: true
+        options:
+          - mode-parallelism
+          - interconnect
+          - 备忘录
+          - triosim模拟器
+          - 大模型显存和flops分析
+        hint: 可下拉选择已有目录，也可直接输入新目录；文章将写入 src/posts/<archive>/<slug>/index.md。
       - label: 标题
         name: title
         widget: string
