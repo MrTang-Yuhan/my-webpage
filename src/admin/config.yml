@@ -30,22 +30,11 @@ collections:
         name: layout
         widget: hidden
         default: post.njk
-      - label: 专栏目录
+      - label: 归档目录
         name: archive
-        widget: select
+        widget: string
         required: true
-        hint: 文章会创建在 src/posts/<专栏目录>/<slug>/index.md
-        options:
-          - label: mode-parallelism
-            value: mode-parallelism
-          - label: 备忘录
-            value: 备忘录
-          - label: interconnect
-            value: interconnect
-          - label: triosim模拟器
-            value: triosim模拟器
-          - label: 大模型显存和flops分析
-            value: 大模型显存和flops分析
+        hint: 可直接输入新目录名（示例：mode-parallelism、interconnect、备忘录）。建议使用小写英文/数字/连字符或中文；文章将写入 src/posts/<归档目录>/<slug>/index.md。
       - label: 标题
         name: title
         widget: string
@@ -60,7 +49,7 @@ collections:
         name: description
         widget: text
         required: false
-        hint: 用于首页/搜索摘要展示；可留空。
+        hint: 用于首页和搜索摘要，可留空。
       - label: 标签
         name: tags
         widget: list
@@ -69,4 +58,4 @@ collections:
       - label: 正文
         name: body
         widget: markdown
-        hint: 支持 Markdown、表格、代码块、脚注与 KaTeX 数学公式。
+        hint: 支持 Markdown 与内联/块级 HTML、脚注、表格、代码块、KaTeX 公式。

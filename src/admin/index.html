@@ -10,15 +10,25 @@
         border-bottom: 1px solid #e5e7eb;
         background: #f8fafc;
         color: #334155;
-        padding: 10px 14px;
+        padding: 12px 14px;
         font-size: 14px;
+        line-height: 1.65;
       }
-      .admin-tip code { background: #e2e8f0; border-radius: 4px; padding: 0 6px; }
+      .admin-tip p { margin: 0.25rem 0; }
+      .admin-tip code {
+        background: #e2e8f0;
+        border-radius: 4px;
+        padding: 0 6px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
     </style>
   </head>
   <body>
     <div class="admin-tip">
-      登录后可新建草稿并发布；文章路径规则为 <code>src/posts/&lt;专栏&gt;/&lt;slug&gt;/index.md</code>。
+      <p><strong>写作能力：</strong>支持 Markdown、内联/块级 HTML、脚注、KaTeX 公式、代码块、表格、图片。</p>
+      <p><strong>归档目录：</strong><code>archive</code> 字段可直接输入新目录名；文章将保存到 <code>src/posts/&lt;archive&gt;/&lt;slug&gt;/index.md</code>。</p>
+      <p><strong>图片上传：</strong>当前集合配置会将图片存到文章目录下的 <code>img</code>，正文使用 <code>./img/文件名</code> 引用。</p>
+      <p><strong>发布流程：</strong>先保存为草稿（Draft），审核后点击 Publish；发布模式为 Editorial Workflow，提交到 GitHub 仓库。</p>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
@@ -35,17 +45,64 @@
         if (window.markdownitFootnote) md.use(window.markdownitFootnote);
         if (window.markdownitKatex) md.use(window.markdownitKatex);
 
+        function normalizeFootnotes(html) {
+          return html
+            .replace(/<hr class="footnotes-sep">\s*/g, '')
+            .replace(/<section class="footnotes">([\s\S]*?)<\/section>/g, function(_, section) {
+              const items = [];
+              const liPattern = /<li id="fn(\d+)" class="footnote-item">([\s\S]*?)<\/li>/g;
+              let match;
+              while ((match = liPattern.exec(section)) !== null) {
+                const id = match[1];
+                const body = match[2].replace(/<a href="#fnref\d+" class="footnote-backref">[\s\S]*?<\/a>/g, '').trim();
+                items.push('<aside id="fn' + id + '" class="footnote">' + body + '</aside>');
+              }
+              return items.join('\n');
+            });
+        }
+
+        function renderPreviewHtml(entry) {
+          const body = entry.getIn(['data', 'body']) || '';
+          const title = entry.getIn(['data', 'title']) || '';
+          const date = entry.getIn(['data', 'date']) || '';
+          const description = entry.getIn(['data', 'description']) || '';
+          const tags = entry.getIn(['data', 'tags']) || [];
+          const tagsArray = tags && typeof tags.toJS === 'function' ? tags.toJS() : (Array.isArray(tags) ? tags : []);
+
+          let bodyHtml = md.render(body);
+          bodyHtml = normalizeFootnotes(bodyHtml);
+
+          const tagsHtml = tagsArray
+            .filter(Boolean)
+            .map(function(tag) { return '<span class="tag">' + String(tag) + '</span>'; })
+            .join('');
+
+          return '' +
+            '<article class="post">' +
+              '<header class="post-header">' +
+                '<h1 class="post-title">' + String(title) + '</h1>' +
+                '<div class="post-meta">' +
+                  (date ? '<span>' + String(date).slice(0, 10) + '</span><span class="post-divider">·</span>' : '') +
+                  '<span>Preview</span>' +
+                '</div>' +
+                (description ? '<p class="post-list-excerpt">' + String(description) + '</p>' : '') +
+              '</header>' +
+              '<div class="post-layout">' +
+                '<aside class="post-toc-wrap"><nav class="post-toc-inline"><p class="toc-inline-title">预览模式</p><div class="toc-inline-nav"><span class="toc-link">目录由前台页面运行时生成</span></div></nav></aside>' +
+                '<div class="post-content">' + bodyHtml + '</div>' +
+              '</div>' +
+              '<footer class="post-footer">' +
+                '<div class="post-tags">' + tagsHtml + '</div>' +
+              '</footer>' +
+            '</article>';
+        }
+
         const PostPreview = window.createClass({
           render: function () {
-            const entry = this.props.entry;
-            const title = entry.getIn(['data', 'title']) || '';
-            const body = entry.getIn(['data', 'body']) || '';
-            return window.h(
-              'article',
-              { className: 'post', style: { maxWidth: '760px', margin: '2rem auto', padding: '0 1rem', lineHeight: '1.8' } },
-              window.h('h1', null, title),
-              window.h('div', { dangerouslySetInnerHTML: { __html: md.render(body) } })
-            );
+            const html = renderPreviewHtml(this.props.entry);
+            return window.h('div', {
+              dangerouslySetInnerHTML: { __html: html }
+            });
           }
         });
 
