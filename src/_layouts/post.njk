@@ -12,10 +12,8 @@ layout: base.njk
   </header>
 
   <div class="post-layout">
-    <aside class="post-toc-wrap">
-      <nav class="post-toc-inline" id="post-toc-inline" aria-label="文章目录"></nav>
-    </aside>
     <div class="post-content" id="post-content">
+      <nav class="post-toc-inline" id="post-toc-inline" aria-label="文章目录"></nav>
       {{ content | videoShortcode | addHeadingIds | renumberFootnotes | safe }}
     </div>
   </div>
@@ -104,8 +102,28 @@ document.addEventListener('DOMContentLoaded', function() {
       });
       tocInline.appendChild(title);
       tocInline.appendChild(nav);
+    } else {
+      tocInline.remove();
     }
   }
+
+  const footnoteById = {};
+  content.querySelectorAll('aside.footnote[id]').forEach(function(footnote) {
+    footnoteById[footnote.id] = footnote;
+  });
+
+  const moved = new Set();
+  content.querySelectorAll('sup.footnote-ref a[href^="#fn"]').forEach(function(link) {
+    const href = link.getAttribute('href') || '';
+    const targetId = href.replace('#', '');
+    const footnote = footnoteById[targetId];
+    if (!footnote || moved.has(targetId)) return;
+    const anchorBlock = link.closest('p, li, blockquote, h1, h2, h3, h4, h5, h6');
+    if (!anchorBlock || !anchorBlock.parentNode) return;
+    footnote.classList.add('footnote-near-ref');
+    anchorBlock.parentNode.insertBefore(footnote, anchorBlock.nextSibling);
+    moved.add(targetId);
+  });
 
   content.querySelectorAll('aside.footnote').forEach(function(footnote, index) {
     if (footnote.querySelector('.footnote-number')) return;

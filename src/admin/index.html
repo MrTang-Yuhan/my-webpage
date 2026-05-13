@@ -35,15 +35,67 @@
     <script src="https://cdn.jsdelivr.net/npm/markdown-it-footnote@4.0.0/dist/markdown-it-footnote.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/markdown-it-katex@2.0.3/dist/markdown-it-katex.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
     <script>window.CMS_MANUAL_INIT = true;</script>
     <script src="https://unpkg.com/decap-cms@^3.5.0/dist/decap-cms.js"></script>
     <script>
       (function () {
         if (!window.CMS) return;
 
+        const scopedPreviewCss = `
+.cms-post-preview {
+  --font-ui: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-reading: 'Noto Serif SC', 'Source Han Serif SC', serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --bg: #f6f7f3;
+  --panel: #ffffff;
+  --ink: #1e2728;
+  --muted: #5f6b6d;
+  --line: #d8ddde;
+  --brand: #0f6c73;
+  --brand-soft: #e4f0f0;
+  --code-bg: #f1f4f5;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1.2rem;
+  background: radial-gradient(circle at top, var(--brand-soft), var(--bg) 35%);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  line-height: 1.75;
+}
+.cms-post-preview .post { padding: 0; }
+.cms-post-preview .post-header { border-bottom: 1px solid var(--line); margin-bottom: 1rem; padding-bottom: 1rem; }
+.cms-post-preview .post-title { margin: 0; font-size: 2rem; line-height: 1.25; }
+.cms-post-preview .post-meta { margin-top: 0.5rem; color: var(--muted); display: flex; gap: 0.4rem; align-items: center; }
+.cms-post-preview .post-content { max-width: 760px; margin: 0 auto; font-family: var(--font-reading); font-size: 1.08rem; line-height: 1.9; overflow-wrap: break-word; }
+.cms-post-preview .post-content h2, .cms-post-preview .post-content h3, .cms-post-preview .post-content h4 { font-family: var(--font-ui); }
+.cms-post-preview .post-content h2 { border-left: 3px solid var(--brand); padding-left: 0.55rem; }
+.cms-post-preview .post-content ul, .cms-post-preview .post-content ol { padding-left: 1.3rem; }
+.cms-post-preview .post-content table { width: 100%; border-collapse: collapse; border: 1px solid var(--line); overflow-x: auto; display: block; }
+.cms-post-preview .post-content th, .cms-post-preview .post-content td { border: 1px solid var(--line); padding: 0.5rem 0.65rem; }
+.cms-post-preview .post-content th { background: var(--brand-soft); }
+.cms-post-preview .post-content code { font-family: var(--font-mono); background: var(--code-bg); border-radius: 4px; padding: 0.1em 0.35em; }
+.cms-post-preview .post-content pre { background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px; padding: 0.9rem; overflow-x: auto; }
+.cms-post-preview .post-content pre code { background: transparent; padding: 0; }
+.cms-post-preview .post-content img, .cms-post-preview .post-content video { max-width: 100%; height: auto; border-radius: 8px; display: block; margin: 1rem auto; }
+.cms-post-preview .post-content blockquote { border-left: 4px solid var(--brand); background: var(--brand-soft); margin-left: 0; padding: 0.75rem 0.9rem; }
+.cms-post-preview .post-content aside.footnote { border: 1px solid var(--line); border-left: 3px solid var(--brand); background: var(--panel); border-radius: 8px; margin: 0.5rem 0 1rem; padding: 0.55rem 0.7rem; color: var(--muted); }
+.cms-post-preview .post-tags { display: flex; gap: 0.45rem; flex-wrap: wrap; margin-top: 1rem; }
+.cms-post-preview .tag { background: var(--brand-soft); color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 0.2rem 0.6rem; font-size: 0.8rem; }
+`;
+
         const md = window.markdownit({ html: true, breaks: false, linkify: true });
         if (window.markdownitFootnote) md.use(window.markdownitFootnote);
         if (window.markdownitKatex) md.use(window.markdownitKatex);
+
+        function normalizeBlockMath(markdownText) {
+          return String(markdownText || "").replace(
+            /(^|\n)\$\$\s*\n([\s\S]*?)\n\$\$(?=\n|$)/g,
+            function (_, prefix, expr) {
+              return prefix + "$$" + expr.trim() + "$$";
+            }
+          );
+        }
 
         function normalizeFootnotes(html) {
           return html
@@ -61,8 +113,25 @@
             });
         }
 
+        function moveFootnotesNearRefs(root) {
+          const byId = {};
+          root.querySelectorAll('aside.footnote[id]').forEach(function(aside) {
+            byId[aside.id] = aside;
+          });
+          const moved = new Set();
+          root.querySelectorAll('sup.footnote-ref a[href^="#fn"]').forEach(function(link) {
+            const id = (link.getAttribute('href') || '').replace('#', '');
+            const aside = byId[id];
+            if (!aside || moved.has(id)) return;
+            const anchor = link.closest('p, li, blockquote, h1, h2, h3, h4, h5, h6');
+            if (!anchor || !anchor.parentNode) return;
+            anchor.parentNode.insertBefore(aside, anchor.nextSibling);
+            moved.add(id);
+          });
+        }
+
         function renderPreviewHtml(entry) {
-          const body = entry.getIn(['data', 'body']) || '';
+          const body = normalizeBlockMath(entry.getIn(['data', 'body']) || '');
           const title = entry.getIn(['data', 'title']) || '';
           const date = entry.getIn(['data', 'date']) || '';
           const description = entry.getIn(['data', 'description']) || '';
@@ -85,32 +154,75 @@
                   (date ? '<span>' + String(date).slice(0, 10) + '</span><span class="post-divider">·</span>' : '') +
                   '<span>Preview</span>' +
                 '</div>' +
-                (description ? '<p class="post-list-excerpt">' + String(description) + '</p>' : '') +
+                (description ? '<p>' + String(description) + '</p>' : '') +
               '</header>' +
-              '<div class="post-layout">' +
-                '<aside class="post-toc-wrap"><nav class="post-toc-inline"><p class="toc-inline-title">预览模式</p><div class="toc-inline-nav"><span class="toc-link">目录由前台页面运行时生成</span></div></nav></aside>' +
-                '<div class="post-content">' + bodyHtml + '</div>' +
-              '</div>' +
-              '<footer class="post-footer">' +
-                '<div class="post-tags">' + tagsHtml + '</div>' +
-              '</footer>' +
+              '<div class="post-content">' + bodyHtml + '</div>' +
+              '<footer class="post-footer"><div class="post-tags">' + tagsHtml + '</div></footer>' +
             '</article>';
         }
 
         const PostPreview = window.createClass({
+          componentDidMount: function () {
+            this.postProcess();
+          },
+          componentDidUpdate: function () {
+            this.postProcess();
+          },
+          postProcess: function () {
+            if (!this._root) return;
+            moveFootnotesNearRefs(this._root);
+            if (typeof renderMathInElement === 'function') {
+              renderMathInElement(this._root, {
+                delimiters: [
+                  { left: '$$', right: '$$', display: true },
+                  { left: '$', right: '$', display: false }
+                ],
+                throwOnError: false
+              });
+            }
+          },
           render: function () {
             const html = renderPreviewHtml(this.props.entry);
             return window.h('div', {
+              className: 'cms-post-preview',
+              ref: (el) => { this._root = el; },
               dangerouslySetInnerHTML: { __html: html }
             });
           }
         });
 
-        window.CMS.registerPreviewStyle('/css/style.css');
+        window.CMS.registerPreviewStyle(scopedPreviewCss, { raw: true });
         window.CMS.registerPreviewStyle('https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css');
         window.CMS.registerPreviewTemplate('posts', PostPreview);
 
         window.CMS.init();
+
+        function isPostsEditorRoute() {
+          const hash = String(window.location.hash || "");
+          return (
+            hash.indexOf("#/collections/posts/new") === 0 ||
+            hash.indexOf("#/collections/posts/entries/") === 0
+          );
+        }
+
+        function syncEditorTabsVisibility() {
+          const shouldHide = isPostsEditorRoute();
+          const tablists = Array.from(document.querySelectorAll('[role="tablist"]'));
+          tablists.forEach(function(tablist) {
+            const tabLabels = Array.from(tablist.querySelectorAll('[role="tab"]'))
+              .map(function(t) { return (t.textContent || '').trim().toLowerCase(); });
+            const isTarget = ['contents', 'workflow', 'media'].every(function(label) {
+              return tabLabels.includes(label);
+            });
+            if (!isTarget) return;
+            tablist.style.display = shouldHide ? 'none' : '';
+          });
+        }
+
+        window.addEventListener('hashchange', syncEditorTabsVisibility);
+        syncEditorTabsVisibility();
+        const observer = new MutationObserver(syncEditorTabsVisibility);
+        observer.observe(document.documentElement, { childList: true, subtree: true });
       })();
     </script>
   </body>
