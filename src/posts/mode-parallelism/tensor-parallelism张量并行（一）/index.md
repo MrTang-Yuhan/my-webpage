@@ -21,4 +21,20 @@ tags:
 
 ![](img/transformer-block.png)
 
-对于其中的 MLP 块。
+对于其中的 MLP 块，输出计算公式：
+
+$$
+Y = \text{GeLU}(XA)
+$$
+
+假设现在有 2 个 GPU，为了将权重 A 切分到 2 个 GPU 中，有**行切分**和**列切分**两种方式。
+
+- **行切分**：将权重矩阵 A 进行行切分，为了计算 Y，需要同时将 输入 X 进行列切分，即：
+  $$
+  X = [X_1, X_2], \quad A = \begin{bmatrix} A_1 \\ A_2 \end{bmatrix}. \tag{2}
+  $$
+  这个划分导致 $Y = \text{GeLU}(X_1A_1 + X_2A_2)$，由于 \text{GeLU} 是非线性激活函      数，
+
+$$
+[Y_1, Y_2] = [\text{GeLU}(XA_1), \text{GeLU}(XA_2)] \tag{3}
+$$
