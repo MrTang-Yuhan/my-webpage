@@ -31,6 +31,7 @@
 - 后台入口：`/admin`
 - 登录后可创建草稿（Editorial Workflow）、预览并发布
 - 保留 GitHub backend + OAuth 接入（`/api/auth`）
+- Admin 回归检查清单：`docs/admin-regression-checklist.md`
 
 ### 新建归档目录
 

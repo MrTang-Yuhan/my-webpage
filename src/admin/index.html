@@ -21,6 +21,7 @@
         padding: 0 6px;
         font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       }
+      body.cms-editor-mode .admin-tip { display: none !important; }
     </style>
   </head>
   <body>
@@ -206,17 +207,40 @@
         }
 
         function syncEditorTabsVisibility() {
-          const shouldHide = isPostsEditorRoute();
-          const tablists = Array.from(document.querySelectorAll('[role="tablist"]'));
-          tablists.forEach(function(tablist) {
-            const tabLabels = Array.from(tablist.querySelectorAll('[role="tab"]'))
-              .map(function(t) { return (t.textContent || '').trim().toLowerCase(); });
-            const isTarget = ['contents', 'workflow', 'media'].every(function(label) {
-              return tabLabels.includes(label);
+          try {
+            const shouldHide = isPostsEditorRoute();
+            document.body.classList.toggle('cms-editor-mode', shouldHide);
+            const tablists = Array.from(document.querySelectorAll('[role="tablist"]'));
+            tablists.forEach(function(tablist) {
+              const tabs = Array.from(tablist.querySelectorAll('[role="tab"]'));
+              const tabLabels = tabs.map(function(t) {
+                return (t.textContent || '').trim().toLowerCase();
+              });
+              const targetLabels = ['contents', 'workflow', 'media'];
+              const isTarget = targetLabels.every(function(label) {
+                return tabLabels.includes(label);
+              });
+              if (!isTarget) return;
+
+              if (shouldHide) {
+                tablist.style.visibility = 'hidden';
+                tablist.style.height = '0';
+                tablist.style.overflow = 'hidden';
+                tablist.style.margin = '0';
+                tablist.style.padding = '0';
+                tablist.style.border = '0';
+              } else {
+                tablist.style.visibility = '';
+                tablist.style.height = '';
+                tablist.style.overflow = '';
+                tablist.style.margin = '';
+                tablist.style.padding = '';
+                tablist.style.border = '';
+              }
             });
-            if (!isTarget) return;
-            tablist.style.display = shouldHide ? 'none' : '';
-          });
+          } catch (_) {
+            // Keep CMS UI available if tab sync fails.
+          }
         }
 
         window.addEventListener('hashchange', syncEditorTabsVisibility);
