@@ -1,4 +1,4 @@
-backend:
+﻿backend:
   name: github
   repo: MrTang-Yuhan/my-webpage
   branch: main
@@ -12,7 +12,7 @@ publish_mode: editorial_workflow
 
 collections:
   - name: posts
-    label: Posts
+    label: 文章
     folder: src/posts
     path: "{{archive}}/{{slug}}/index"
     media_folder: img
@@ -24,46 +24,49 @@ collections:
       depth: 10
       summary: "{{title}}"
       subfolders: true
+    slug: "{{year}}-{{month}}-{{day}}-{{slug}}"
     fields:
       - label: Layout
         name: layout
         widget: hidden
         default: post.njk
-      - label: Archive
+      - label: 专栏目录
         name: archive
         widget: select
         required: true
+        hint: 文章会创建在 src/posts/<专栏目录>/<slug>/index.md
         options:
-          - label: 模型并行
+          - label: mode-parallelism
             value: mode-parallelism
           - label: 备忘录
             value: 备忘录
-          - label: 互联网络
+          - label: interconnect
             value: interconnect
           - label: triosim模拟器
             value: triosim模拟器
-        hint: Choose archive directory. Create a new one with New Archive, then refresh.
-      - label: Post ID
-        name: post_id
-        widget: hidden
-      - label: Title
+          - label: 大模型显存和flops分析
+            value: 大模型显存和flops分析
+      - label: 标题
         name: title
         widget: string
-      - label: Date
+        hint: 建议唯一，避免归档页与搜索混淆。
+      - label: 日期
         name: date
         widget: datetime
         format: YYYY-MM-DD
         date_format: YYYY-MM-DD
         time_format: false
-      - label: Description
+      - label: 摘要
         name: description
-        widget: string
+        widget: text
         required: false
-      - label: Tags
+        hint: 用于首页/搜索摘要展示；可留空。
+      - label: 标签
         name: tags
         widget: list
         default:
           - post
-      - label: Body
+      - label: 正文
         name: body
         widget: markdown
+        hint: 支持 Markdown、表格、代码块、脚注与 KaTeX 数学公式。

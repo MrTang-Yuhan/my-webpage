@@ -1,21 +1,21 @@
----
+﻿---
 layout: base.njk
 title: Archive
-description: All blog posts
+description: 全部文章
 permalink: /posts/
 ---
 
 <section class="archive-header">
-  <h1 class="archive-title">Archive</h1>
+  <h1 class="archive-title">归档</h1>
   {% set totalPosts = 0 %}
   {% for dir, posts in collections.postsByDir %}
     {% set totalPosts = totalPosts + posts | length %}
   {% endfor %}
-  <p class="archive-subtitle">All {{ totalPosts }} posts</p>
+  <p class="archive-subtitle">共 {{ totalPosts }} 篇文章</p>
 </section>
 
 {% for dir, posts in collections.postsByDir %}
-  <div class="archive-section">
+  <section class="archive-section">
     <h2 class="archive-dir-title">{{ dir | replace("-", " ") | title }}</h2>
     <ul class="archive-list">
       {% for post in posts %}
@@ -25,5 +25,5 @@ permalink: /posts/
         </li>
       {% endfor %}
     </ul>
-  </div>
+  </section>
 {% endfor %}

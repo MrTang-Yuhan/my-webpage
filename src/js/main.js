@@ -1,238 +1,191 @@
-// Search functionality
-class Search {
+﻿class SiteUI {
   constructor() {
     this.searchToggle = document.getElementById('searchToggle');
-    this.searchContainer = document.getElementById('searchContainer');
     this.searchInput = document.getElementById('searchInput');
     this.searchResults = document.getElementById('searchResults');
+    this.navToggle = document.getElementById('navToggle');
+    this.mainNav = document.getElementById('mainNav');
+    this.themeToggle = document.getElementById('themeToggle');
     this.posts = [];
-    this.isOpen = false;
-
+    this.lightbox = null;
     this.init();
   }
 
   async init() {
-    // Load search index
+    this.bindNav();
+    this.bindTheme();
+    this.bindSearchUI();
     await this.loadSearchIndex();
+    this.bindSearchEvents();
+    this.bindAnchors();
+    this.initLightbox();
+    this.bindPostEnhancements();
+  }
 
-    // Event listeners
-    this.searchToggle.addEventListener('click', () => this.toggle());
-    this.searchInput.addEventListener('input', (e) => this.search(e.target.value));
-    this.searchInput.addEventListener('focus', () => this.search(this.searchInput.value));
-
-    // Close on click outside
-    document.addEventListener('click', (e) => {
-      if (!this.searchContainer.contains(e.target) && !this.searchToggle.contains(e.target)) {
-        this.close();
-      }
+  bindNav() {
+    if (!this.navToggle || !this.mainNav) return;
+    this.navToggle.addEventListener('click', () => {
+      const isOpen = this.mainNav.classList.toggle('open');
+      this.navToggle.setAttribute('aria-expanded', String(isOpen));
     });
+  }
 
-    // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        this.toggle();
-      }
-      if (e.key === 'Escape' && this.isOpen) {
-        this.close();
-      }
+  bindTheme() {
+    if (!this.themeToggle) return;
+    const preferred = localStorage.getItem('theme-preference');
+    if (preferred) {
+      document.documentElement.setAttribute('data-theme', preferred);
+    }
+    this.themeToggle.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme-preference', next);
     });
   }
 
   async loadSearchIndex() {
     try {
-      const response = await fetch('/search-index.json');
-      if (response.ok) {
-        this.posts = await response.json();
-      }
-    } catch (error) {
-      console.warn('Search index not found. Build the site to enable search.');
+      const response = await fetch('/search-index.json', { cache: 'no-store' });
+      this.posts = response.ok ? await response.json() : [];
+    } catch {
       this.posts = [];
     }
   }
 
-  toggle() {
-    if (this.isOpen) {
-      this.close();
-    } else {
-      this.open();
-    }
+  bindSearchUI() {
+    if (!this.searchInput || !this.searchResults || !this.searchToggle) return;
+    this.searchToggle.addEventListener('click', () => {
+      this.searchInput.focus();
+      this.search(this.searchInput.value);
+    });
   }
 
-  open() {
-    this.isOpen = true;
-    this.searchContainer.classList.add('active');
-    this.searchInput.focus();
-  }
-
-  close() {
-    this.isOpen = false;
-    this.searchContainer.classList.remove('active');
-    this.searchInput.value = '';
-    this.searchResults.innerHTML = '';
+  bindSearchEvents() {
+    if (!this.searchInput || !this.searchResults) return;
+    this.searchInput.addEventListener('input', (e) => this.search(e.target.value));
+    document.addEventListener('click', (e) => {
+      if (!this.searchResults.contains(e.target) && e.target !== this.searchInput) {
+        this.searchResults.innerHTML = '';
+      }
+    });
   }
 
   search(query) {
-    if (!query.trim()) {
+    const q = (query || '').trim().toLowerCase();
+    if (!q) {
       this.searchResults.innerHTML = '';
       return;
     }
 
-    const results = this.posts.filter(post => {
-      const searchText = `${post.title} ${post.content} ${post.tags || ''}`.toLowerCase();
-      return searchText.includes(query.toLowerCase());
-    }).slice(0, 10);
+    const results = this.posts.filter((post) => {
+      const text = `${post.title || ''} ${post.content || ''} ${(post.tags || []).join(' ')}`.toLowerCase();
+      return text.includes(q);
+    }).slice(0, 8);
 
     if (results.length === 0) {
-      this.searchResults.innerHTML = '<div class="search-result-item"><div class="search-result-title">No results found</div></div>';
+      this.searchResults.innerHTML = '<div class="search-result-item"><div class="search-result-title">无匹配结果</div></div>';
       return;
     }
 
-    this.searchResults.innerHTML = results.map(post => `
-      <a href="${post.url}" class="search-result-item">
-        <div class="search-result-title">${this.highlight(query, post.title)}</div>
-        <div class="search-result-excerpt">${this.highlight(query, post.excerpt || post.content.substring(0, 100))}</div>
-      </a>
-    `).join('');
+    this.searchResults.innerHTML = results.map((post) => {
+      const title = this.escapeHTML(post.title || 'Untitled');
+      const excerptRaw = (post.excerpt || post.content || '').replace(/<[^>]*>/g, '').slice(0, 120);
+      const excerpt = this.escapeHTML(excerptRaw);
+      return `<a href="${post.url}" class="search-result-item"><div class="search-result-title">${title}</div><div class="search-result-excerpt">${excerpt}</div></a>`;
+    }).join('');
   }
 
-  highlight(query, text) {
-    const regex = new RegExp(`(${this.escapeRegex(query)})`, 'gi');
-    return text.replace(regex, '<mark>$1</mark>');
+  escapeHTML(text) {
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
-  escapeRegex(string) {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }
-}
-
-// Initialize search
-document.addEventListener('DOMContentLoaded', () => {
-  new Search();
-});
-
-// Add smooth scroll for anchor links
-document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-  anchor.addEventListener('click', function (e) {
-    e.preventDefault();
-    const target = document.querySelector(this.getAttribute('href'));
-    if (target) {
-      target.scrollIntoView({ behavior: 'smooth' });
-    }
-  });
-});
-
-// Lazy load images
-if ('loading' in HTMLImageElement.prototype) {
-  document.querySelectorAll('img[loading="lazy"]').forEach(img => {
-    img.src = img.dataset.src;
-  });
-}
-
-// Lightbox for images
-class Lightbox {
-  constructor() {
-    this.lightbox = null;
-    this.lightboxImg = null;
-    this.lightboxClose = null;
-    this.isOpen = false;
-    this.init();
-  }
-
-  init() {
-    // Create lightbox elements
-    this.lightbox = document.createElement('div');
-    this.lightbox.id = 'lightbox';
-    this.lightbox.innerHTML = `
-      <div class="lightbox-content">
-        <button class="lightbox-close" aria-label="Close">&times;</button>
-        <img class="lightbox-img" src="" alt="">
-      </div>
-    `;
-    document.body.appendChild(this.lightbox);
-
-    this.lightboxImg = this.lightbox.querySelector('.lightbox-img');
-    this.lightboxClose = this.lightbox.querySelector('.lightbox-close');
-
-    // Event listeners
-    this.lightbox.addEventListener('click', (e) => {
-      if (e.target === this.lightbox) this.close();
+  bindAnchors() {
+    document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+      anchor.addEventListener('click', function(e) {
+        const target = document.querySelector(this.getAttribute('href'));
+        if (!target) return;
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth' });
+      });
     });
-    this.lightboxClose.addEventListener('click', () => this.close());
+  }
+
+  initLightbox() {
+    const box = document.createElement('div');
+    box.id = 'lightbox';
+    box.innerHTML = '<div class="lightbox-content"><button class="lightbox-close" aria-label="Close">&times;</button><img class="lightbox-img" src="" alt=""></div>';
+    document.body.appendChild(box);
+    this.lightbox = box;
+
+    box.addEventListener('click', (e) => {
+      if (e.target === box || e.target.classList.contains('lightbox-close')) {
+        this.closeLightbox();
+      }
+    });
+
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && this.isOpen) this.close();
+      if (e.key === 'Escape') this.closeLightbox();
     });
   }
 
-  open(src, alt) {
-    this.lightboxImg.src = src;
-    this.lightboxImg.alt = alt || '';
+  openLightbox(src, alt) {
+    if (!this.lightbox) return;
+    const img = this.lightbox.querySelector('.lightbox-img');
+    img.src = src;
+    img.alt = alt || '';
     this.lightbox.classList.add('active');
-    this.isOpen = true;
     document.body.style.overflow = 'hidden';
   }
 
-  close() {
+  closeLightbox() {
+    if (!this.lightbox) return;
     this.lightbox.classList.remove('active');
-    this.isOpen = false;
     document.body.style.overflow = '';
   }
-}
 
-const lightbox = new Lightbox();
+  bindPostEnhancements() {
+    const postContent = document.getElementById('post-content');
+    if (!postContent) return;
 
-// Add click handlers to all images in post content and footnotes
-document.addEventListener('DOMContentLoaded', () => {
-  const postContent = document.getElementById('post-content');
-  if (postContent) {
-    postContent.querySelectorAll('img').forEach(img => {
+    postContent.querySelectorAll('img').forEach((img) => {
       img.style.cursor = 'zoom-in';
-      img.addEventListener('click', () => {
-        lightbox.open(img.src, img.alt);
-      });
+      img.addEventListener('click', () => this.openLightbox(img.src, img.alt));
     });
 
-    // Also handle images in footnotes
-    postContent.querySelectorAll('aside.footnote img').forEach(img => {
-      img.style.cursor = 'zoom-in';
-      img.addEventListener('click', () => {
-        lightbox.open(img.src, img.alt);
-      });
-    });
-  }
-});
-
-// Copy button for code blocks
-document.addEventListener('DOMContentLoaded', () => {
-  const postContent = document.getElementById('post-content');
-  if (postContent) {
-    postContent.querySelectorAll('pre').forEach(pre => {
+    postContent.querySelectorAll('pre').forEach((pre) => {
+      if (pre.parentElement && pre.parentElement.classList.contains('code-block-wrapper')) return;
       const wrapper = document.createElement('div');
       wrapper.className = 'code-block-wrapper';
       pre.parentNode.insertBefore(wrapper, pre);
       wrapper.appendChild(pre);
 
-      const copyBtn = document.createElement('button');
-      copyBtn.className = 'copy-button';
-      copyBtn.textContent = 'Copy';
-      copyBtn.setAttribute('aria-label', 'Copy code');
-      wrapper.appendChild(copyBtn);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'copy-button';
+      btn.textContent = '复制';
+      wrapper.appendChild(btn);
 
-      copyBtn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const code = pre.querySelector('code');
         const text = code ? code.textContent : pre.textContent;
-        navigator.clipboard.writeText(text).then(() => {
-          copyBtn.textContent = 'Copied!';
-          setTimeout(() => {
-            copyBtn.textContent = 'Copy';
-          }, 2000);
-        }).catch(() => {
-          copyBtn.textContent = 'Failed';
-          setTimeout(() => {
-            copyBtn.textContent = 'Copy';
-          }, 2000);
-        });
+        try {
+          await navigator.clipboard.writeText(text);
+          btn.textContent = '已复制';
+        } catch {
+          btn.textContent = '失败';
+        }
+        setTimeout(() => { btn.textContent = '复制'; }, 1600);
       });
     });
   }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  new SiteUI();
 });

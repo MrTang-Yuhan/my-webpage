@@ -1,4 +1,4 @@
----
+﻿---
 layout: base.njk
 ---
 <article class="post">
@@ -12,8 +12,10 @@ layout: base.njk
   </header>
 
   <div class="post-layout">
+    <aside class="post-toc-wrap">
+      <nav class="post-toc-inline" id="post-toc-inline" aria-label="文章目录"></nav>
+    </aside>
     <div class="post-content" id="post-content">
-      <nav class="post-toc-inline" id="post-toc-inline"></nav>
       {{ content | videoShortcode | addHeadingIds | renumberFootnotes | safe }}
     </div>
   </div>
@@ -46,8 +48,8 @@ layout: base.njk
     </div>
   </footer>
 
-  <div class="comments-section">
-    <h2>Comments</h2>
+  <section class="comments-section">
+    <h2>评论</h2>
     <script src="https://giscus.app/client.js"
       data-repo="MrTang-Yuhan/my-webpage"
       data-repo-id="R_kgDOSW6hcA"
@@ -63,97 +65,54 @@ layout: base.njk
       crossorigin="anonymous"
       async>
     </script>
-  </div>
+  </section>
 </article>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Generate inline TOC at the beginning of content
-  const content = document.getElementById('post-content');
-  const tocInline = document.getElementById('post-toc-inline');
-  if (content && tocInline) {
-    const headings = content.querySelectorAll('h1, h2, h3, h4, h5, h6');
-    if (headings.length > 0) {
-      const toc = document.createElement('div');
-      toc.className = 'toc-inline';
-      const title = document.createElement('div');
-      title.className = 'toc-inline-title';
-      title.textContent = 'Contents';
-      toc.appendChild(title);
-      const nav = document.createElement('nav');
-      nav.className = 'toc-inline-nav';
-      headings.forEach(function(heading) {
-        if (heading.id) {
-          const link = document.createElement('a');
-          link.href = '#' + heading.id;
-          link.className = 'toc-link toc-level-' + heading.tagName.toLowerCase();
-          link.textContent = heading.textContent;
-          nav.appendChild(link);
-        }
-      });
-      toc.appendChild(nav);
-      tocInline.appendChild(toc);
-    }
-  }
-
-  // Move each footnote next to the paragraph where it is referenced.
-  const footnoteById = {};
-  content.querySelectorAll('aside.footnote[id]').forEach(function(footnote) {
-    footnoteById[footnote.id] = footnote;
-  });
-
-  const inserted = new Set();
-  content.querySelectorAll('sup.footnote-ref a[href^="#fn"]').forEach(function(link) {
-    const href = link.getAttribute('href') || '';
-    const id = href.replace('#', '');
-    const footnote = footnoteById[id];
-    if (!footnote || inserted.has(id)) return;
-
-    const anchor = link.closest('p, li, blockquote, h1, h2, h3, h4, h5, h6');
-    if (anchor && anchor.parentNode) {
-      anchor.parentNode.insertBefore(footnote, anchor.nextSibling);
-      inserted.add(id);
-    }
-  });
-
-  // Add numbers to footnotes
-  const footnotes = content.querySelectorAll('aside.footnote');
-  footnotes.forEach(function(footnote, index) {
-    const num = index + 1;
-    const id = footnote.id;
-    const match = id ? id.match(/fn(\d+)/) : null;
-    const numToShow = match ? parseInt(match[1]) : num;
-
-    const badge = document.createElement('span');
-    badge.className = 'footnote-number';
-    badge.textContent = numToShow;
-    footnote.insertBefore(badge, footnote.firstChild);
-  });
-});
-</script>
-<script>
-// Convert markdown links BEFORE KaTeX processes the content
-(function() {
-  var content = document.getElementById('post-content');
-  if (content) {
-    content.innerHTML = content.innerHTML.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-  }
-})();
-</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
-<script src="/js/post-processing.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   var content = document.getElementById('post-content');
-  if (content && typeof renderMathInElement === "function") {
+  var tocInline = document.getElementById('post-toc-inline');
+  if (!content) return;
+
+  if (typeof renderMathInElement === 'function') {
     renderMathInElement(content, {
       delimiters: [
-        { left: "$$", right: "$$", display: true },
-        { left: "$", right: "$", display: false }
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
       ],
       throwOnError: false
     });
   }
+
+  if (tocInline) {
+    const headings = content.querySelectorAll('h2, h3, h4');
+    if (headings.length > 0) {
+      const title = document.createElement('p');
+      title.className = 'toc-inline-title';
+      title.textContent = '目录';
+      const nav = document.createElement('div');
+      nav.className = 'toc-inline-nav';
+      headings.forEach(function(heading) {
+        if (!heading.id) return;
+        const link = document.createElement('a');
+        link.href = '#' + heading.id;
+        link.className = 'toc-link toc-level-' + heading.tagName.toLowerCase();
+        link.textContent = heading.textContent;
+        nav.appendChild(link);
+      });
+      tocInline.appendChild(title);
+      tocInline.appendChild(nav);
+    }
+  }
+
+  content.querySelectorAll('aside.footnote').forEach(function(footnote, index) {
+    if (footnote.querySelector('.footnote-number')) return;
+    const badge = document.createElement('span');
+    badge.className = 'footnote-number';
+    badge.textContent = index + 1;
+    footnote.insertBefore(badge, footnote.firstChild);
+  });
 });
 </script>

@@ -1,16 +1,17 @@
----
+﻿---
 layout: base.njk
 title: Home
-description: A minimalist blog
+description: 技术出版级阅读体验与在线编辑能力
 ---
 
 <section class="hero">
-  <h1 class="hero-title">唐宇涵的个人博客</h1>
-  <p class="hero-subtitle">体系结构——权衡的艺术，性能的诗歌</p>
+  <p class="hero-kicker">Personal Knowledge Publishing</p>
+  <h1 class="hero-title">唐宇涵的个人知识站</h1>
+  <p class="hero-subtitle">系统结构、并行计算、工程实践。聚焦严谨表达与长期可维护写作。</p>
 </section>
 
 <section class="post-list-section">
-  <h2 style="font-size: 1.25rem; margin-bottom: 1.5rem; color: var(--color-text-secondary);">Recent Posts</h2>
+  <h2 class="section-title">最新文章</h2>
   <ul class="post-list">
     {% set allPosts = [] %}
     {% for dir, posts in collections.postsByDir %}
@@ -20,15 +21,13 @@ description: A minimalist blog
     {% endfor %}
     {% for post in allPosts | reverse %}
       <li class="post-list-item">
-        <h3 class="post-list-title">
-          <a href="{{ post.url }}">{{ post.data.title }}</a>
-        </h3>
+        <h3 class="post-list-title"><a href="{{ post.url }}">{{ post.data.title }}</a></h3>
         <div class="post-list-meta">
           <time datetime="{{ post.date | formatDate }}">{{ post.date | formatDate }}</time>
           <span class="post-divider">·</span>
           <span>{{ post.content | readingTime }}</span>
         </div>
-        <p class="post-list-excerpt">{{ post.data.description or post.content | truncate(150) }}</p>
+        <p class="post-list-excerpt">{{ post.data.description or post.content | truncate(180) }}</p>
       </li>
     {% endfor %}
   </ul>
