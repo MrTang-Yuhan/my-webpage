@@ -110,7 +110,7 @@ self.dense_4h_to_h = tensor_parallel.RowParallelLinear(
   Output = Y_1 \cdot B_{row1} + Y_2 \cdot B_{row2}
   $$
 
-  即 $Z_1 = Y_1 \cdot B_{row1}$，$Z_2 = Y_2 \cdot B_{row2}$。这两个 $Z$ 的形状都是 $[Batch, Seq, h]$，但它们都只是最终结果的一部分加数。为了得到最终的 Output，**必须在所有 GPU 间进行一次 All-Reduce (Sum) 操作**。
+即 $Z_1 = Y_1 \cdot B_{row1}$，$Z_2 = Y_2 \cdot B_{row2}$。这两个 $Z$ 的形状都是 $[Batch, Seq, h]$，但它们都只是最终结果的一部分加数。为了得到最终的 Output，**必须在所有 GPU 间进行一次 All-Reduce (Sum) 操作**。
 
   参数 `input_is_parallel=True` 告诉这一层：你的输入已经是切分过了，不需要再手动切分输入。
 
