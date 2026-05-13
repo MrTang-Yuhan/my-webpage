@@ -4,7 +4,7 @@ eleventyExcludeFromCollections: true
 ---
 [
 {% set isFirst = true %}
-{% for dir, posts in collections.postsByDir %}
+{% for dir in collections.adminArchiveDirs %}
   {% if not isFirst %},{% endif %}
   {{ dir | dump | safe }}
   {% set isFirst = false %}

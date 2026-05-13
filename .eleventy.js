@@ -171,6 +171,25 @@ module.exports = function(eleventyConfig) {
     return grouped;
   });
 
+  // Clean top-level archive directory names under src/posts for admin usage.
+  eleventyConfig.addCollection("adminArchiveDirs", function(collectionApi) {
+    const posts = collectionApi.getFilteredByGlob("src/posts/**/*");
+
+    const dirs = new Set();
+    posts.forEach(post => {
+      const normalizedPath = String(post.inputPath || "").replace(/\\/g, "/");
+      const match = normalizedPath.match(/src\/posts\/([^/]+)\/[^/]+\/index\.md$/);
+      if (!match) return;
+      const dir = String(match[1] || "").trim();
+      if (!dir) return;
+      if (dir.includes("/") || dir.includes("\\")) return;
+      if (/^index\.md$/i.test(dir)) return;
+      dirs.add(dir);
+    });
+
+    return Array.from(dirs).sort((a, b) => a.localeCompare(b, "zh-Hans-CN"));
+  });
+
   // Return configuration
   return {
     dir: {

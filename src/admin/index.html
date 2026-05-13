@@ -232,10 +232,29 @@
           }
         });
 
-        const ARCHIVE_HISTORY_KEY = 'admin_archive_history_v1';
+        const ARCHIVE_HISTORY_KEY = 'admin_archive_history_v2';
+        const LEGACY_ARCHIVE_HISTORY_KEY = 'admin_archive_history_v1';
+        const ARCHIVE_DATALIST_ID = 'archive-combobox-options';
+        const ARCHIVE_NAME_PATTERN = /^[\p{L}\p{N}_-]+$/u;
 
         function normalizeArchiveName(value) {
-          return String(value || '').trim();
+          let name = String(value || '').trim();
+          name = name.replace(/^['"`]+|['"`]+$/g, '');
+          return name;
+        }
+
+        function isValidArchiveName(value) {
+          const name = normalizeArchiveName(value);
+          if (!name) return false;
+          if (name.length > 80) return false;
+          if (name.includes('/') || name.includes('\\')) return false;
+          if (/\.md$/i.test(name)) return false;
+          if (/^index\.md$/i.test(name)) return false;
+          if (/^\[object object\]$/i.test(name)) return false;
+          if (/^(null|undefined|nan|true|false)$/i.test(name)) return false;
+          if (/[<>{}\[\]()]/.test(name)) return false;
+          if (/[\u0000-\u001f]/.test(name)) return false;
+          return ARCHIVE_NAME_PATTERN.test(name);
         }
 
         function dedupeSortArchives(items) {
@@ -243,7 +262,7 @@
           const result = [];
           (items || []).forEach(function (item) {
             const name = normalizeArchiveName(item);
-            if (!name || seen.has(name)) return;
+            if (!isValidArchiveName(name) || seen.has(name)) return;
             seen.add(name);
             result.push(name);
           });
@@ -264,26 +283,62 @@
 
         function rememberArchiveHistory(value) {
           const name = normalizeArchiveName(value);
-          if (!name) return;
+          if (!isValidArchiveName(name)) return;
           const merged = dedupeSortArchives(readArchiveHistory().concat([name]));
           localStorage.setItem(ARCHIVE_HISTORY_KEY, JSON.stringify(merged));
+        }
+
+        function clearLegacyArchiveHistory() {
+          try {
+            localStorage.removeItem(LEGACY_ARCHIVE_HISTORY_KEY);
+          } catch (_) {}
+        }
+
+        function sanitizeArchiveInput(value) {
+          const normalized = normalizeArchiveName(value);
+          return isValidArchiveName(normalized) ? normalized : '';
+        }
+
+        async function fetchArchiveDirs() {
+          try {
+            const res = await fetch('/admin-archives.json?ts=' + Date.now(), { cache: 'no-store' });
+            if (!res.ok) return [];
+            const arr = await res.json();
+            return dedupeSortArchives(Array.isArray(arr) ? arr : []);
+          } catch (_) {
+            return [];
+          }
+        }
+
+        function syncArchiveDatalist(options) {
+          const existing = document.getElementById(ARCHIVE_DATALIST_ID);
+          const datalist = existing || document.createElement('datalist');
+          datalist.id = ARCHIVE_DATALIST_ID;
+          datalist.innerHTML = '';
+          (options || []).forEach(function(opt) {
+            const option = document.createElement('option');
+            option.value = opt;
+            datalist.appendChild(option);
+          });
+          if (!existing) document.body.appendChild(datalist);
         }
 
         const ArchiveComboboxControl = window.createClass({
           getInitialState: function () {
             return {
-              currentValue: this.props.value || '',
+              currentValue: sanitizeArchiveInput(this.props.value || '') || String(this.props.value || ''),
               options: this.getStaticOptions()
             };
           },
           componentDidMount: function () {
+            clearLegacyArchiveHistory();
             this.refreshOptions();
           },
           componentDidUpdate: function (prevProps) {
             const prev = prevProps.value || '';
             const next = this.props.value || '';
             if (prev !== next && next !== this.state.currentValue) {
-              this.setState({ currentValue: next });
+              this.setState({ currentValue: sanitizeArchiveInput(next) || String(next || '') });
             }
           },
           getStaticOptions: function () {
@@ -300,34 +355,26 @@
           refreshOptions: async function () {
             const staticOptions = this.getStaticOptions();
             const historyOptions = readArchiveHistory();
-            let dynamicOptions = [];
-            try {
-              const res = await fetch('/admin-archives.json?ts=' + Date.now(), { cache: 'no-store' });
-              if (res.ok) {
-                const arr = await res.json();
-                dynamicOptions = Array.isArray(arr) ? arr.map(function (item) { return String(item); }) : [];
-              }
-            } catch (_) {
-              dynamicOptions = [];
-            }
-            this.setState({
-              options: dedupeSortArchives([].concat(staticOptions, dynamicOptions, historyOptions))
-            });
+            const dynamicOptions = await fetchArchiveDirs();
+            const options = dedupeSortArchives([].concat(staticOptions, dynamicOptions, historyOptions));
+            syncArchiveDatalist(options);
+            this.setState({ options: options });
           },
           onInputChange: function (e) {
-            const value = String(e.target.value || '');
-            this.setState({ currentValue: value });
-            rememberArchiveHistory(value);
-            this.props.onChange(value);
+            const rawValue = String(e.target.value || '');
+            const sanitized = sanitizeArchiveInput(rawValue);
+            this.setState({ currentValue: rawValue });
+            if (sanitized) {
+              rememberArchiveHistory(sanitized);
+            }
+            this.props.onChange(sanitized);
           },
           render: function () {
-            const options = this.state.options || [];
-            const listId = 'archive-combobox-options';
             return window.h('div', { style: { display: 'grid', gap: '8px' } }, [
               window.h('input', {
                 key: 'archive-input',
                 type: 'text',
-                list: listId,
+                list: ARCHIVE_DATALIST_ID,
                 value: this.state.currentValue,
                 onChange: this.onInputChange,
                 placeholder: '选择已有目录或输入新目录',
@@ -338,15 +385,265 @@
                   border: '1px solid #cbd5e1',
                   borderRadius: '6px'
                 }
-              }),
-              window.h('datalist', { key: 'archive-datalist', id: listId },
-                options.map(function (opt) {
-                  return window.h('option', { key: opt, value: opt });
-                })
-              )
+              })
             ]);
           }
         });
+
+        function getRouteEntryPath() {
+          const hash = String(window.location.hash || '');
+          const marker = '#/collections/posts/entries/';
+          if (hash.indexOf(marker) !== 0) return '';
+          const encoded = hash.slice(marker.length).split('?')[0];
+          if (!encoded) return '';
+          try {
+            return decodeURIComponent(encoded);
+          } catch (_) {
+            return encoded;
+          }
+        }
+
+        function getPathParts(path) {
+          const normalized = String(path || '').replace(/\\/g, '/').replace(/^\/+/, '');
+          const match = normalized.match(/^src\/posts\/([^/]+)\/([^/]+)\/index\.md$/);
+          if (!match) return null;
+          return { archive: match[1], slug: match[2], path: normalized };
+        }
+
+        function parseRepoAndBranch() {
+          const defaults = { repo: 'MrTang-Yuhan/my-webpage', branch: 'main' };
+          return fetch('/admin/config.yml', { cache: 'no-store' })
+            .then(function(res) { return res.ok ? res.text() : ''; })
+            .then(function(text) {
+              const repo = (text.match(/^\s*repo:\s*([^\s#]+)\s*$/m) || [])[1] || defaults.repo;
+              const branch = (text.match(/^\s*branch:\s*([^\s#]+)\s*$/m) || [])[1] || defaults.branch;
+              return { repo: repo, branch: branch };
+            })
+            .catch(function() { return defaults; });
+        }
+
+        function getGithubToken() {
+          const keys = [];
+          for (let i = 0; i < localStorage.length; i += 1) {
+            const key = localStorage.key(i);
+            if (key) keys.push(key);
+          }
+          const candidates = [
+            'netlify-cms-user',
+            'decap-cms-user',
+            'cms.user'
+          ].concat(keys.filter(function(k) {
+            return /cms|decap|netlify|github/i.test(k);
+          }));
+
+          for (let i = 0; i < candidates.length; i += 1) {
+            const key = candidates[i];
+            let raw = '';
+            try {
+              raw = localStorage.getItem(key) || '';
+            } catch (_) {
+              raw = '';
+            }
+            if (!raw) continue;
+            try {
+              const parsed = JSON.parse(raw);
+              const token = parsed && (
+                parsed.token ||
+                parsed.access_token ||
+                (parsed.user && parsed.user.token) ||
+                (parsed.github && parsed.github.token) ||
+                (parsed.auth && parsed.auth.token)
+              );
+              if (typeof token === 'string' && token.trim()) return token.trim();
+            } catch (_) {}
+          }
+          return '';
+        }
+
+        async function githubApi(path, options, token) {
+          const res = await fetch('https://api.github.com' + path, Object.assign({}, options || {}, {
+            headers: Object.assign({
+              Accept: 'application/vnd.github+json',
+              Authorization: 'Bearer ' + token
+            }, (options && options.headers) || {})
+          }));
+          if (!res.ok) {
+            const message = await res.text();
+            throw new Error('GitHub API ' + res.status + ': ' + message);
+          }
+          if (res.status === 204) return null;
+          return res.json();
+        }
+
+        function base64ToUtf8(base64) {
+          const clean = String(base64 || '').replace(/\s+/g, '');
+          const binary = atob(clean);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i += 1) {
+            bytes[i] = binary.charCodeAt(i);
+          }
+          return new TextDecoder('utf-8').decode(bytes);
+        }
+
+        function utf8ToBase64(text) {
+          const bytes = new TextEncoder().encode(String(text || ''));
+          let binary = '';
+          const chunkSize = 0x8000;
+          for (let i = 0; i < bytes.length; i += chunkSize) {
+            const chunk = bytes.subarray(i, i + chunkSize);
+            binary += String.fromCharCode.apply(null, Array.from(chunk));
+          }
+          return btoa(binary);
+        }
+
+        function updateFrontMatterArchive(markdown, archive) {
+          const text = String(markdown || '');
+          const targetLine = 'archive: ' + archive;
+          const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+          if (!match) {
+            return '---\n' + targetLine + '\n---\n\n' + text;
+          }
+
+          const body = match[1];
+          const nextBody = /^archive\s*:/m.test(body)
+            ? body.replace(/^archive\s*:.*$/m, targetLine)
+            : body + '\n' + targetLine;
+          return text.replace(/^---\r?\n[\s\S]*?\r?\n---/, '---\n' + nextBody + '\n---');
+        }
+
+        function ensureMovePanel() {
+          let panel = document.getElementById('archive-move-panel');
+          if (panel) return panel;
+          panel = document.createElement('section');
+          panel.id = 'archive-move-panel';
+          panel.style.margin = '10px 14px';
+          panel.style.padding = '12px';
+          panel.style.border = '1px solid #cbd5e1';
+          panel.style.borderRadius = '8px';
+          panel.style.background = '#ffffff';
+          panel.style.fontSize = '14px';
+          panel.innerHTML =
+            '<div style="font-weight:600;margin-bottom:8px;">移动文章归档</div>' +
+            '<div id="archive-move-current" style="color:#475569;margin-bottom:8px;"></div>' +
+            '<div style="display:grid;gap:8px;">' +
+              '<input id="archive-move-target" type="text" list="' + ARCHIVE_DATALIST_ID + '" placeholder="目标 archive 目录名" style="padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;" />' +
+              '<button id="archive-move-btn" type="button" style="padding:8px 10px;border:0;border-radius:6px;background:#0f6c73;color:#fff;cursor:pointer;">移动到新归档目录</button>' +
+              '<div id="archive-move-status" style="color:#475569;"></div>' +
+            '</div>';
+          const anchor = document.querySelector('.admin-tip');
+          if (anchor && anchor.parentNode) {
+            anchor.parentNode.insertBefore(panel, anchor.nextSibling);
+          } else {
+            document.body.insertBefore(panel, document.body.firstChild);
+          }
+          return panel;
+        }
+
+        async function syncArchiveMovePanel() {
+          const entryPath = getRouteEntryPath();
+          const parts = getPathParts(entryPath);
+          const existing = document.getElementById('archive-move-panel');
+          if (!parts) {
+            if (existing) existing.style.display = 'none';
+            return;
+          }
+
+          const panel = ensureMovePanel();
+          panel.style.display = '';
+          const currentEl = panel.querySelector('#archive-move-current');
+          const targetInput = panel.querySelector('#archive-move-target');
+          const statusEl = panel.querySelector('#archive-move-status');
+          const moveBtn = panel.querySelector('#archive-move-btn');
+          currentEl.textContent = '当前路径: ' + parts.path;
+          if (!targetInput.value) targetInput.value = parts.archive;
+
+          const options = await fetchArchiveDirs();
+          syncArchiveDatalist(options);
+
+          if (moveBtn.dataset.bound === '1') return;
+          moveBtn.dataset.bound = '1';
+          moveBtn.addEventListener('click', async function() {
+            const latestPath = getRouteEntryPath();
+            const latest = getPathParts(latestPath);
+            if (!latest) {
+              statusEl.style.color = '#b91c1c';
+              statusEl.textContent = '当前条目路径不可识别，无法移动。';
+              return;
+            }
+            const targetArchive = sanitizeArchiveInput(targetInput.value);
+            if (!targetArchive) {
+              statusEl.style.color = '#b91c1c';
+              statusEl.textContent = '目标 archive 非法。只允许字母、数字、下划线、连字符或中文，不可包含斜杠或 .md。';
+              return;
+            }
+            if (targetArchive === latest.archive) {
+              statusEl.style.color = '#475569';
+              statusEl.textContent = '目标 archive 与当前一致，无需移动。';
+              return;
+            }
+
+            const token = getGithubToken();
+            if (!token) {
+              statusEl.style.color = '#b91c1c';
+              statusEl.textContent = '未获取到 GitHub token。请确认当前后台已登录 GitHub。';
+              return;
+            }
+
+            moveBtn.disabled = true;
+            statusEl.style.color = '#475569';
+            statusEl.textContent = '正在提交移动...';
+            try {
+              const cfg = await parseRepoAndBranch();
+              const oldPath = latest.path;
+              const newPath = 'src/posts/' + targetArchive + '/' + latest.slug + '/index.md';
+              const oldFile = await githubApi('/repos/' + cfg.repo + '/contents/' + encodeURIComponent(oldPath).replace(/%2F/g, '/'), {
+                method: 'GET'
+              }, token);
+
+              let newSha = '';
+              try {
+                const existingNew = await githubApi('/repos/' + cfg.repo + '/contents/' + encodeURIComponent(newPath).replace(/%2F/g, '/'), {
+                  method: 'GET'
+                }, token);
+                newSha = existingNew && existingNew.sha ? existingNew.sha : '';
+              } catch (_) {
+                newSha = '';
+              }
+
+              const commitMsg = 'chore(admin): move post archive ' + latest.slug + ' to ' + targetArchive;
+              const movedMarkdown = updateFrontMatterArchive(base64ToUtf8(oldFile.content), targetArchive);
+              await githubApi('/repos/' + cfg.repo + '/contents/' + encodeURIComponent(newPath).replace(/%2F/g, '/'), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  message: commitMsg,
+                  content: utf8ToBase64(movedMarkdown),
+                  sha: newSha || undefined,
+                  branch: cfg.branch
+                })
+              }, token);
+
+              await githubApi('/repos/' + cfg.repo + '/contents/' + encodeURIComponent(oldPath).replace(/%2F/g, '/'), {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  message: commitMsg,
+                  sha: oldFile.sha,
+                  branch: cfg.branch
+                })
+              }, token);
+
+              rememberArchiveHistory(targetArchive);
+              statusEl.style.color = '#065f46';
+              statusEl.textContent = '移动成功。请刷新列表并重新打开新路径文章继续编辑。';
+            } catch (err) {
+              statusEl.style.color = '#b91c1c';
+              statusEl.textContent = '移动失败: ' + String((err && err.message) || err || 'unknown error');
+            } finally {
+              moveBtn.disabled = false;
+            }
+          });
+        }
 
         window.CMS.registerWidget('archive-combobox', ArchiveComboboxControl);
         window.CMS.registerPreviewStyle(scopedPreviewCss, { raw: true });
@@ -367,6 +664,7 @@
           try {
             const shouldHide = isPostsEditorRoute();
             document.body.classList.toggle('cms-editor-mode', shouldHide);
+            syncArchiveMovePanel();
             const tablists = Array.from(document.querySelectorAll('[role="tablist"]'));
             tablists.forEach(function(tablist) {
               const tabs = Array.from(tablist.querySelectorAll('[role="tab"]'));

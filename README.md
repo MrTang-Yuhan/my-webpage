@@ -35,9 +35,20 @@
 
 ### 新建归档目录
 
-- `archive` 字段为自由输入（`string`），不再限制固定下拉。
+- `archive` 字段使用 `archive-combobox`，下拉只合并三类来源并做严格清洗：
+- `src/posts` 下真实一级目录（由 `/admin-archives.json` 生成）。
+- `config.yml` 中显式 `options`（同样会被清洗）。
+- 本地历史（`localStorage` 的 `admin_archive_history_v2`，旧 `v1` 会忽略）。
 - 输入的新目录会用于生成文章路径：`src/posts/<archive>/<slug>/index.md`。
-- 建议命名：小写英文/数字/连字符，或中文目录名，避免空格和特殊符号。
+- 目录名要求：非空、无 `/` 或 `\`、非 `.md/index.md`、非 `[object Object]`，仅允许中文/字母/数字/`_`/`-`。
+
+### 已发布文章移动归档目录
+
+- Decap 默认仅更新 front matter 的 `archive` 字段，不会移动既有文件路径。
+- `/admin` 内置“移动文章归档”面板（仅在编辑已有文章且路径可识别时显示）。
+- 面板读取当前 entry 路径，并按 `src/posts/<targetArchive>/<slug>/index.md` 计算目标路径。
+- 使用当前登录 GitHub token 调用 Contents API：读取旧文件 -> 写入新路径 -> 删除旧路径，形成提交。
+- 成功后提示刷新并从新路径继续编辑。
 
 ### Markdown / HTML / 公式 / 脚注
 

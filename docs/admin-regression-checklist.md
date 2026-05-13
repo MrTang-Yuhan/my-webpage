@@ -17,9 +17,17 @@
 
 ## 3. 字段与归档目录
 
-- `archive` 可输入新目录名（非固定下拉）。
+- `archive` 下拉只应出现干净目录名，不应出现 `index.md`、`.md`、`[object Object]`、带 `/` 的值或乱码片段。
+- `archive` 可输入新目录名（非法值应被过滤，不进入下拉历史）。
 - 标题、日期、摘要、标签可编辑并保存。
 - 新文章路径符合 `src/posts/<archive>/<slug>/index.md`。
+- `/admin-archives.json` 内容应仅为 `src/posts` 真实一级目录列表（JSON 字符串数组）。
+
+## 3.1 已发布文章归档移动
+
+- 编辑已有文章时应出现“移动文章归档”面板，并显示当前 `src/posts/<archive>/<slug>/index.md` 路径。
+- 输入目标 archive 后点击移动，成功后应在 GitHub 看到一次“新建新路径 + 删除旧路径”的提交。
+- 移动后重新打开条目时路径应更新到 `src/posts/<targetArchive>/<slug>/index.md`。
 
 ## 4. Markdown / HTML / 公式 / 脚注
 
