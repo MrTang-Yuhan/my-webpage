@@ -40,6 +40,35 @@ export async function onRequestGet(context) {
     return html(errorPage(`No access_token returned: ${JSON.stringify(tokenJson)}`));
   }
 
+  const userRes = await fetch("https://api.github.com/user", {
+    method: "GET",
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${tokenJson.access_token}`,
+      "User-Agent": "decap-pages-function",
+    },
+  });
+  if (!userRes.ok) {
+    return html(errorPage(`GitHub user lookup failed: ${userRes.status}`));
+  }
+  const userJson = await userRes.json();
+  const login = String(userJson?.login || "").trim();
+  const id = Number(userJson?.id || 0);
+  if (!login || !Number.isFinite(id) || id <= 0) {
+    return html(errorPage("GitHub user lookup missing login/id"));
+  }
+
+  const secret = resolveSessionSecret(env);
+  if (!secret) {
+    return html(errorPage("Missing ADMIN_SESSION_SECRET or GITHUB_CLIENT_SECRET for admin session"));
+  }
+  const cookie = await buildAdminSessionCookie({
+    login,
+    id,
+    ttlSeconds: 60 * 60 * 12,
+    secret,
+  });
+
   const origin = parsedState.origin;
   const script = `
     (function () {
@@ -57,7 +86,9 @@ export async function onRequestGet(context) {
     })();
   `;
 
-  return html(`<!doctype html><html><body><script>${script}</script></body></html>`);
+  return html(`<!doctype html><html><body><script>${script}</script></body></html>`, 200, {
+    "Set-Cookie": cookie,
+  });
 }
 
 function parseState(state) {
@@ -87,14 +118,58 @@ function fromBase64Url(input) {
   return atob(padded);
 }
 
-function html(content, status = 200) {
+function html(content, status = 200, extraHeaders = {}) {
   return new Response(content, {
     status,
-    headers: { "Content-Type": "text/html; charset=utf-8" },
+    headers: { "Content-Type": "text/html; charset=utf-8", ...extraHeaders },
   });
 }
 
 function errorPage(message) {
   const safe = String(message).replace(/</g, "&lt;").replace(/>/g, "&gt;");
   return `<!doctype html><html><body><h1>OAuth Error</h1><pre>${safe}</pre></body></html>`;
+}
+
+function resolveSessionSecret(env) {
+  const primary = String(env.ADMIN_SESSION_SECRET || "").trim();
+  if (primary) return primary;
+  const fallback = String(env.GITHUB_CLIENT_SECRET || "").trim();
+  return fallback || "";
+}
+
+async function buildAdminSessionCookie(args) {
+  const payload = {
+    login: args.login,
+    id: args.id,
+    exp: Math.floor(Date.now() / 1000) + Number(args.ttlSeconds || 0),
+  };
+  const payloadB64 = toBase64Url(JSON.stringify(payload));
+  const signature = await signHmacSha256(payloadB64, String(args.secret || ""));
+  const cookieValue = `${payloadB64}.${signature}`;
+  return `admin_session=${cookieValue}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${Number(
+    args.ttlSeconds || 0
+  )}`;
+}
+
+async function signHmacSha256(message, secret) {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(String(message || "")));
+  return bytesToBase64Url(new Uint8Array(sig));
+}
+
+function bytesToBase64Url(bytes) {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function toBase64Url(input) {
+  return btoa(String(input || "")).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }

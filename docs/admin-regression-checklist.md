@@ -8,6 +8,7 @@
 - GitHub OAuth 登录成功，页面无空白或报错。
 - 后台首页 `Contents / Workflow / Media` 导航可见且可点击。
 - OAuth 路由使用 `/api/auth`（Pages Functions 主方案），回调为同域 `/api/callback` 或 `AUTH_BASE_URL` 指定域名。
+- 登录后 callback 应写入 `admin_session`（HttpOnly/Secure/SameSite=Lax）会话 cookie。
 
 ## 2. 进入文章编辑器
 
@@ -27,8 +28,10 @@
 ## 3.1 已发布文章归档移动
 
 - 编辑已有文章时应出现“移动文章归档”面板，并显示当前 `src/posts/<archive>/<slug>/index.md` 路径。
-- 输入目标 archive 后点击移动，成功后应在 GitHub 看到“文章目录内全部文件迁移”的提交（至少包含 `index.md`，如存在 `img/`、`video/` 也应迁移）。
+- 输入目标 archive 后点击移动，成功后应调用 `POST /api/admin/move-post` 并在 GitHub 看到单次 commit 完成目录迁移（至少包含 `index.md`，如存在 `img/`、`video/` 也应迁移）。
 - 移动后重新打开条目时路径应更新到 `src/posts/<targetArchive>/<slug>/index.md`。
+- 服务端需配置 `GITHUB_ADMIN_TOKEN`；建议配置 `ADMIN_SESSION_SECRET`。缺失写 token 时接口应返回明确错误。
+- 未登录（无 session）/会话过期/跨域请求时，接口应拒绝并返回明确错误。
 
 ## 4. Markdown / HTML / 公式 / 脚注
 
@@ -42,7 +45,7 @@
 - 上传图片成功，无权限或路径错误。
 - 图片引用路径为 `./img/<filename>`。
 - 预览中图片可显示。
-- 对含大媒体（>1MB）的文章执行归档迁移时应成功（Contents API 不可用内容会走 Blob fallback）。
+- 对含大媒体（>1MB）的文章执行归档迁移时应成功（服务端迁移通过 Git tree/blob 方式，不依赖浏览器 Contents API 文件内容）。
 
 ## 6. 草稿与发布
 

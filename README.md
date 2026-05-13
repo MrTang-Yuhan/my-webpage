@@ -39,6 +39,8 @@
 - 使用 `functions/api/auth.js` + `functions/api/callback.js` 提供 `/api/auth` 与 `/api/callback`。
 - `src/admin/config.yml` 中保持 `auth_endpoint: /api/auth` 不变。
 - 需配置环境变量：`GITHUB_CLIENT_ID`、`GITHUB_CLIENT_SECRET`，可选 `AUTH_BASE_URL`（用于固定回调域名）。
+- 归档迁移接口额外需要：`GITHUB_ADMIN_TOKEN`（推荐细粒度 token，至少 `Contents: Read and write`）。
+- 建议额外配置：`ADMIN_SESSION_SECRET`（用于签名 admin session cookie；未配置时回退 `GITHUB_CLIENT_SECRET`）。
 - 备用方案：`oauth-worker/` 独立 Worker。仅在无法使用 Pages Functions 时启用，避免两套 OAuth 同时对外暴露造成漂移。
 
 ### 新建归档目录
@@ -54,12 +56,15 @@
 
 - Decap 默认仅更新 front matter 的 `archive` 字段，不会移动既有文件路径。
 - `/admin` 内置“移动文章归档”面板（仅在编辑已有文章且路径可识别时显示）。
-- 面板读取当前 entry 路径，并按 `src/posts/<targetArchive>/<slug>/` 目录迁移。
-- 使用当前登录 GitHub token 调用 Contents API：递归复制该文章目录内所有文件（含 `index.md`、`img/**`、`video/**`）到新目录，再删除旧目录文件。
-- 对大于 1MB 导致 Contents API `content` 不可用的文件，迁移逻辑会自动回退到 Git Blobs API 按 `sha` 读取 base64 内容。
-- 若目标目录任一文件已存在会中止迁移并报错，避免覆盖。
+- 面板读取当前 entry 路径，输入目标 archive 后调用后端接口 `POST /api/admin/move-post`。
+- 该接口要求先通过 `/admin` GitHub OAuth 登录（callback 会写入 HttpOnly `admin_session` cookie）。
+- 迁移由 Pages Function 在服务端通过 Git Data API 完成：基于分支当前 tree 一次生成“新增新目录 + 删除旧目录”的 tree patch，并创建单次 commit 更新分支。
+- `index.md` 会在服务端更新 front matter `archive`；媒体文件（`img/**`、`video/**`）通过复用 blob sha 一并迁移。
+- 若目标目录已存在、源目录缺失或 `index.md` 缺失会中止并返回错误。
 - 成功后提示刷新并从新路径继续编辑。
-- 仍受 GitHub API 与仓库单文件大小限制约束；超限文件无法通过该流程迁移。
+- 接口主认证为服务端环境变量 `GITHUB_ADMIN_TOKEN`（需 repo contents write 权限）；也兼容 `Authorization: Bearer` 请求头作为备用。
+- 接口会强制校验 `admin_session` 签名与过期时间，并限制同源 Origin/Referer；未登录或会话过期将拒绝迁移。
+- 仍受 GitHub API 与仓库权限/分支保护规则约束；若分支被保护且拒绝直接 push，接口会失败并返回错误。
 
 ### Markdown / HTML / 公式 / 脚注
 
