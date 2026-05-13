@@ -16,7 +16,7 @@ tags:
 
 本文将基于 ParallelMLP 类的源码，深入剖析 Megatron 是如何通过 **Column Parallel (列并行)** 和 **Row Parallel (行并行)** 的组合，实现高效的模型切分与通信的。
 
----
+
 
 ## 1. 架构总览：TP 的三明治结构
 
@@ -32,11 +32,11 @@ $Y = \text{Activation}(X \cdot A) \cdot B$
 
 Megatron 的天才之处在于它没有在每一步都进行通信，而是设计了一个 **Column -> Row** 的“三明治”结构，将通信延迟到最后一跳。
 
-代码中的 ParallelMLP 完美体现了这一逻辑：
+代码中的 `ParallelMLP` 完美体现了这一逻辑：
 
-1. dense_h_to_4h: 使用 **ColumnParallelLinear**
-2. activation_func: 在切分的数据上独立进行非线性变换。
-3. dense_4h_to_h: 使用 **RowParallelLinear**
+1. `dense_h_to_4h`: 使用 **ColumnParallelLinear**
+2. `activation_func`: 在切分的数据上独立进行非线性变换。
+3. `dense_4h_to_h`: 使用 **RowParallelLinear**
 
 # 2. 第一层：ColumnParallelLinear (切分与映射)
 
@@ -55,18 +55,16 @@ self.dense_h_to_4h = tensor_parallel.ColumnParallelLinear(
     is_expert=is_expert,
 )
 ```
----
+
 
 ## 核心逻辑解析
 
 - **Mapping (映射逻辑)**: 假设权重矩阵 $A$ 的形状是 $[h, 4h]$。如果有 2 张 GPU (TP size = 2)，Megatron 会按列切分组矩阵：
   - GPU 0 只有 $A_{col1}$ (形状 $[h, 2h]$)
   - GPU 1 只有 $A_{col2}$ (形状 $[h, 2h]$)
-- 输入 $X$ 是完整的（或者说是被复制到两张卡上的）。
-
+  - 输入 $X$ 是完整的（或者说是被复制到两张卡上的）。
 - **Forward 通信**: 注意参数 `gather_output=False`。通常矩阵乘法后我们希望得到完整的输出。但在这里，GPU 0 计算 $Y_1 = X \cdot A_{col1}$，GPU 1 计算 $Y_2 = X \cdot A_{col2}$。
-  - **Megatron 选择不进行 All-Gather 通信**。此时，每张卡上只持有一部分输出特征。这为下一层省去了巨大的通信开销。
-
+- **Megatron 选择不进行 All-Gather 通信**。此时，每张卡上只持有一部分输出特征。这为下一层省去了巨大的通信开销。
 - **Bias 处理**: `skip_bias_add=True` 是为了性能优化（Fusion），将 Bias 的加法推迟到 Activation 函数中一起做（见代码中的 `bias_gelu_impl`），这也是 Megatron 的经典优化手段。
 
 ### 3. 中间层：Activation (本地计算)
@@ -81,6 +79,7 @@ else:
 
 **解析**: 由于上一层的输出 `intermediate_parallel` 是按特征维度切分的（Partitioned per GPU），而 GeLU/SiLU 等激活函数是 **Element-wise (逐元素)** 的。这意味着：
 $GeLU([Y_1, Y_2]) = [GeLU(Y_1), GeLU(Y_2)]$
+
 **结论**: 这一步完全在本地 GPU 进行，不需要任何通信。
 
 # 4. 第二层：RowParallelLinear (合并与还原)
@@ -107,55 +106,20 @@ self.dense_4h_to_h = tensor_parallel.RowParallelLinear(
   - GPU 1 持有 $B_{row2}$ (形状 $[2h, h]$)，对应上一层 GPU 1 输出的部分特征。
 
 - **Forward 通信 (All-Reduce)**: 这里的计算逻辑是：
-  $Output = Y_1 \cdot B_{row1} + Y_2 \cdot B_{row2}$
+  $$
+  Output = Y_1 \cdot B_{row1} + Y_2 \cdot B_{row2}
+  $$
+
   即 $Z_1 = Y_1 \cdot B_{row1}$，$Z_2 = Y_2 \cdot B_{row2}$。这两个 $Z$ 的形状都是 $[Batch, Seq, h]$，但它们都只是最终结果的一部分加数。为了得到最终的 Output，**必须在所有 GPU 间进行一次 All-Reduce (Sum) 操作**。
+
   参数 `input_is_parallel=True` 告诉这一层：你的输入已经是切分过了，不需要再手动切分输入。
 
-# 5. 举个栗子：数值推演
 
-假设：Hidden Size $h = 2$，中间层 $4h = 4$。TP Size = 2 (两张卡)。输入 $X = [1, 1]$。
-
-## 1. Column Parallel 层 ($h \to 4h$): 全局权重 $W_1$ (2x4)。
-
-- **GPU 0**: 持有 $W_1$ 左半边 (2x2)。计算 $X \cdot W_{1\_left} = [a, b]$。
-- **GPU 1**: 持有 $W_1$ 右半边 (2x2)。计算 $X \cdot W_{1\_right} = [c, d]$。
-- 此时无通信。
-
----
-
-## 2. Activation 层：
-
-- **GPU 0**: $GeLU([a, b]) = [a', b']$。
-- **GPU 1**: $GeLU([c, d]) = [c', d']$。
-- 此时无通信。
-
----
-
-## 3. Row Parallel 层 ($4h \to h$): 全局权重 $W_2$ (4x2)。
-
-- **GPU 0**: 持有 $W_2$ 上半部 (2x2)。输入是 $[a', b']$。计算局部结果  
-  $Partial_0 = [a', b'] \cdot W_{2\_top} = [res_{00}, res_{01}]$。
-- **GPU 1**: 持有 $W_2$ 下半部 (2x2)。输入是 $[c', d']$。计算局部结果  
-  $Partial_1 = [c', d'] \cdot W_{2\_bottom} = [res_{10}, res_{11}]$。
-
----
-
-## 4. All-Reduce 合并：
-
-- 最终结果 $Result = Partial_0 + Partial_1$。
-- GPU 0 和 GPU 1 执行 All-Reduce Sum，两张卡最终都得到了完整的 $[Batch, Seq, h]$ 结果。
-
-这里其实我设置了一个小坑，输入维度不是 $[Batch, Seq, h]$，而是 $[Seq, Batch, h]$。
-
-源码中这种维度可能是为了序列并行时候内存连续的优化。大家可以稍微注意下，不过不影响全文理解。
-
-# 6. 总结
+# 5. 总结
 
 1. **延迟通信**：整个 MLP 块内部只有一次同步通信（在 RowParallel 的末尾），极大地提高了训练效率。
 
 2. **显存优化**：权重矩阵被物理切分，单卡显存占用随 TP 数量线性降低。
 
-3. **代码细节**：  
-   ```python
-   gather_output=False 和 input_is_parallel=True 是连接两层的关键信号。
-   ```
+3. **代码细节**：`gather_output=False` 和 `input_is_parallel=True` 是连接两层的关键信号。
+
