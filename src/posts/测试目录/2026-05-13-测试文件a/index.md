@@ -1,6 +1,6 @@
 ---
 layout: post.njk
-archive: 测试目录
+archive: 测试目录AAA
 title: 测试文件a
 date: 2026-05-14
 description: 测试文件a
