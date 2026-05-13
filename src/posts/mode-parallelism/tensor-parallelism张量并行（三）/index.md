@@ -76,7 +76,7 @@ class ColumnParallelLinear(torch.nn.Module):
     $$
   - 所以，必须在此时触发 All-Reduce 通信，将所有卡的梯度加起来。
 
-## 2. 出口：gather_from_tensor_model_parallel_region
+### 2. 出口：gather_from_tensor_model_parallel_region
 
 这个函数位于线性层的输出端。
 
