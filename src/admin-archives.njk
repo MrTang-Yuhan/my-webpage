@@ -1,0 +1,12 @@
+---
+permalink: /admin-archives.json
+eleventyExcludeFromCollections: true
+---
+[
+{% set isFirst = true %}
+{% for dir, posts in collections.postsByDir %}
+  {% if not isFirst %},{% endif %}
+  {{ dir | dump | safe }}
+  {% set isFirst = false %}
+{% endfor %}
+]

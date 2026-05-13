@@ -131,6 +131,45 @@
           });
         }
 
+        function getPreviewPostBaseDir(entry) {
+          const pathValue = entry && typeof entry.get === 'function' ? entry.get('path') : '';
+          const path = String(pathValue || '').replace(/\\/g, '/');
+          if (path && /^src\/posts\/.+\/[^/]+\/index\.md$/.test(path)) {
+            return path.replace(/^src/, '').replace(/\/index\.md$/, '/');
+          }
+
+          const archive = String(entry.getIn(['data', 'archive']) || '').trim();
+          const explicitSlug = String(entry.get('slug') || '').trim();
+          const postId = String(entry.getIn(['data', 'post_id']) || '').trim();
+          const title = String(entry.getIn(['data', 'title']) || '').trim();
+          const fallbackSlug = (explicitSlug || postId || title || 'preview')
+            .toLocaleLowerCase('zh-Hans-CN')
+            .replace(/\s+/g, '-')
+            .replace(/[\\/]+/g, '-')
+            .replace(/[^\w\u4e00-\u9fff-]+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '') || 'preview';
+          if (!archive) return '';
+          return '/posts/' + archive + '/' + fallbackSlug + '/';
+        }
+
+        function fixPreviewImagePaths(root, entry) {
+          if (!root) return;
+          const baseDir = getPreviewPostBaseDir(entry);
+          root.querySelectorAll('img[src]').forEach(function (img) {
+            const src = String(img.getAttribute('src') || '').trim();
+            if (!src) return;
+            if (/^(?:[a-z]+:|\/|#|data:|blob:)/i.test(src)) return;
+            if (src.indexOf('./img/') === 0) {
+              if (baseDir) img.setAttribute('src', baseDir + src.slice(2));
+              return;
+            }
+            if (baseDir) {
+              img.setAttribute('src', new URL(src, window.location.origin + baseDir).pathname);
+            }
+          });
+        }
+
         function renderPreviewHtml(entry) {
           const body = normalizeBlockMath(entry.getIn(['data', 'body']) || '');
           const title = entry.getIn(['data', 'title']) || '';
@@ -172,6 +211,7 @@
           postProcess: function () {
             if (!this._root) return;
             moveFootnotesNearRefs(this._root);
+            fixPreviewImagePaths(this._root, this.props.entry);
             if (typeof renderMathInElement === 'function') {
               renderMathInElement(this._root, {
                 delimiters: [
@@ -192,9 +232,52 @@
           }
         });
 
+        const ARCHIVE_HISTORY_KEY = 'admin_archive_history_v1';
+
+        function normalizeArchiveName(value) {
+          return String(value || '').trim();
+        }
+
+        function dedupeSortArchives(items) {
+          const seen = new Set();
+          const result = [];
+          (items || []).forEach(function (item) {
+            const name = normalizeArchiveName(item);
+            if (!name || seen.has(name)) return;
+            seen.add(name);
+            result.push(name);
+          });
+          return result.sort(function (a, b) {
+            return a.localeCompare(b, 'zh-Hans-CN');
+          });
+        }
+
+        function readArchiveHistory() {
+          try {
+            const raw = localStorage.getItem(ARCHIVE_HISTORY_KEY);
+            const arr = raw ? JSON.parse(raw) : [];
+            return Array.isArray(arr) ? dedupeSortArchives(arr) : [];
+          } catch (_) {
+            return [];
+          }
+        }
+
+        function rememberArchiveHistory(value) {
+          const name = normalizeArchiveName(value);
+          if (!name) return;
+          const merged = dedupeSortArchives(readArchiveHistory().concat([name]));
+          localStorage.setItem(ARCHIVE_HISTORY_KEY, JSON.stringify(merged));
+        }
+
         const ArchiveComboboxControl = window.createClass({
           getInitialState: function () {
-            return { currentValue: this.props.value || '' };
+            return {
+              currentValue: this.props.value || '',
+              options: this.getStaticOptions()
+            };
+          },
+          componentDidMount: function () {
+            this.refreshOptions();
           },
           componentDidUpdate: function (prevProps) {
             const prev = prevProps.value || '';
@@ -203,7 +286,7 @@
               this.setState({ currentValue: next });
             }
           },
-          getOptions: function () {
+          getStaticOptions: function () {
             const field = this.props.field;
             if (!field || typeof field.get !== 'function') return [];
             const raw = field.get('options');
@@ -214,13 +297,31 @@
             }
             return Array.isArray(raw) ? raw.map(function (item) { return String(item); }) : [];
           },
+          refreshOptions: async function () {
+            const staticOptions = this.getStaticOptions();
+            const historyOptions = readArchiveHistory();
+            let dynamicOptions = [];
+            try {
+              const res = await fetch('/admin-archives.json?ts=' + Date.now(), { cache: 'no-store' });
+              if (res.ok) {
+                const arr = await res.json();
+                dynamicOptions = Array.isArray(arr) ? arr.map(function (item) { return String(item); }) : [];
+              }
+            } catch (_) {
+              dynamicOptions = [];
+            }
+            this.setState({
+              options: dedupeSortArchives([].concat(staticOptions, dynamicOptions, historyOptions))
+            });
+          },
           onInputChange: function (e) {
             const value = String(e.target.value || '');
             this.setState({ currentValue: value });
+            rememberArchiveHistory(value);
             this.props.onChange(value);
           },
           render: function () {
-            const options = this.getOptions();
+            const options = this.state.options || [];
             const listId = 'archive-combobox-options';
             return window.h('div', { style: { display: 'grid', gap: '8px' } }, [
               window.h('input', {
