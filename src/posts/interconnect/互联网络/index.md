@@ -1,13 +1,13 @@
 ---
 layout: post.njk
+archive: interconnect
 post_id: 互联网络
-title: "互联网络"
+title: 互联网络
 date: 2026-04-30
-description: "AI 加速卡的互联介绍"
+description: AI 加速卡的互联介绍
 tags:
   - post
   - interconnection
-
 ---
 
 
@@ -114,6 +114,17 @@ NVLink 实现 GPU - GPU 或者 CPU - GPU 的 P2P 通信。
 ![https://images.nvidia.cn/events/sc15/pdfs/NCCL-Woolley.pdf](./img/com-pattern-1.png)
 
 ![https://images.nvidia.cn/events/sc15/pdfs/NCCL-Woolley.pdf](./img/com-pattern-2.png)
+
+**关键理解**：
+
+- **All-Gather**：
+数据被切分成若干个分块，每个 GPU 持有其中一部分。All-Gather 会将所有 GPU 上的分块收集并拼接起来，使得每个 GPU 最终都拥有完整的数据。
+
+- **Reduce-Scatter**：
+每个 GPU 最初通常都持有一份大小相同的数据，这些数据会按照相同的方式切分成若干个分块。Reduce-Scatter 会先对不同 GPU 上对应位置的分块进行规约操作，例如求和，然后将规约后的结果分散到各个 GPU 上。因此，每个 GPU 最终只得到完整规约结果的一部分；如果想让每个 GPU 都获得完整的规约结果，还需要再执行 All-Gather。
+
+- **All-Reduce**：
+All-Reduce 会对所有 GPU 上的数据进行规约操作，并保证每个 GPU 最终都得到完整的规约结果。从实现上看，All-Reduce 通常可以分解为两个步骤：先执行 Reduce-Scatter，得到分布在各个 GPU 上的部分规约结果；再执行 All-Gather，使每个 GPU 都获得完整的规约结果。
 
 ### Broadcast
 
