@@ -78,7 +78,7 @@ $$\frac{\partial (Ax)}{\partial x} = A$$
 
 ## 伴随通信算子的作用
 
-当前向传播使用通信算子 $A$ 时，反向传播就必须使用伴随通信算子 $A^\top$。
+***当前向传播使用通信算子 $A$ 时，反向传播就必须使用伴随通信算子 $A^\top$。***
 
 然而，这似乎有一个例外，如下图的 [tensor parallelism 架构](https://my-webpage-adu.pages.dev/posts/mode-parallelism/tensor-parallelism%E5%BC%A0%E9%87%8F%E5%B9%B6%E8%A1%8C%EF%BC%88%E4%B8%80%EF%BC%89/)：
 
