@@ -89,6 +89,6 @@ $$\frac{\partial (Ax)}{\partial x} = A$$
 - **$g$** 正向传播使用 all-reduce，反向传播使用 identity。
 - **$f$** 正向传播使用 identity，反向传播使用 all-reduce。
 
-然而，以 $g$ 举例，在它反向传播过程中使用的所谓 "identity"，其实就是 all-reduce：即每台设备 $i$ 都收到所有上游梯度 $\nabla Z$ 的总和。只是 $\nabla Z$ 汇总到了一台设备上，所以表现为所谓的 "identity"。
+然而，以 $g$ 举例，在它反向传播过程中使用的所谓 "identity"，其实就是 all-reduce：即每台设备 $i$ 都收到所有上游梯度 $\nabla Z$ 的总和。只是上游梯度 $\nabla Z$ 已经汇总到了一台设备上，所以表现为所谓的 "identity"。
 
 所以，在 [Megatron-LM](https://arxiv.org/abs/1909.08053) 论文中的表述，并不算是纯粹通信算子的描述。
