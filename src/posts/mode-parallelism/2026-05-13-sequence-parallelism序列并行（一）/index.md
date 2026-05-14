@@ -24,8 +24,21 @@ tags:
 
 # “中间值”显存占用分析
 
+## 未采用并行机制的 Transformer 架构
+
+架构如下图，我们主要关注图中灰色部分的 `Transformer Layer`，因为它会重复 $L$ 层，占显存开销的大头。
+
 ![](img/transformer-arch.png)
 
-
-
 ![](img/softmax-attention-block.png)
+
+假设采用 FP16 / BF16 精度，下面我们对中间值的显存占用进行拆解分析。
+
+### Attention Block
+
+### MLP Block
+
+### LayerNorm
+
+
+
