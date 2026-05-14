@@ -52,7 +52,7 @@ tags:
 | Softmax 输出                   | $2as^2b$ |
 | Softmax dropout mask         | $as^2b$  |
 | Attention over V: dropout 输出 | $2as^2b$ |
-| Attention over V: V          | $2sbh$   |
+| V          | $2sbh$   |
 | Output linear projection 输入  | $2sbh$   |
 | Attention dropout mask       | $sbh$    |
 
@@ -93,7 +93,60 @@ $$
 
 ## 采用张量并行机制的 Transformer 架构
 
+采用张量并行机制的 Transformer 架构如下图：
+
+
 ![](img/tensor-parallel.png)
 
 ![](img/tensor-parallel-2.png)
 
+引入张量并行度为 $t$，进行中间值占用的显存分析：
+
+### Attention Block
+| 项 | 原大小 | Tensor Parallel 后 |
+|---|---:|---:|
+| Q/K/V projection 共享输入 | $2sbh$ | 不切，仍是 $2sbh$ |
+| $QK^\top$ 需要存 Q 和 K | $4sbh$ | 切，变成 $\frac{4sbh}{t}$ |
+| Softmax 输出                   | $2as^2b$ | 切，变成 $\frac{2as^2b}{t}$ |
+| Softmax dropout mask         | $as^2b$  | 切，变成 $\frac{as^2b}{t}$ |
+| Attention over V: dropout 输出 | $2as^2b$ | 切，变成 $\frac{2as^2b}{t}$ |
+| $V$ | $2sbh$ | 切，变成 $\frac{2sbh}{t}$ |
+| Output linear projection 输入 | $2sbh$ | 切，变成 $\frac{2sbh}{t}$ |
+| Attention dropout mask | $sbh$ | 不切，仍是 $sbh$ |
+
+
+因此 attention 部分变成：
+
+$$
+\text{Attention} = 3sbh + \frac{8sbh}{t} + \frac{5as^2b}{t}
+$$
+
+### MLP Block
+
+| 项                | 原大小     | Tensor Parallel 后|
+| ---------------- | ------ | ------ |
+| 第一个 linear 输入    | $2sbh$ | 不切，仍是 $2sbh$  |
+| 第二个 linear 输入    | $8sbh$ | 切，变成 $\frac{8sbh}{t}$ |
+| GeLU 输入          | $8sbh$ | 切，变成 $\frac{8sbh}{t}$ |
+| MLP dropout mask | $sbh$  | 不切，仍是 $sbh$ |
+
+因此 MLP 部分变成：
+
+$$
+\text{MLP}=3sbh+\frac{16sbh}{t}
+$$
+
+### LayerNorm
+
+张量并行未应用到 LayerNorm，故存储的中间值不变，即两个 LayerNorm，每个存输入 $2sbh$：
+
+$$
+\text{LayerNorms}=4sbh
+$$
+
+### 合计
+
+
+$$
+\text{Total}=sbh(10+\frac{24}{t}+\frac{5as}{ht})
+$$
