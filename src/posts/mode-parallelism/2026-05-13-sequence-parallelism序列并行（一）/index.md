@@ -24,6 +24,44 @@ tags:
 
 # “中间值”显存占用分析
 
+## 未采用并行机制的 Transformer 架构
+
+架构如下图，我们主要关注图中灰色部分的 `Transformer Layer`，因为它会重复 $L$ 层，占显存开销的大头。
+
 ![](img/transformer-arch.png)
 
 ![](img/softmax-attention-block.png)
+
+假设采用 FP16 / BF16 精度，下面我们对中间值的显存占用进行拆解分析。
+
+### Attention Block
+
+
+
+| 项 | 大小 |
+| :--- | :--- |
+| Q/K/V projection 共享输入 | $2sbh$ |
+| $QK^\top$ 需要存 Q 和 K | $4sbh$ |
+| Softmax 输出 | $2as^2b$ |
+| Softmax dropout mask | $as^2b$ |
+| Attention over V: dropout 输出 | $2as^2b$ |
+| Attention over V: V | $2sbh$ |
+| Output linear projection 输入 | $2sbh$ |
+| Attention dropout mask | $sbh$ |
+
+
+
+
+### MLP Block
+
+| 项 | 大小 |
+| :--- | :--- |
+| 第一个 linear 输入 | $2sbh$ |
+| 第二个 linear 输入 | $8sbh$ |
+| GeLU 输入 | $8sbh$ |
+| MLP dropout mask | $sbh$ |
+
+### LayerNorm
+
+
+
