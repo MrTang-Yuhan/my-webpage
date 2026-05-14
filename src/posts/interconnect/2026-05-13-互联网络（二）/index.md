@@ -30,45 +30,6 @@ $$
 
 常用通信算子及其伴随算子汇总如下[^1]：
 
-[^1]: 这里都是指的"裸通信算子"，即只在意通信相关。
-
-  比如在前向传播时，使用 all-reduce-sum 算子
-  用矩阵乘法表示 $\mathbf{y} = A\mathbf{x}$，矩阵 $A$ 必须是一个 $p \times p$   的**全 1 矩阵**：
-
-  $$
-  A =
-  \begin{bmatrix}
-  1 & 1 & \cdots & 1 \\
-  1 & 1 & \cdots & 1 \\
-  \vdots & \vdots & \ddots & \vdots \\
-  1 & 1 & \cdots & 1
-  \end{bmatrix}_{p \times p}
-  $$
-
-  反向传播时，上游传来梯度向量：
-
-  $$\nabla \mathbf{y} = [\nabla y_1, \nabla y_2, \dots, \nabla y_p]^\top$$
-
-  我们需要计算 $\mathbf{x}$ 的梯度。根据链式法则：
-
-  $$\nabla \mathbf{x} = A^\top \nabla \mathbf{y}$$
-
-  关键在于**全 1 矩阵是对称的**：
-
-  $$A^\top = A$$
-
-  因为矩阵中每个元素都是 1，转置后仍然每个元素都是 1，矩阵不变。
-
-  因此：
-
-  $$\nabla \mathbf{x} = A \nabla \mathbf{y}$$
-
-  也就是说，反向计算与正向计算的矩阵**完全相同**：
-
-  $$\nabla x_i = \sum_{j=1}^p \nabla y_j, \quad \text{对所有 } i$$
-
-  每台设备 $i$ 都收到所有上游梯度 $\nabla y_j$ 的总和。
-
 | 前向通信算子 | 伴随/反向通信算子 | 说明与简单举例 |
 |---|---|---|
 | `AllReduce` | `AllReduce` | 所有 rank 的张量先求和/平均，再把结果发给所有 rank。反向仍是全局规约。例：数据并行中，各 GPU 计算本地梯度后用 `AllReduce` 得到全局平均梯度。 |
@@ -81,6 +42,21 @@ $$
 | `AllToAll` | `AllToAll` | 前向是所有 rank 之间互相交换分片；反向通常也是一次相反方向或相反维度的 `AllToAll`。例：MoE 中先用 `AllToAll` 把 token 分发给不同专家，反向时再用 `AllToAll` 把梯度送回原 token 所在 rank。 |
 | `Send` | `Recv` | 前向点对点发送数据，反向对应接收梯度。例：流水线并行中 stage 0 前向 `Send` 激活到 stage 1；反向时 stage 0 需要 `Recv` 来自 stage 1 的激活梯度。 |
 | `Recv` | `Send` | 前向点对点接收数据，反向对应发送梯度。例：流水线并行中 stage 1 前向 `Recv` stage 0 的激活；反向时 stage 1 需要 `Send` 激活梯度回 stage 0。 |
+
+[^1]: 这里都是指的"裸通信算子"，即只在意通信相关。<br>
+  比如在前向传播时，使用 all-reduce-sum 算子，用矩阵乘法表示 $\mathbf{y} = A\mathbf{x}$，矩阵 $A$ 必须是一个 $p \times p$   的**全 1 矩阵**：
+  反向传播时，上游传来梯度向量：
+  $$\nabla \mathbf{y} = [\nabla y_1, \nabla y_2, \dots, \nabla y_p]^\top$$
+  我们需要计算 $\mathbf{x}$ 的梯度。根据链式法则：
+  $$\nabla \mathbf{x} = A^\top \nabla \mathbf{y}$$
+  关键在于**全 1 矩阵是对称的**：
+  $$A^\top = A$$
+  因为矩阵中每个元素都是 1，转置后仍然每个元素都是 1，矩阵不变。
+  因此：
+  $$\nabla \mathbf{x} = A \nabla \mathbf{y}$$
+  也就是说，反向计算与正向计算的矩阵**完全相同**：
+  $$\nabla x_i = \sum_{j=1}^p \nabla y_j, \quad \text{对所有 } i$$
+  每台设备 $i$ 都收到所有上游梯度 $\nabla y_j$ 的总和。
 
 ## 伴随通信算子的作用
 
@@ -95,4 +71,6 @@ $$
 - **$g$** 正向传播使用 all-reduce，反向传播使用 identity。
 - **$f$** 正向传播使用 identity，反向传播使用 all-reduce。
 
-然而，以 $f$ 举例，在前向传播过程中，它实际上做了个 copy/replicate 
+然而，以 $g$ 举例，在它反向传播过程中使用的所谓 "identity"，其实就是 all-reduce：即每台设备 $i$ 都收到所有上游梯度 $\nabla Z$ 的总和。
+
+所有，在 [Megatron-LM](https://arxiv.org/abs/1909.08053) 论文中的表述，并不算是“裸通信算子”的描述。
