@@ -43,8 +43,7 @@ $$
 | `Send` | `Recv` | 前向点对点发送数据，反向对应接收梯度。例：流水线并行中 stage 0 前向 `Send` 激活到 stage 1；反向时 stage 0 需要 `Recv` 来自 stage 1 的激活梯度。 |
 | `Recv` | `Send` | 前向点对点接收数据，反向对应发送梯度。例：流水线并行中 stage 1 前向 `Recv` stage 0 的激活；反向时 stage 1 需要 `Send` 激活梯度回 stage 0。 |
 
-[^1]: 这里都是指的"裸通信算子"，即只在意通信相关。<br>
-  比如在前向传播时，使用 all-reduce-sum 算子，用矩阵乘法表示 $\mathbf{y} = A\mathbf{x}$，矩阵 $A$ 必须是一个 $p \times p$   的**全 1 矩阵**：
+[^1]: 比如在前向传播时，使用 all-reduce-sum 算子，用矩阵乘法表示 $\mathbf{y} = A\mathbf{x}$，矩阵 $A$ 必须是一个 $p \times p$   的**全 1 矩阵**：
   反向传播时，上游传来梯度向量：
   $$\nabla \mathbf{y} = [\nabla y_1, \nabla y_2, \dots, \nabla y_p]^\top$$
   我们需要计算 $\mathbf{x}$ 的梯度。根据链式法则：
