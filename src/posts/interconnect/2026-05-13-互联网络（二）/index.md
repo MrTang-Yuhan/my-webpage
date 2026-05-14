@@ -4,31 +4,50 @@ archive: interconnect
 post_id: 互联网络
 title: 互联网络（二）
 date: 2026-05-14
-description: 伴随通信算子和共轭算子
+description: 介绍通信算子和伴随通信算子
 tags:
   - post
   - interconnection
 ---
 ## 什么是伴随通信算子
 
-在神经网络的自动微分过程中，通信算子有一个特别重要的规律：
+在神经网络的**自动微分**过程中，通信算子有一个特别重要的规律：
 
 如果前向传播过程中使用通信算子 $A$，存在：
 $$
 y = Ax
 $$
 
-那么反向传播时：
+根据链式法则，反向传播时：
 
 $$
 \nabla x = A^\top \nabla y
 $$
+[^1]
+
+[^1]: 对于列向量 $y$, $x$, 矩阵 $A$，如果 $y=Ax$，那么 $y$ 对 $x$ 的导数就是矩阵 $A$ 本身。推导如下：<br>
+把 $y = Ax$ 写成各个分量的形式：$$y_i = \sum_{k=1}^n A_{ik} x_k$$
+现在看输出向量的每一个分量 $y_i$ 对输入向量的每一个分量 $x_j$ 的偏导数：
+$$\frac{\partial y_i}{\partial x_j} = A_{ij}$$
+将这个结果填入雅可比矩阵 $\frac{\partial y}{\partial x}$ 中，它的第 $i$ 行、第 $j$ 列恰好就是 $\frac{\partial y_i}{\partial x_j}$。所以矩阵的每个位置都对应矩阵 $A$ 的元素：
+$$
+J(x)=\frac{\partial y}{\partial x} =
+\begin{bmatrix}
+A_{11} & A_{12} & \cdots & A_{1n} \cr
+A_{21} & A_{22} & \cdots & A_{2n} \cr
+\vdots & \vdots & \ddots & \vdots \cr
+A_{m1} & A_{m2} & \cdots & A_{mn} 
+\end{bmatrix} = A
+$$
+因此可以简记为：
+$$\frac{\partial (Ax)}{\partial x} = A$$
+这正好与反向传播公式 $\nabla x = A^\top \nabla y$ 衔接上了，其中的转置正是来源于这个雅可比矩阵 $A$。
 
 其中 $\nabla y=\frac{\partial L}{\partial y}$, $\nabla x=\frac{\partial L}{\partial x}$
 
 其中 $A^\top$ 就是 $A$ 的伴随通信算子。
 
-常用通信算子及其伴随算子汇总如下[^1]：
+常用通信算子及其伴随算子汇总如下[^2]：
 
 | 前向通信算子 | 伴随/反向通信算子 | 说明与简单举例 |
 |---|---|---|
@@ -43,8 +62,7 @@ $$
 | `Send` | `Recv` | 前向点对点发送数据，反向对应接收梯度。例：流水线并行中 stage 0 前向 `Send` 激活到 stage 1；反向时 stage 0 需要 `Recv` 来自 stage 1 的激活梯度。 |
 | `Recv` | `Send` | 前向点对点接收数据，反向对应发送梯度。例：流水线并行中 stage 1 前向 `Recv` stage 0 的激活；反向时 stage 1 需要 `Send` 激活梯度回 stage 0。 |
 
-[^1]: 这里都是指的"裸通信算子"，即只在意通信相关。<br>
-  比如在前向传播时，使用 all-reduce-sum 算子，用矩阵乘法表示 $\mathbf{y} = A\mathbf{x}$，矩阵 $A$ 必须是一个 $p \times p$   的**全 1 矩阵**：
+[^2]: 比如在前向传播时，使用 all-reduce-sum 算子，用矩阵乘法表示 $\mathbf{y} = A\mathbf{x}$，矩阵 $A$ 必须是一个 $p \times p$ 的**全 1 矩阵**（此处假设共 $p$ 台设备）。
   反向传播时，上游传来梯度向量：
   $$\nabla \mathbf{y} = [\nabla y_1, \nabla y_2, \dots, \nabla y_p]^\top$$
   我们需要计算 $\mathbf{x}$ 的梯度。根据链式法则：
@@ -73,4 +91,4 @@ $$
 
 然而，以 $g$ 举例，在它反向传播过程中使用的所谓 "identity"，其实就是 all-reduce：即每台设备 $i$ 都收到所有上游梯度 $\nabla Z$ 的总和。
 
-所有，在 [Megatron-LM](https://arxiv.org/abs/1909.08053) 论文中的表述，并不算是“裸通信算子”的描述。
+所以，在 [Megatron-LM](https://arxiv.org/abs/1909.08053) 论文中的表述，并不算是纯粹通信算子的描述。
