@@ -36,7 +36,30 @@ tags:
 
 ### Attention Block
 
+
+
+| 项 | 大小 |
+| :--- | :--- |
+| Q/K/V projection 共享输入 | $2sbh$ |
+| $QK^\top$ 需要存 Q 和 K | $4sbh$ |
+| Softmax 输出 | $2as^2b$ |
+| Softmax dropout mask | $as^2b$ |
+| Attention over V: dropout 输出 | $2as^2b$ |
+| Attention over V: V | $2sbh$ |
+| Output linear projection 输入 | $2sbh$ |
+| Attention dropout mask | $sbh$ |
+
+
+
+
 ### MLP Block
+
+| 项 | 大小 |
+| :--- | :--- |
+| 第一个 linear 输入 | $2sbh$ |
+| 第二个 linear 输入 | $8sbh$ |
+| GeLU 输入 | $8sbh$ |
+| MLP dropout mask | $sbh$ |
 
 ### LayerNorm
 
