@@ -1,20 +1,20 @@
 ---
 layout: post.njk
 post_id: Data-Parallelism数据并行（二）
-title: "Data-Parallelism数据并行（二）"
+archive: mode-parallelism
+title: Data-Parallelism数据并行（二）
 date: 2026-05-03
-description: "Model Parallelism 之 Data Parallelism: Naive Data Parallelism, Distributed Data Parallelism (DDP), ZeRO Data Parallelism"
+description: "Model Parallelism 之 Data Parallelism: Naive Data Parallelism,
+  Distributed Data Parallelism (DDP), ZeRO Data Parallelism"
 tags:
   - post
   - data parallelism
   - model parallelism
-
-archive: mode-parallelism
 ---
 
 在 [Data Parallelism 数据并行 （一）](../data-parallelism-1/) 中已经详细描述了数据并行。
 
-奈何 [Data-Parallel Distributed Training of Deep Learning Models](https://siboehm.com/articles/22/data-parallel-training) 中关于数据并行的介绍非常好，故进行翻译，与 [Data Parallelism 数据并行 （一）](../data-parallelism-1/) 互为补充。
+奈何 [Data-Parallel Distributed Training of Deep Learning Models](https://siboehm.com/articles/22/data-parallel-training) 中关于数据并行的介绍非常好，故进行翻译，与 [Data Parallelism 数据并行 （一）](https://my-webpage-adu.pages.dev/posts/mode-parallelism/Data-Parallelism%E6%95%B0%E6%8D%AE%E5%B9%B6%E8%A1%8C%EF%BC%88%E4%B8%80%EF%BC%89/) 互为补充。
 
 ## 深度学习模型的数据并行分布式训练
 
