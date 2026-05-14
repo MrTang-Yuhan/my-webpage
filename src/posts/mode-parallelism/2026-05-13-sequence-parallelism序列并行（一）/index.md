@@ -111,8 +111,8 @@ $$
 | Softmax dropout mask         | $as^2b$  | 切，变成 $\frac{as^2b}{t}$ |
 | Attention over V: dropout 输出 | $2as^2b$ | 切，变成 $\frac{2as^2b}{t}$ |
 | $V$ | $2sbh$ | 切，变成 $\frac{2sbh}{t}$ |
-| output linear projection 输入 | $2sbh$ | 切，变成 $\frac{2sbh}{t}$ |
-| attention dropout mask | $sbh$ | 不切，仍是 $sbh$ |
+| Output linear projection 输入 | $2sbh$ | 切，变成 $\frac{2sbh}{t}$ |
+| Attention dropout mask | $sbh$ | 不切，仍是 $sbh$ |
 
 
 因此 attention 部分变成：
