@@ -9,9 +9,7 @@ tags:
   - post
   - interconnection
 ---
-
-
-## 伴随通信算子
+## 什么是伴随通信算子
 
 在神经网络的自动微分过程中，通信算子有一个特别重要的规律：
 
@@ -29,4 +27,13 @@ $$
 其中 $\nabla y=\frac{\partial L}{\partial y}$, $\nabla x=\frac{\partial L}{\partial x}$
 
 其中 $A^\top$ 就是 $A$ 的伴随通信算子
+
+## 伴随通信算子的作用
+
+当前向传播使用通信算子 $A$ 时，反向传播就必须使用伴随通信算子 $A^\top$。
+
+如下图，使用的
+
+![](img/tensor-parallelism.png)
+
 
