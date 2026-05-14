@@ -229,5 +229,6 @@ $$
 
 其中 $\nabla y=\frac{\partial L}{\partial y}$, $\nabla x=\frac{\partial L}{\partial x}$
 
+其中 $A^\top$ 就是 $A$ 的伴随通信算子
 
 
