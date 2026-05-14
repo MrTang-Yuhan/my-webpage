@@ -16,6 +16,7 @@ layout: base.njk
       <nav class="post-toc-inline" id="post-toc-inline" aria-label="文章目录"></nav>
       {{ content | videoShortcode | addHeadingIds | renumberFootnotes | safe }}
     </div>
+    <aside class="post-side-notes" id="post-side-notes" aria-label="文章旁注"></aside>
   </div>
 
   <footer class="post-footer">
@@ -71,6 +72,7 @@ layout: base.njk
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   var content = document.getElementById('post-content');
+  var sideNotes = document.getElementById('post-side-notes');
   var tocInline = document.getElementById('post-toc-inline');
   if (!content) return;
 
@@ -108,6 +110,8 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   const footnoteById = {};
+  const footnoteAnchors = new Map();
+  const nearRefNotes = [];
   content.querySelectorAll('aside.footnote[id]').forEach(function(footnote) {
     footnoteById[footnote.id] = footnote;
   });
@@ -121,6 +125,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const anchorBlock = link.closest('p, li, blockquote, h1, h2, h3, h4, h5, h6');
     if (!anchorBlock || !anchorBlock.parentNode) return;
     footnote.classList.add('footnote-near-ref');
+    footnote.dataset.anchorId = targetId;
+    footnoteAnchors.set(targetId, anchorBlock);
+    nearRefNotes.push(footnote);
     anchorBlock.parentNode.insertBefore(footnote, anchorBlock.nextSibling);
     moved.add(targetId);
   });
@@ -131,6 +138,58 @@ document.addEventListener('DOMContentLoaded', function() {
     badge.className = 'footnote-number';
     badge.textContent = index + 1;
     footnote.insertBefore(badge, footnote.firstChild);
+  });
+
+  function isDesktopSideNotes() {
+    return window.matchMedia('(min-width: 1180px)').matches;
+  }
+
+  function placeNotesInline() {
+    if (!sideNotes) return;
+    nearRefNotes.forEach(function(footnote) {
+      const anchorId = footnote.dataset.anchorId;
+      const anchorBlock = anchorId ? footnoteAnchors.get(anchorId) : null;
+      if (anchorBlock && anchorBlock.parentNode) {
+        anchorBlock.parentNode.insertBefore(footnote, anchorBlock.nextSibling);
+        footnote.style.top = '';
+      }
+    });
+  }
+
+  function placeNotesInSideRail() {
+    if (!sideNotes) return;
+    const contentRect = content.getBoundingClientRect();
+    let cursorTop = 0;
+    const minGap = 16;
+
+    nearRefNotes.forEach(function(footnote) {
+      const anchorId = footnote.dataset.anchorId;
+      const anchorBlock = anchorId ? footnoteAnchors.get(anchorId) : null;
+      if (!anchorBlock) return;
+
+      sideNotes.appendChild(footnote);
+      footnote.style.top = '';
+
+      const anchorRect = anchorBlock.getBoundingClientRect();
+      const desiredTop = Math.max(0, Math.round(anchorRect.top - contentRect.top));
+      const safeTop = Math.max(desiredTop, cursorTop);
+      footnote.style.top = safeTop + 'px';
+      cursorTop = safeTop + footnote.offsetHeight + minGap;
+    });
+  }
+
+  function syncSideNotesLayout() {
+    if (!sideNotes) return;
+    if (isDesktopSideNotes()) {
+      placeNotesInSideRail();
+    } else {
+      placeNotesInline();
+    }
+  }
+
+  syncSideNotesLayout();
+  window.addEventListener('resize', function() {
+    syncSideNotesLayout();
   });
 });
 </script>
