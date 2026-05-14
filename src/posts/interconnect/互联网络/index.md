@@ -223,5 +223,11 @@ $$
 
 那么反向传播时：
 
+$$
+\nabla x = A^\top \nabla y
+$$
+
+其中 $\nabla y=\frac{\partial L}{\partial y}$, $\nabla x=\frac{\partial L}{\partial x}$
+
 
 
