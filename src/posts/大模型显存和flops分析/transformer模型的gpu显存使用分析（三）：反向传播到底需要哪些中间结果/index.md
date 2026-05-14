@@ -2,15 +2,20 @@
 layout: post.njk
 archive: 大模型显存和flops分析
 post_id: transformer模型的gpu显存使用分析（三）：反向传播到底需要哪些中间结果
-title: transformer模型的GPU显存使用分析（三）：反向传播到底需要哪些中间结果
+title: Transformer 模型 GPU 显存分析（三）：反向传播需要保存哪些中间结果？
 date: 2026-05-12
-description: 本文旨在梳理训练阶段前向传播中必须保留的中间结果（如激活值、掩码、统计量等），以正确支持反向传播
+description: ""
 tags:
   - post
   - GPU memory usage
   - transformer
   - model parallelism
 ---
+为了实现反向传播，前向传播时需要计算并保存一些必要的“中间值”，这些中间值通常被称为“激活值”（activations）。
+
+本文将详细讨论在 Transformer 架构的前向传播过程中，具体需要保存哪些激活值。
+
+
 # 基本原则
 
 **核心原则：反向传播时，某个梯度公式如果要用到前向里的某个“中间值”，这个“中间值”就要暂存。**
