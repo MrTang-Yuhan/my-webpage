@@ -4,7 +4,7 @@ archive: interconnect
 post_id: 互联网络
 title: 互联网络（二）
 date: 2026-05-14
-description: 伴随通信算子和共轭算子
+description: 介绍通信算子和伴随通信算子
 tags:
   - post
   - interconnection
