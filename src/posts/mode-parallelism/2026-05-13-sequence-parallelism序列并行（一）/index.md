@@ -10,7 +10,9 @@ tags:
 
 # 序列并行
 
-序列并行是在张量并行的基础上进行的进一步深度优化，旨在减少“中间值”带来的显存占用。
+序列并行是在张量并行的基础上进行的进一步深度优化，旨在减少“中间值”带来的显存占用[^1]。
+
+[^1]: “中间值”是反向传播所必需的。如果不保存这些中间值，在反向传播过程中就必须重新执行前向计算来生成它们，这会显著增加训练的时间开销。
 
 关于 Transformer 各层的显存占用分析，请参考我的文章：
 
@@ -22,7 +24,7 @@ tags:
 - [Tensor Parallelism张量并行（二）](https://my-webpage-adu.pages.dev/posts/mode-parallelism/tensor-parallelism%E5%BC%A0%E9%87%8F%E5%B9%B6%E8%A1%8C%EF%BC%88%E4%BA%8C%EF%BC%89/)
 - [Tensor Parallelism张量并行（三）](https://my-webpage-adu.pages.dev/posts/mode-parallelism/tensor-parallelism%E5%BC%A0%E9%87%8F%E5%B9%B6%E8%A1%8C%EF%BC%88%E4%B8%89%EF%BC%89/)
 
-
+# 
 
 
 
