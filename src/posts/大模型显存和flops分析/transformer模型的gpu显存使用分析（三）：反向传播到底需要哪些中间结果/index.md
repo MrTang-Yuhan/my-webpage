@@ -197,4 +197,26 @@ $\frac{\partial L}{\partial Z}$ 是上游传回的梯度。注意这里的导数
 所以为了 backward，**GeLU 需要保存的中间值是 $x$**。
 
 
+### Softmax 激活
+
+Softmax 是向量上的归一化操作，例如：
+
+$$
+y = \text{Softmax}(z),\qquad y_i = \frac{e^{z_i}}{\sum_{j} e^{z_j}}
+$$
+
+它的 backward 是：
+
+$$
+\frac{\partial L}{\partial z} = y \odot \left( \frac{\partial L}{\partial y} - \langle \frac{\partial L}{\partial y}, y \rangle \right)
+$$[^4]
+
+[^4]: 其中 $\odot$ 是逐元素乘，$\langle \cdot, \cdot \rangle$ 表示点积（标量）。
+
+其中 $\frac{\partial L}{\partial y}$ 是上游传回的梯度。注意这里的导数依赖于 forward 的输出 $y$。
+
+所以为了 backward，**Softmax 需要保存的中间值是 $y$**。
+
+
+
 
