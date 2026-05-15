@@ -155,19 +155,73 @@ a:hover { text-decoration: underline; }
   padding: 0.12em 0.35em;
   border-radius: 4px;
 }
-.code-block-wrapper { position: relative; }
-.post-content pre {
-  border: 1px solid var(--line);
-  background: var(--code-bg);
-  border-radius: 12px;
-  padding: 2.4rem 1rem 1rem;
+.code-block-wrapper {
   margin: 1.3rem 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--code-bg);
+  overflow: hidden;
 }
-.post-content pre code { background: transparent; padding: 0; }
+.code-block-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.8rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+.code-block-meta {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.code-block-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+.code-fold-button,
 .copy-button {
-  position: absolute; top: 0.55rem; right: 0.55rem;
-  border: 1px solid var(--line); border-radius: 999px; padding: 0.2rem 0.65rem;
-  background: var(--panel); color: var(--muted); cursor: pointer;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.88rem;
+}
+.code-fold-button:hover,
+.copy-button:hover {
+  background: var(--brand-soft);
+}
+.code-block-body {
+  position: relative;
+  max-height: none;
+}
+.code-block-body pre {
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+  padding: 1rem;
+  margin: 0;
+  overflow-x: auto;
+}
+.code-block-body pre code { background: transparent; padding: 0; }
+.code-block-wrapper.is-collapsed .code-block-body {
+  max-height: 14rem;
+  overflow: hidden;
+}
+.code-block-wrapper.is-collapsed .code-block-body::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3rem;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0), var(--code-bg));
+  pointer-events: none;
 }
 
 .post-content table { width: 100%; border-collapse: collapse; border: 1px solid var(--line); font-size: 0.98rem; }

@@ -162,30 +162,78 @@
       img.addEventListener('click', () => this.openLightbox(img.src, img.alt));
     });
 
-    postContent.querySelectorAll('pre').forEach((pre) => {
-      if (pre.parentElement && pre.parentElement.classList.contains('code-block-wrapper')) return;
+    postContent.querySelectorAll('pre').forEach((pre, index) => {
+      if (pre.parentElement && pre.parentElement.classList.contains('code-block-body')) return;
       const wrapper = document.createElement('div');
       wrapper.className = 'code-block-wrapper';
       pre.parentNode.insertBefore(wrapper, pre);
-      wrapper.appendChild(pre);
 
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'copy-button';
-      btn.textContent = '复制';
-      wrapper.appendChild(btn);
+      const toolbar = document.createElement('div');
+      toolbar.className = 'code-block-toolbar';
 
-      btn.addEventListener('click', async () => {
+      const meta = document.createElement('div');
+      meta.className = 'code-block-meta';
+
+      const actions = document.createElement('div');
+      actions.className = 'code-block-actions';
+
+      const code = pre.querySelector('code');
+      const rawText = code ? code.textContent : pre.textContent;
+      const normalizedText = String(rawText || '').replace(/\n+$/, '');
+      const lineCount = normalizedText ? normalizedText.split(/\r?\n/).length : 1;
+      const shouldCollapse = lineCount > 14;
+
+      const body = document.createElement('div');
+      body.className = 'code-block-body';
+      const bodyId = `code-block-body-${index + 1}`;
+      body.id = bodyId;
+      body.setAttribute('role', 'region');
+      body.setAttribute('aria-label', '代码内容');
+      body.appendChild(pre);
+
+      const toggleBtn = document.createElement('button');
+      toggleBtn.type = 'button';
+      toggleBtn.className = 'code-fold-button';
+      toggleBtn.setAttribute('aria-controls', bodyId);
+
+      const copyBtn = document.createElement('button');
+      copyBtn.type = 'button';
+      copyBtn.className = 'copy-button';
+      copyBtn.textContent = '复制';
+
+      function setCollapsed(collapsed) {
+        wrapper.classList.toggle('is-collapsed', collapsed);
+        toggleBtn.setAttribute('aria-expanded', String(!collapsed));
+        toggleBtn.textContent = collapsed ? `展开代码 (${lineCount} 行)` : '收起代码';
+      }
+
+      toggleBtn.addEventListener('click', () => {
+        setCollapsed(!wrapper.classList.contains('is-collapsed'));
+      });
+
+      copyBtn.addEventListener('click', async () => {
         const code = pre.querySelector('code');
         const text = code ? code.textContent : pre.textContent;
         try {
           await navigator.clipboard.writeText(text);
-          btn.textContent = '已复制';
+          copyBtn.textContent = '已复制';
         } catch {
-          btn.textContent = '失败';
+          copyBtn.textContent = '失败';
         }
-        setTimeout(() => { btn.textContent = '复制'; }, 1600);
+        setTimeout(() => { copyBtn.textContent = '复制'; }, 1600);
       });
+
+      meta.textContent = `代码 ${lineCount} 行`;
+      toggleBtn.textContent = shouldCollapse ? `展开代码 (${lineCount} 行)` : '收起代码';
+      toggleBtn.setAttribute('aria-expanded', String(!shouldCollapse));
+      setCollapsed(shouldCollapse);
+
+      actions.appendChild(toggleBtn);
+      actions.appendChild(copyBtn);
+      toolbar.appendChild(meta);
+      toolbar.appendChild(actions);
+      wrapper.appendChild(toolbar);
+      wrapper.appendChild(body);
     });
   }
 }
