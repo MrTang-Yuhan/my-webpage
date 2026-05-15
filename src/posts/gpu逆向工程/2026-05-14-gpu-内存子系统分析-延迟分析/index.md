@@ -7,7 +7,7 @@ description: 分析GPU 的 L1/Shared Memory，L2，DRAM 的访问延迟
 tags:
   - post
 ---
-# 访问延迟
+# 延迟的定义
 
 延迟可以分为两种：
 
@@ -46,3 +46,7 @@ FFMA R5,  R5,  R20, R21
 这些指令分别操作不同寄存器 R0, R1, R2, ...，所以彼此不需要等待。
 
 假设单条 FFMA 的 true latency 是 10 cycles，但执行单元是流水线化的，可以每个 cycle 接收一条新指令。此时虽然每条指令从发射到结果可用仍然是 10 cycles，但因为流水线重叠了，所以从整体看，平均每条指令的完成间隔可能接近 1 cycle/instruction。
+
+# 内存子系统的 True Latency
+
+## 
