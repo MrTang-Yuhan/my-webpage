@@ -49,4 +49,11 @@ FFMA R5,  R5,  R20, R21
 
 # 内存子系统的 True Latency
 
-## 
+## L1，L2 和 DRAM 
+
+我使用 pointer-chasing 方法测量 L1，L2 和 DRAM 的 true latency。
+
+使用的平台是 NVIDIA 5080 GPU，Compute Capability 为 sm_120。
+
+
+
