@@ -52,7 +52,7 @@ tags:
 | Softmax 输出                   | $2as^2b$ |
 | Softmax dropout mask         | $as^2b$  |
 | Attention over V: dropout 输出 | $2as^2b$ |
-| V          | $2sbh$   |
+| V                            | $2sbh$   |
 | Output linear projection 输入  | $2sbh$   |
 | Attention dropout mask       | $sbh$    |
 
@@ -95,7 +95,6 @@ $$
 
 采用张量并行机制的 Transformer 架构如下图：
 
-
 ![](img/tensor-parallel.png)
 
 ![](img/tensor-parallel-2.png)
@@ -103,17 +102,17 @@ $$
 引入张量并行度为 $t$，进行中间值占用的显存分析：
 
 ### Attention Block
-| 项 | 原大小 | Tensor Parallel 后 |
-|---|---:|---:|
-| Q/K/V projection 共享输入 | $2sbh$ | 不切，仍是 $2sbh$ |
-| $QK^\top$ 需要存 Q 和 K | $4sbh$ | 切，变成 $\frac{4sbh}{t}$ |
-| Softmax 输出                   | $2as^2b$ | 切，变成 $\frac{2as^2b}{t}$ |
-| Softmax dropout mask         | $as^2b$  | 切，变成 $\frac{as^2b}{t}$ |
-| Attention over V: dropout 输出 | $2as^2b$ | 切，变成 $\frac{2as^2b}{t}$ |
-| $V$ | $2sbh$ | 切，变成 $\frac{2sbh}{t}$ |
-| Output linear projection 输入 | $2sbh$ | 切，变成 $\frac{2sbh}{t}$ |
-| Attention dropout mask | $sbh$ | 不切，仍是 $sbh$ |
 
+| 项                            | 原大小      | Tensor Parallel 后       |
+| ---------------------------- | -------- | ----------------------- |
+| Q/K/V projection 共享输入        | $2sbh$   | 不切，仍是 $2sbh$            |
+| $QK^\top$ 需要存 Q 和 K          | $4sbh$   | 切，变成 $\frac{4sbh}{t}$   |
+| Softmax 输出                   | $2as^2b$ | 切，变成 $\frac{2as^2b}{t}$ |
+| Softmax dropout mask         | $as^2b$  | 切，变成 $\frac{as^2b}{t}$  |
+| Attention over V: dropout 输出 | $2as^2b$ | 切，变成 $\frac{2as^2b}{t}$ |
+| $V$                          | $2sbh$   | 切，变成 $\frac{2sbh}{t}$   |
+| Output linear projection 输入  | $2sbh$   | 切，变成 $\frac{2sbh}{t}$   |
+| Attention dropout mask       | $sbh$    | 不切，仍是 $sbh$             |
 
 因此 attention 部分变成：
 
@@ -123,12 +122,12 @@ $$
 
 ### MLP Block
 
-| 项                | 原大小     | Tensor Parallel 后|
-| ---------------- | ------ | ------ |
-| 第一个 linear 输入    | $2sbh$ | 不切，仍是 $2sbh$  |
+| 项                | 原大小    | Tensor Parallel 后     |
+| ---------------- | ------ | --------------------- |
+| 第一个 linear 输入    | $2sbh$ | 不切，仍是 $2sbh$          |
 | 第二个 linear 输入    | $8sbh$ | 切，变成 $\frac{8sbh}{t}$ |
 | GeLU 输入          | $8sbh$ | 切，变成 $\frac{8sbh}{t}$ |
-| MLP dropout mask | $sbh$  | 不切，仍是 $sbh$ |
+| MLP dropout mask | $sbh$  | 不切，仍是 $sbh$           |
 
 因此 MLP 部分变成：
 
@@ -146,12 +145,43 @@ $$
 
 ### 合计
 
-
 $$
 \text{Total}=sbh(10+\frac{24}{t}+\frac{5as}{ht})
 $$
 
 ## 采用序列并行 + 张量并行的 Transformer 架构
 
-序列并行进一步将公式中的 $10sbh$ 进行并行化。
+序列并行进一步将公式中的 $10sbh$ 项并行化。
 
+其具体实现方式如下图。需要说明的是，序列并行并非独立运作，而是与张量并行协同工作的。
+
+![](img/sequency-parallel-1.png)
+
+
+我们以已经张量并行的 MLP 块和它前面的 LayerNorm 和 它后面的 Dropout 层为例，如下图所示，其中有两个 GPU：
+
+![](img/sequence-parallel-2.png)
+
+$$
+\begin{align*}
+[Y_1^s, Y_2^s] &= \text{LayerNorm}([X_1^s, X_2^s]), \cr
+Y &= g(Y_1^s, Y_2^s), \cr
+[Z_1^h, Z_2^h] &= [\text{GeLU}(Y A_1^c), \text{GeLU}(Y A_2^c)], \cr
+W_1 &= Z_1^h B_1^r \quad \text{and} \quad W_2 = Z_2^h B_2^r, \cr
+[W_1^s, W_2^s] &= \bar{g}(W_1, W_2), \cr
+[V_1^s, V_2^s] &= [\text{Dropout}(W_1^s), \text{Dropout}(W_2^s)]
+\end{align*}
+\$$
+
+此处的一般维度设定如下：
+
+- 输入：$X: s \times b \times h$
+- 投影矩阵：$A: [h, 4h]$，$B: [4h, h]$
+
+符号说明：
+
+- $Y_1^s$：将 $Y$ 按 $s$ 方向切分成两份，其中第一份（存放在第一个 GPU 上）记为 $Y_1^s$。
+- $A_1^c$：将 $A$ 按列方向切分成两份，其中第一份（存放在第一个 GPU 上）记为 $A_1^c$。
+- $B_1^r$：将 $B$ 按行方向切分成两份，其中第一份（存放在第一个 GPU 上）记为 $B_1^r$。
+
+这些符号不必刻意记忆。**关键是，序列并行的可行性在于：LayerNorm 和 Dropout 按 $s$ 方向（即序列维度）切分后，并不会影响其计算结果**。中间涉及的其他切分操作，只是为了配合 LayerNorm 和 Dropout 按 $s$ 维度切分而做的必要调整。按照维度进行首推一遍即可理解。
