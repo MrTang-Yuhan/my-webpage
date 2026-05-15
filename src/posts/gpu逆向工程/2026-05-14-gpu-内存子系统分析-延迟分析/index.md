@@ -51,34 +51,196 @@ FFMA R5,  R5,  R20, R21
 
 ## L1，L2 和 DRAM 
 
-我使用 pointer-chasing 方法测量 L1，L2 和 DRAM 的 true latency。
+我使用 pointer-chasing 方法测量 L1、L2 和 DRAM 的真实延迟（true latency）。
 
-使用的平台是 NVIDIA 5080 GPU，Compute Capability 为 sm_120。
+测试平台为 NVIDIA 5080 GPU，Compute Capability 为 sm_120。
 
-测量前记得:
+测量前请注意以下事项：
 
-- 锁定 gpu 和 Memory 的频率
-  
-  - 通过 `nvidia-smi lgc gpu_clocks` 锁定 gpu 频率
-  - 通过 `nvidia-smi lmc mem_clocks` 锁定内存频率
+1. **锁定 GPU 和显存频率**
+   - 使用 `nvidia-smi -lgc <gpu_clocks>` 锁定 GPU 频率
+   - 使用 `nvidia-smi -lmc <mem_clocks>` 锁定显存频率
+   - [锁定 GPU 和显存频率的脚本](#锁定 GPU 和显存频率的脚本)
 
-- 避免使用 shared memory
+2. **避免使用共享内存（Shared Memory）**
+   - 在代码中确保不通过 `__shared__` 分配共享内存
+   - 通过 CUDA 编程接口，尽可能将统一的 L1 / 共享内存空间分配给 L1 缓存：
 
-  - 首先代码中确保不要使用 `__shared__` 分配共享内存
-  - 通过 cuda 编码要求尽可能的把统一空间划分给 L1
-  ```cuda
-   // hint: 尽量把统一空间划给 L1 cache
-    cudaFuncSetAttribute(
-        pchase_latency_kernel,
-        cudaFuncAttributePreferredSharedMemoryCarveout,
-        cudaSharedmemCarveoutMaxL1
-    );
-  ```
+   ```cuda
+   // 尽量把统一空间划分给 L1 cache
+   cudaFuncSetAttribute(
+       pchase_latency_kernel,
+       cudaFuncAttributePreferredSharedMemoryCarveout,
+       cudaSharedmemCarveoutMaxL1
+   );
+   ```
 
-1[](#L1)
+# 相关资料
+
+[CUDA 官方编程手册](https://docs.nvidia.com/cuda/cuda-programming-guide/index.html)
+
+[CUDA 官方 PTX ISA](https://docs.nvidia.com/cuda/parallel-thread-execution/index.html)
 
 
+# 脚本
 
+## 锁定 GPU 和显存频率的脚本
+
+`gpu_clock_lock.sh`
+```shell
+#!/usr/bin/env bash
+set -euo pipefail
+
+GPU_ID=0
+SM_CLOCK=""
+MEM_CLOCK=""
+ACTION=""
+
+usage() {
+    cat <<EOF
+Usage:
+  $0 status [--gpu GPU_ID]
+  $0 lock   --sm SM_MHZ [--mem MEM_MHZ] [--gpu GPU_ID]
+  $0 unlock [--gpu GPU_ID]
+
+Examples:
+  $0 status
+  sudo $0 lock --sm 2500
+  sudo $0 lock --sm 2500 --mem 14000
+  sudo $0 unlock
+
+Notes:
+  --sm  : lock SM/core clock in MHz, e.g. 2500
+  --mem : lock memory clock in MHz, e.g. 14000
+  --gpu : GPU index, default 0
+EOF
+}
+
+need_nvidia_smi() {
+    if ! command -v nvidia-smi >/dev/null 2>&1; then
+        echo "ERROR: nvidia-smi not found"
+        exit 1
+    fi
+}
+
+need_root_for_modify() {
+    if [[ "${ACTION}" == "lock" || "${ACTION}" == "unlock" ]]; then
+        if [[ "${EUID}" -ne 0 ]]; then
+            echo "ERROR: lock/unlock requires root. Please run with sudo."
+            exit 1
+        fi
+    fi
+}
+
+show_status() {
+    echo "==== GPU status ===="
+    nvidia-smi -i "${GPU_ID}" \
+        --query-gpu=index,name,pstate,temperature.gpu,power.draw,power.limit,clocks.current.sm,clocks.current.graphics,clocks.current.memory,clocks.max.sm,clocks.max.graphics,clocks.max.memory \
+        --format=csv
+
+    echo
+    echo "==== nvidia-smi full summary ===="
+    nvidia-smi -i "${GPU_ID}"
+}
+
+lock_clocks() {
+    echo "==== Enable persistence mode ===="
+    nvidia-smi -i "${GPU_ID}" -pm 1 || true
+    echo
+
+    if [[ -n "${SM_CLOCK}" ]]; then
+        echo "==== Lock SM/core clock to ${SM_CLOCK} MHz ===="
+        nvidia-smi -i "${GPU_ID}" -lgc "${SM_CLOCK},${SM_CLOCK}"
+        echo
+    else
+        echo "ERROR: --sm SM_MHZ is required for lock"
+        exit 1
+    fi
+
+    if [[ -n "${MEM_CLOCK}" ]]; then
+        echo "==== Try to lock memory clock to ${MEM_CLOCK} MHz ===="
+        if nvidia-smi -i "${GPU_ID}" -lmc "${MEM_CLOCK},${MEM_CLOCK}"; then
+            echo "Memory clock locked to ${MEM_CLOCK} MHz"
+        else
+            echo "WARNING: Failed to lock memory clock."
+            echo "This is common on some GeForce GPUs/drivers."
+        fi
+        echo
+    fi
+
+    show_status
+}
+
+unlock_clocks() {
+    echo "==== Reset SM/core clock lock ===="
+    nvidia-smi -i "${GPU_ID}" -rgc || true
+    echo
+
+    echo "==== Reset memory clock lock ===="
+    nvidia-smi -i "${GPU_ID}" -rmc || true
+    echo
+
+    echo "==== Keep persistence mode enabled ===="
+    nvidia-smi -i "${GPU_ID}" -pm 1 || true
+    echo
+
+    show_status
+}
+
+if [[ $# -lt 1 ]]; then
+    usage
+    exit 1
+fi
+
+ACTION="$1"
+shift
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --gpu)
+            GPU_ID="$2"
+            shift 2
+            ;;
+        --sm)
+            SM_CLOCK="$2"
+            shift 2
+            ;;
+        --mem)
+            MEM_CLOCK="$2"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "Unknown argument: $1"
+            usage
+            exit 1
+            ;;
+    esac
+done
+
+need_nvidia_smi
+need_root_for_modify
+
+case "${ACTION}" in
+    status)
+        show_status
+        ;;
+    lock)
+        lock_clocks
+        ;;
+    unlock)
+        unlock_clocks
+        ;;
+    *)
+        echo "Unknown action: ${ACTION}"
+        usage
+        exit 1
+        ;;
+esac
+```
 
 
 
