@@ -201,4 +201,16 @@ W_1 &= Z_1^h B_1^r \quad \text{and} \quad W_2 = Z_2^h B_2^r, \cr
 
 [^2]: 参考我的这篇[互联网络（一）](https://my-webpage-adu.pages.dev/posts/interconnect/%E4%BA%92%E8%81%94%E7%BD%91%E7%BB%9C/)
 
-还需要注意的是，在 MLP 块中，整个 Y 仍然是每个 GPU 有备份。
+此外，还需注意一点：在 MLP 块中，完整的 $Y$ 仍然在每个 GPU 上都有备份。为解决这一问题，可将 $Y$ 也按 $s$ 维度切分为 $Y_1$、$Y_2$。不过，在计算 $\text{GeLU}$ 之前，仍需执行一次 all-gather 操作。本文的做法是将这次 all-gather 与反向传播中计算 $Y$ 的梯度（该梯度的计算仅需 $A$ 即可完成）进行重叠，从而降低通信延迟[^3]。
+
+[^3]: 这种做法更像是一种工程技巧，一定程度上破坏了序列并行结构的简洁与自然。
+
+Attention 块与 MLP 块类似，这里就不赘述了，论文中其实也只是以 MLP 块举例。
+
+### 合计
+
+采用“序列并行+张量并行”后，Transformer 架构中中间值的显存占用变为：
+
+$$
+\text{Total}=sbh(\frac{10}{t}+\frac{24}{t}+\frac{5as}{ht})=\frac{sbh}{t}(34+\frac{5as}{h})
+$$
