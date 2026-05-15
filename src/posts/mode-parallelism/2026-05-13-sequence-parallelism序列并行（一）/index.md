@@ -199,6 +199,6 @@ W_1 &= Z_1^h B_1^r \quad \text{and} \quad W_2 = Z_2^h B_2^r, \cr
 
 乍看之下，通信操作似乎变多了，但由于一次 all-reduce 的通信量相当于一次 all-gather 与一次 reduce-scatter 之和[^2]，因此总的通信量实际上并未增加。
 
-
-
 [^2]: 参考我的这篇[互联网络（一）](https://my-webpage-adu.pages.dev/posts/interconnect/%E4%BA%92%E8%81%94%E7%BD%91%E7%BB%9C/)
+
+还需要注意的是，在 MLP 块中，整个 Y 仍然是每个 GPU 有备份。
