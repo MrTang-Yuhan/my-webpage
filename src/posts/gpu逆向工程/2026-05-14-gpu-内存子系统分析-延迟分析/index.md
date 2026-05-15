@@ -51,6 +51,9 @@ FFMA R5,  R5,  R20, R21
 
 ## L1，L2 和 DRAM 
 
+
+### 设置
+
 我使用 pointer-chasing 方法测量 L1、L2 和 DRAM 的真实延迟（true latency）。
 
 测试平台为 NVIDIA 5080 GPU，Compute Capability 为 sm_120。
@@ -88,6 +91,8 @@ FFMA R5,  R5,  R20, R21
 
 [^3]: 全局层级的缓存（仅在 L2 及更低层级缓存，不包含 L1）。<br>
 可以使用 ld.cg 指令，使加载操作仅在全局层级进行缓存，即绕过 L1 缓存，仅将数据缓存在 L2 缓存中。
+
+### 测试结果
 
 
 
@@ -133,7 +138,6 @@ FFMA R5,  R5,  R20, R21
 
 
 # 脚本
-
 
 <a id="lock_gpu_mem_clock"></a>
 ## 锁定 GPU 和显存频率的脚本
