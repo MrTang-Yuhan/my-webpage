@@ -64,6 +64,16 @@ FFMA R5,  R5,  R20, R21
 
 - 避免使用 shared memory
 
+  - 首先代码中确保不要使用 `__shared__` 分配共享内存
+  - 通过 cuda 编码要求尽可能的把统一空间划分给 L1
+  ```cuda
+   // hint: 尽量把统一空间划给 L1 cache
+    cudaFuncSetAttribute(
+        pchase_latency_kernel,
+        cudaFuncAttributePreferredSharedMemoryCarveout,
+        cudaSharedmemCarveoutMaxL1
+    );
+  ```
 
 1[](#L1)
 
