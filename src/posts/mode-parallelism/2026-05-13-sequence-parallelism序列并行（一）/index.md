@@ -201,4 +201,30 @@ W_1 &= Z_1^h B_1^r \quad \text{and} \quad W_2 = Z_2^h B_2^r, \cr
 
 [^2]: 参考我的这篇[互联网络（一）](https://my-webpage-adu.pages.dev/posts/interconnect/%E4%BA%92%E8%81%94%E7%BD%91%E7%BB%9C/)
 
-还需要注意的是，在 MLP 块中，整个 Y 仍然是每个 GPU 有备份。
+此外，还需注意一点：在 MLP 块中，完整的 $Y$ 仍然在每个 GPU 上都有备份。为解决这一问题，可将 $Y$ 也按 $s$ 维度切分为 $Y_1$、$Y_2$。不过，在计算 $\text{GeLU}$ 之前，仍需执行一次 all-gather 操作。本文的做法是将这次 all-gather 与反向传播中计算 $Y$ 的梯度（该梯度的计算仅需 $A$ 即可完成）进行重叠，从而降低通信延迟[^3]。
+
+[^3]: 这种做法更像是一种工程技巧，一定程度上破坏了序列并行结构的简洁与自然。
+
+Attention 块与 MLP 块类似，这里就不赘述了，论文中其实也只是以 MLP 块举例。
+
+### 合计
+
+采用“序列并行+张量并行”后，Transformer 架构中中间值的显存占用变为：
+
+$$
+\text{Total}=sbh(\frac{10}{t}+\frac{24}{t}+\frac{5as}{ht})=\frac{sbh}{t}(34+\frac{5as}{h})
+$$
+
+## 后记采用激活重计算
+
+上述的显存占用公式中，其实最后一项:
+
+$$\frac{sbh}{t}(5\frac{as}{h})$$ 
+
+占用的显存显著大于前面的常数项。为了量化这一点，让我们考虑一下 GPT-3 和 MT-NLG 模型。对于 GPT-3，$a = 96$，$s = 2048$，$h = 12288$，因此 $\frac{5as}{h} = 80$。对于 MT-NLG，$a = 128$，$s = 2048$，$h = 20480$，所以 $\frac{5as}{h} = 64$。
+
+所以，可以将 $\frac{sbh}{t}(5\frac{as}{h})$ 进行激活重计算[^4]，从而达到显存开销和训练时间开销的一种权衡。
+
+[^4]: 激活重计算参看我的这篇文章 [Transformer 模型 GPU 显存分析（一）：训练](https://my-webpage-adu.pages.dev/posts/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E6%98%BE%E5%AD%98%E5%92%8Cflops%E5%88%86%E6%9E%90/transformer%E6%A8%A1%E5%9E%8B%E7%9A%84gpu%E6%98%BE%E5%AD%98%E4%BD%BF%E7%94%A8%E5%88%86%E6%9E%90%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9A%E8%AE%AD%E7%BB%83/)。<br>
+我觉得叫中间值重计算可能更好。
+
