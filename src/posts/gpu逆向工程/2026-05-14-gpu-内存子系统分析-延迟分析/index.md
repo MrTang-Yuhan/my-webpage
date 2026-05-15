@@ -134,7 +134,7 @@ FFMA R5,  R5,  R20, R21
 
 # 脚本
 
-## 锁定 GPU 和显存频率的脚本
+## 锁定gpu和显存频率的脚本
 
 `gpu_clock_lock.sh`
 ```shell
