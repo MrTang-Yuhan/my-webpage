@@ -55,5 +55,21 @@ FFMA R5,  R5,  R20, R21
 
 使用的平台是 NVIDIA 5080 GPU，Compute Capability 为 sm_120。
 
+测量前记得:
+
+- 锁定 gpu 和 Memory 的频率
+  
+  - 通过 `nvidia-smi lgc gpu_clocks` 锁定 gpu 频率
+  - 通过 `nvidia-smi lmc mem_clocks` 锁定内存频率
+
+- 避免使用 shared memory
+
+
+1[](#L1)
+
+
+
+
+
 
 
