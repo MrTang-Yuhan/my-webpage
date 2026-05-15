@@ -150,3 +150,5 @@ $$
 $$
 \text{Total}=sbh(10+\frac{24}{t}+\frac{5as}{ht})
 $$
+
+## 采用序列并行 + 张量并行的 Transformer 架构
