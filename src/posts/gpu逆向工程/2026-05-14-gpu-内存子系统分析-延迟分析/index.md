@@ -51,7 +51,7 @@ FFMA R5,  R5,  R20, R21
 
 # 内存子系统的 True Latency
 
-测量内存子系统的True Latency
+测量内存子系统的 True Latency
 
 ## L1，L2 和 DRAM
 
