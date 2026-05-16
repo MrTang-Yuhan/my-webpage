@@ -111,7 +111,7 @@ FFMA R5,  R5,  R20, R21
 ![](img/result_l2_latency_pchase_sm1000_mem14800.png)
 ![](img/result_l2_latency_pchase_sm2950_mem14800.png)
 
-#### 结论
+### 结论
 
 | 组件 | SM 997 / Mem 14801  | SM 2932 / Mem 14801 | SM 997 / Mem 14801 (bypass L1) | SM 2947 / Mem 14801 (bypass L1) |
 |------|---------------------|---------------------|---------------------| ---------------------|  
@@ -404,7 +404,7 @@ clean:
 
 # 代码
 
-### 不旁路 L1 测量 True Latency
+## 不旁路 L1 测量 True Latency
 
 <a id="not_bypass_l1_true_latency"></a>
 
