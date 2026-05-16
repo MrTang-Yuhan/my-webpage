@@ -404,7 +404,7 @@ clean:
 
 # 代码
 
-### 不旁路 L1
+### 不旁路 L1 测量 True Latency
 
 <a id="not_bypass_l1_true_latency"></a>
 
@@ -782,7 +782,7 @@ int main() {
 }
 ```
 
-## 旁路 L1
+## 旁路 L1 测量 True Latency
 
 <a id="bypass_l1_true_latency"></a>
 
