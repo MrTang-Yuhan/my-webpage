@@ -18,12 +18,14 @@ tags:
 True Latency 反映在无法并行处理情况下的延迟。
 
   例如：
+
 ```assembly
 FFMA R0, R0, R1, R2
 FFMA R0, R0, R1, R2
 FFMA R0, R0, R1, R2
 FFMA R0, R0, R1, R2
 ```
+
 每条指令都读写 R0，所以第 2 条必须等第 1 条的 R0 结果可用，第 3 条必须等第 2 条，以此类推。
 
 这种情况下，硬件不能通过流水线重叠来隐藏延迟。
@@ -49,8 +51,7 @@ FFMA R5,  R5,  R20, R21
 
 # 内存子系统的 True Latency
 
-## L1，L2 和 DRAM 
-
+## L1，L2 和 DRAM
 
 ### 设置
 
@@ -61,16 +62,18 @@ FFMA R5,  R5,  R20, R21
 测量前请注意以下事项：
 
 1. **锁定 GPU 和显存频率**
-   - 使用 `nvidia-smi -lgc <gpu_clocks>` 锁定 GPU 频率
-   - 使用 `nvidia-smi -lmc <mem_clocks>` 锁定显存频率
-   - 请使用脚本或者命令 `nvidia-smi dmon` 查看当前 GPU 频率和显存频率[^1]
-   - [锁定 GPU 和显存频率的脚本](#lock_gpu_mem_clock)
+
+   * 使用 `nvidia-smi -lgc <gpu_clocks>` 锁定 GPU 频率
+   * 使用 `nvidia-smi -lmc <mem_clocks>` 锁定显存频率
+   * 请使用脚本或者命令 `nvidia-smi dmon` 查看当前 GPU 频率和显存频率[^1]
+   * [锁定 GPU 和显存频率的脚本](#lock_gpu_mem_clock)
 
 [^1]: 使用 `nvidia-smi` 命令配置的频率不一定是实际运行时的频率。当 CUDA 应用启动后，已配置的频率仍可能动态变化。因此，每次运行 CUDA 程序时，都应在程序执行期间再次检查当前设备频率以进行确认。
 
 2. **避免使用共享内存（Shared Memory）**
-   - 在代码中确保不通过 `__shared__` 分配共享内存
-   - 通过 CUDA 编程接口，尽可能将统一的 L1 / 共享内存空间分配给 L1 缓存：
+
+   * 在代码中确保不通过 `__shared__` 分配共享内存
+   * 通过 CUDA 编程接口，尽可能将统一的 L1 / 共享内存空间分配给 L1 缓存：
 
    ```cuda
    // 尽量把统一空间划分给 L1 cache
@@ -80,13 +83,12 @@ FFMA R5,  R5,  R20, R21
        cudaSharedmemCarveoutMaxL1
    );
    ```
-
 3. **PTX 运算符决定是否绕过 L1 访问**
    在 CUDA 代码中内嵌 PTX 指令，可以指定访存操作是否绕过 L1 缓存。
-   - `.ca`：允许在各级缓存（L1 和 L2）中进行缓存[^2]
-   - `.cg`：仅在 L2 及更低层级缓存中分配，绕过 L1[^3]
 
-[^2]: 各级缓存中的数据，可能会被再次访问。<br>
+   * `.ca`：允许在各级缓存（L1 和 L2）中进行缓存[^2](各级缓存中的数据，可能会被再次访问。<br>)
+   * `.cg`：仅在 L2 及更低层级缓存中分配，绕过 L1[^3]
+
 默认的加载指令缓存操作为 ld.ca，它会在所有缓存层级（L1 和 L2）中分配缓存行，并采用常规的逐出策略。全局数据在 L2 层级上是一致的，但对于全局数据而言，多个 L1 缓存之间并不保持一致。如果一个线程通过其 L1 缓存向全局内存写入数据，而另一个线程通过另一个 L1 缓存使用 ld.ca 指令读取该地址的数据，那么第二个线程可能会读到过时的 L1 缓存数据，而不是第一个线程写入的数据。因此，驱动程序必须在相互依赖的并行线程网格之间，对全局数据的 L1 缓存行进行作废操作。这样，第一个网格程序写入的数据，就能够被第二个网格程序通过默认的 ld.ca 加载指令（该指令会将数据缓存在 L1 中）正确地获取到。
 
 [^3]: 全局层级的缓存（仅在 L2 及更低层级缓存，不包含 L1）。<br>
@@ -94,32 +96,7 @@ FFMA R5,  R5,  R20, R21
 
 ### 测试结果
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+![](img/result_l1_latency_pchase_sm1000_mem14800.png)
 
 
 
@@ -136,13 +113,14 @@ FFMA R5,  R5,  R20, R21
 
 [CUDA 官方 PTX ISA](https://docs.nvidia.com/cuda/parallel-thread-execution/index.html)
 
-
 # 脚本
 
 <a id="lock_gpu_mem_clock"></a>
+
 ## 锁定 GPU 和显存频率的脚本
 
 `gpu_clock_lock.sh`
+
 ```shell
 #!/usr/bin/env bash
 set -euo pipefail
@@ -297,7 +275,3 @@ case "${ACTION}" in
         ;;
 esac
 ```
-
-
-
-
