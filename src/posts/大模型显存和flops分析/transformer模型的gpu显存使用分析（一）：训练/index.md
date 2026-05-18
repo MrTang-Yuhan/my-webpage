@@ -21,8 +21,8 @@ $$C \approx \tau T = 6PD$$
 
 其中：
 
-* $C$ 是训练 Transformer 模型所需的计算量，单位为总浮点运算次数
-* $C = C*{\text{forward}} + C*{\text{backward}}$
+* $C$ 是训练 Transformer 模型所需的**计算量**，单位为总浮点运算次数 FLOPs
+* $C = C_{\text{forward}} + C_{\text{backward}}$
 * $C_{\text{forward}} \approx 2PD$
 * $C_{\text{backward}} \approx 4PD$
 * $\tau$ 是你的硬件设置的聚合吞吐量（$\tau = (\text{GPU 数量}) \times (\text{每 GPU 实际 FLOPS})$），单位为 FLOPS
@@ -162,7 +162,7 @@ $$
 
 ## 分片优化器
 
-优化器巨大的内存开销是使用分片优化器（如 ZeRO 和 ESDP）的主要动机。这种分片策略可以将优化器开销降低到原来的 $\frac{1}{\text{GPU 数量}}$，这就是为什么某个模型配置在大规模集群上可以运行，但在小规模集群上却会出现内存不足（OOM）的原因。如果你想计算使用分片优化器训练所需的内存开销，你需要用到下图中给出的公式。关于分片优化的一些示例计算，请参见 ZeRO 论文中的下图（注意，$P*{os}$、$P*{os+g}$ 和 $P_{os+g+p}$ 通常分别称为 ZeRO-1、ZeRO-2、ZeRO-3。ZeRO-0 通常表示“禁用 ZeRO”）：
+优化器巨大的内存开销是使用分片优化器（如 ZeRO 和 ESDP）的主要动机。这种分片策略可以将优化器开销降低到原来的 $\frac{1}{\text{GPU 数量}}$，这就是为什么某个模型配置在大规模集群上可以运行，但在小规模集群上却会出现内存不足（OOM）的原因。如果你想计算使用分片优化器训练所需的内存开销，你需要用到下图中给出的公式。关于分片优化的一些示例计算，请参见 ZeRO 论文中的下图（注意，$P_{os}$、$P_{os+g}$ 和 $P_{os+g+p}$ 通常分别称为 ZeRO-1、ZeRO-2、ZeRO-3。ZeRO-0 通常表示“禁用 ZeRO”）：
 
 ![](./img/zero_fig.png)
 
@@ -194,8 +194,7 @@ $$
 
 **流水线并行或张量/模型并行：** 这些并行方案将模型的参数拆分到多个 GPU 上。这类方案需要大量的通信开销，但它们减少内存的效果近似为：
 
-$$
-\text{memory}_{\text{w/ parallelism model}} \approx \frac{\text{Model Memory}}{\text{Pipe-Parallel-Size} \times \text{Tensor-Parallel-Size}}
+$$\text{memory}_{\text{w/ parallelism model}} \approx \frac{\text{Model Memory}}{\text{Pipe-Parallel-Size} \times \text{Tensor-Parallel-Size}} 
 $$
 
 $$
