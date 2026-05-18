@@ -4,6 +4,7 @@ const path = require('path');
 const root = process.cwd();
 const postsRoot = path.join(root, 'src', 'posts');
 const adminArchivesPath = path.join(root, '_site', 'admin-archives.json');
+const adminConfigPath = path.join(root, 'src', 'admin', 'config.yml');
 
 function walkIndexFiles(dir, out) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -42,6 +43,9 @@ function listTopLevelArchiveDirs(indexFiles) {
 function main() {
   if (!fs.existsSync(postsRoot)) {
     throw new Error('Missing src/posts directory');
+  }
+  if (!fs.existsSync(adminConfigPath)) {
+    throw new Error('Missing src/admin/config.yml');
   }
 
   const indexFiles = [];
@@ -89,6 +93,11 @@ function main() {
   const actualDirs = Array.from(new Set(parsed)).sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'));
   if (JSON.stringify(expectedDirs) !== JSON.stringify(actualDirs)) {
     throw new Error('admin-archives.json directories mismatch. expected=' + JSON.stringify(expectedDirs) + ' actual=' + JSON.stringify(actualDirs));
+  }
+
+  const configText = fs.readFileSync(adminConfigPath, 'utf8');
+  if (!/name:\s*body[\s\S]*?widget:\s*markdown[\s\S]*?modes:\s*\n\s*-\s*raw\b/.test(configText)) {
+    throw new Error('posts body markdown widget must be locked to modes: [raw] to prevent RichText serializer rewrites.');
   }
 
   console.log(`Admin checks passed: ${indexFiles.length} posts, ${actualDirs.length} archive dirs.`);

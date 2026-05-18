@@ -68,7 +68,8 @@
 
 ### Markdown / HTML / 公式 / 脚注
 
-- 编辑器正文字段支持 Markdown。
+- 编辑器正文字段以 Markdown 源码为权威格式，并限制为 Markdown-only 编辑。
+- RichText/所见即所得模式不参与保存链路，避免模式切换时把 `_`、`-`、列表 marker 或强调 marker 自动规范化。
 - Eleventy 与后台预览均启用 `markdown-it` 的 `html: true`，允许合法内联/块级 HTML。
 - 后台预览支持：Markdown、HTML、脚注、KaTeX、代码块、表格、图片。
 

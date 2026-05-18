@@ -28,6 +28,7 @@
     <div class="admin-tip">
       <p><strong>写作能力：</strong>支持 Markdown、内联/块级 HTML、脚注、KaTeX 公式、代码块、表格、图片。</p>
       <p><strong>归档目录：</strong><code>archive</code> 字段可直接输入新目录名；文章将保存到 <code>src/posts/&lt;archive&gt;/&lt;slug&gt;/index.md</code>。</p>
+      <p><strong>正文编辑：</strong>Markdown 源码是权威格式；后台已禁用 RichText 切换，避免保存时自动改写 <code>_</code>、<code>-</code>、列表和强调标记。</p>
       <p><strong>图片上传：</strong>当前集合配置会将图片存到文章目录下的 <code>img</code>，正文使用 <code>./img/文件名</code> 引用。</p>
       <p><strong>发布流程：</strong>先保存为草稿（Draft），审核后点击 Publish；发布模式为 Editorial Workflow，提交到 GitHub 仓库。</p>
     </div>
@@ -557,6 +558,7 @@
             const shouldHide = isPostsEditorRoute();
             document.body.classList.toggle('cms-editor-mode', shouldHide);
             syncArchiveMovePanel();
+            enforceMarkdownOnlyBodyEditor();
             const tablists = Array.from(document.querySelectorAll('[role="tablist"]'));
             tablists.forEach(function(tablist) {
               const tabs = Array.from(tablist.querySelectorAll('[role="tab"]'));
@@ -588,6 +590,38 @@
           } catch (_) {
             // Keep CMS UI available if tab sync fails.
           }
+        }
+
+        function enforceMarkdownOnlyBodyEditor() {
+          if (!isPostsEditorRoute()) return;
+          const controls = Array.from(document.querySelectorAll('button, [role="button"], [role="tab"]'));
+          controls.forEach(function(control) {
+            const label = [
+              control.textContent || '',
+              control.getAttribute('aria-label') || '',
+              control.getAttribute('title') || ''
+            ].join(' ').trim().toLowerCase();
+            if (!label) return;
+
+            const isRichText = /rich\s*text|richtext|wysiwyg|visual|富文本|所见即所得/.test(label);
+            if (isRichText) {
+              control.setAttribute('aria-hidden', 'true');
+              control.setAttribute('tabindex', '-1');
+              control.style.display = 'none';
+              control.disabled = true;
+              return;
+            }
+
+            const isMarkdownMode = /markdown|raw|source|源码/.test(label);
+            const isSelected = control.getAttribute('aria-selected') === 'true' ||
+              control.getAttribute('aria-pressed') === 'true' ||
+              /\bactive\b/.test(String(control.className || ''));
+            if (isMarkdownMode && !isSelected && typeof control.click === 'function') {
+              try {
+                control.click();
+              } catch (_) {}
+            }
+          });
         }
 
         window.addEventListener('hashchange', syncEditorTabsVisibility);
