@@ -66,3 +66,12 @@ Host my_device2
   Port 22
   IdentityFile C:\Users\i26298\.ssh\id_ed25519
 ```
+
+- asd
+- asdas
+
+- asd 
+
+$$
+asdads_{asd} = a_t
+$$
