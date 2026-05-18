@@ -28,7 +28,7 @@
     <div class="admin-tip">
       <p><strong>写作能力：</strong>支持 Markdown、内联/块级 HTML、脚注、KaTeX 公式、代码块、表格、图片。</p>
       <p><strong>归档目录：</strong><code>archive</code> 字段可直接输入新目录名；文章将保存到 <code>src/posts/&lt;archive&gt;/&lt;slug&gt;/index.md</code>。</p>
-      <p><strong>正文编辑：</strong>Markdown 与 Rich Text 均可使用；Rich Text 切回 Markdown 时可能规范化 <code>_</code>、<code>-</code>、列表和强调标记，发布前建议回到 Markdown 检查源码。</p>
+      <p><strong>正文编辑：</strong>正文已锁定为 Markdown 源码模式（Raw only），不提供 Rich Text/WYSIWYG 切换，避免源码标记被自动改写。</p>
       <p><strong>图片上传：</strong>当前集合配置会将图片存到文章目录下的 <code>img</code>，正文使用 <code>./img/文件名</code> 引用。</p>
       <p><strong>发布流程：</strong>先保存为草稿（Draft），审核后点击 Publish；发布模式为 Editorial Workflow，提交到 GitHub 仓库。</p>
     </div>
@@ -558,7 +558,8 @@
             const shouldHide = isPostsEditorRoute();
             document.body.classList.toggle('cms-editor-mode', shouldHide);
             syncArchiveMovePanel();
-            syncMarkdownSerializerWarning();
+            syncMarkdownImageInsertTool();
+            syncMarkdownModeHints();
             const tablists = Array.from(document.querySelectorAll('[role="tablist"]'));
             tablists.forEach(function(tablist) {
               const tabs = Array.from(tablist.querySelectorAll('[role="tab"]'));
@@ -592,93 +593,113 @@
           }
         }
 
-        function ensureMarkdownSerializerWarning() {
-          let warning = document.getElementById('markdown-serializer-warning');
-          if (warning) return warning;
-          warning = document.createElement('div');
-          warning.id = 'markdown-serializer-warning';
-          warning.setAttribute('role', 'status');
-          warning.style.display = 'none';
-          warning.style.margin = '10px 14px';
-          warning.style.padding = '10px 12px';
-          warning.style.border = '1px solid #f59e0b';
-          warning.style.borderRadius = '8px';
-          warning.style.background = '#fffbeb';
-          warning.style.color = '#92400e';
-          warning.style.fontSize = '14px';
-          warning.textContent = '已拦截并回滚 Rich Text 序列化导致的 Markdown 风格改写（如 _x_ -> *x*、- item -> * item）。请在 Markdown 模式下继续编辑并检查源码。';
-          const anchor = document.querySelector('.admin-tip');
-          if (anchor && anchor.parentNode) {
-            anchor.parentNode.insertBefore(warning, anchor.nextSibling);
-          } else {
-            document.body.insertBefore(warning, document.body.firstChild);
+        function findBodyMarkdownTextarea() {
+          const textareas = Array.from(document.querySelectorAll('textarea'));
+          for (let i = 0; i < textareas.length; i += 1) {
+            const textarea = textareas[i];
+            const fieldEl = textarea.closest('[data-slate-editor], [class*="StyledWidget"], [class*="Field"]');
+            const labelEl = fieldEl ? fieldEl.querySelector('label') : null;
+            const label = String((labelEl && labelEl.textContent) || '').trim();
+            if (label.indexOf('正文') >= 0 || label.toLowerCase().indexOf('body') >= 0) return textarea;
           }
-          return warning;
+          return textareas[0] || null;
         }
 
-        function getMarkdownTextAreas() {
-          return Array.from(document.querySelectorAll('textarea')).filter(function(textarea) {
-            const value = String(textarea.value || '');
-            if (value.length < 8) return false;
-            return /(^|\n)\s*[-*]\s+\S/.test(value) ||
-              /(^|[^\\])[_*][^_*]+[_*]/.test(value) ||
-              /```|#{1,6}\s|!\[[^\]]*\]\(|\[[^\]]+\]\(/.test(value);
-          });
+        function normalizeImagePath(input) {
+          const raw = String(input || '').trim().replace(/^['"`]+|['"`]+$/g, '');
+          if (!raw) return '';
+          if (/^(?:https?:\/\/|data:|blob:|\/)/i.test(raw)) return raw;
+          const cleaned = raw.replace(/\\/g, '/').replace(/^\.?\/*/, '');
+          if (!cleaned) return '';
+          if (cleaned.indexOf('img/') === 0) return './' + cleaned;
+          return './img/' + cleaned;
         }
 
-        function normalizeSerializerStyle(value) {
-          return String(value || '')
-            .replace(/(^|\n)(\s*)\*\s+/g, '$1$2- ')
-            .replace(/(^|[^\\])\*([^*\n]+)\*/g, '$1_$2_');
+        function insertMarkdownAtCursor(textarea, snippet) {
+          if (!textarea) return false;
+          const value = String(textarea.value || '');
+          const start = typeof textarea.selectionStart === 'number' ? textarea.selectionStart : value.length;
+          const end = typeof textarea.selectionEnd === 'number' ? textarea.selectionEnd : value.length;
+          const next = value.slice(0, start) + snippet + value.slice(end);
+          textarea.focus();
+          textarea.value = next;
+          const caret = start + snippet.length;
+          if (typeof textarea.setSelectionRange === 'function') {
+            textarea.setSelectionRange(caret, caret);
+          }
+          textarea.dispatchEvent(new Event('input', { bubbles: true }));
+          textarea.dispatchEvent(new Event('change', { bubbles: true }));
+          return true;
         }
 
-        function looksLikeSerializerStyleChange(prev, next) {
-          if (!prev || !next || prev === next) return false;
-          const normalizedPrev = normalizeSerializerStyle(prev);
-          const normalizedNext = normalizeSerializerStyle(next);
-          if (normalizedPrev !== normalizedNext) return false;
-          return /(^|\n)\s*[-*]\s+/.test(prev + '\n' + next) ||
-            /(^|[^\\])[_*][^_*]+[_*]/.test(prev + '\n' + next);
+        function buildMarkdownImageSnippet() {
+          const rawPath = window.prompt('输入图片文件名或路径（将自动转为 ./img/...）', '');
+          if (rawPath == null) return '';
+          const normalizedPath = normalizeImagePath(rawPath);
+          if (!normalizedPath) return '';
+          const alt = String(window.prompt('输入图片描述（可留空）', '') || '').trim();
+          return '![' + alt + '](' + normalizedPath + ')';
         }
 
-        const markdownTextareaSnapshots = new WeakMap();
-
-        function rollbackSerializerStyleChange(textarea, previousValue) {
-          textarea.dataset.serializerRollback = '1';
-          textarea.value = previousValue;
-          try {
-            textarea.dispatchEvent(new Event('input', { bubbles: true }));
-          } catch (_) {}
-          textarea.dataset.serializerRollback = '';
-        }
-
-        function syncMarkdownSerializerWarning() {
-          if (!isPostsEditorRoute()) return;
-          const warning = ensureMarkdownSerializerWarning();
-          getMarkdownTextAreas().forEach(function(textarea) {
-            const current = String(textarea.value || '');
-            const previous = markdownTextareaSnapshots.get(textarea);
-            if (previous && looksLikeSerializerStyleChange(previous, current)) {
-              warning.style.display = '';
-              rollbackSerializerStyleChange(textarea, previous);
-              markdownTextareaSnapshots.set(textarea, previous);
+        function ensureMarkdownImageInsertTool() {
+          let panel = document.getElementById('markdown-image-insert-tool');
+          if (panel) return panel;
+          panel = document.createElement('section');
+          panel.id = 'markdown-image-insert-tool';
+          panel.style.margin = '10px 14px';
+          panel.style.padding = '10px 12px';
+          panel.style.border = '1px solid #cbd5e1';
+          panel.style.borderRadius = '8px';
+          panel.style.background = '#ffffff';
+          panel.style.fontSize = '14px';
+          panel.innerHTML =
+            '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+              '<button id="insert-markdown-image-btn" type="button" style="padding:7px 10px;border:0;border-radius:6px;background:#0f6c73;color:#fff;cursor:pointer;">插入图片</button>' +
+              '<span style="color:#475569;">在正文光标处插入 <code>![描述](./img/文件名)</code></span>' +
+            '</div>' +
+            '<div id="insert-markdown-image-status" style="margin-top:8px;color:#475569;"></div>';
+          const anchor = document.getElementById('archive-move-panel') || document.querySelector('.admin-tip');
+          if (anchor && anchor.parentNode) {
+            anchor.parentNode.insertBefore(panel, anchor.nextSibling);
+          } else {
+            document.body.insertBefore(panel, document.body.firstChild);
+          }
+          const button = panel.querySelector('#insert-markdown-image-btn');
+          const status = panel.querySelector('#insert-markdown-image-status');
+          button.addEventListener('click', function () {
+            const textarea = findBodyMarkdownTextarea();
+            if (!textarea) {
+              status.style.color = '#b91c1c';
+              status.textContent = '未找到正文字段，请先进入文章编辑页。';
               return;
             }
-            markdownTextareaSnapshots.set(textarea, current);
-            if (textarea.dataset.markdownSerializerGuard === '1') return;
-            textarea.dataset.markdownSerializerGuard = '1';
-            textarea.addEventListener('input', function() {
-              if (textarea.dataset.serializerRollback === '1') return;
-              const next = String(textarea.value || '');
-              const before = markdownTextareaSnapshots.get(textarea);
-              if (before && looksLikeSerializerStyleChange(before, next)) {
-                ensureMarkdownSerializerWarning().style.display = '';
-                rollbackSerializerStyleChange(textarea, before);
-                markdownTextareaSnapshots.set(textarea, before);
-                return;
-              }
-              markdownTextareaSnapshots.set(textarea, next);
-            });
+            const snippet = buildMarkdownImageSnippet();
+            if (!snippet) return;
+            const ok = insertMarkdownAtCursor(textarea, snippet);
+            if (!ok) {
+              status.style.color = '#b91c1c';
+              status.textContent = '插入失败，请手动粘贴 Markdown 图片语法。';
+              return;
+            }
+            status.style.color = '#065f46';
+            status.textContent = '已插入：' + snippet;
+          });
+          return panel;
+        }
+
+        function syncMarkdownImageInsertTool() {
+          const panel = ensureMarkdownImageInsertTool();
+          panel.style.display = isPostsEditorRoute() ? '' : 'none';
+        }
+
+        function syncMarkdownModeHints() {
+          const tabs = Array.from(document.querySelectorAll('[role="tab"]'));
+          tabs.forEach(function(tab) {
+            const text = String(tab.textContent || '').trim().toLowerCase();
+            if (text === 'rich text' || text === 'wysiwyg' || text === '富文本') {
+              tab.style.display = 'none';
+              tab.setAttribute('aria-hidden', 'true');
+            }
           });
         }
 

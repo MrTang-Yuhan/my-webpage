@@ -68,9 +68,9 @@
 
 ### Markdown / HTML / 公式 / 脚注
 
-- 编辑器正文字段支持 Markdown 与 Rich Text。
-- Markdown 源码是最终保存格式；Rich Text 切回 Markdown 时可能规范化 `_`、`-`、列表 marker 或强调 marker。
-- 发布前建议切回 Markdown 检查源码，尤其是强调、列表、脚注、公式和内联 HTML。
+- 编辑器正文字段已锁定为 Markdown 源码模式（`modes: [raw]`），不提供 Rich Text/WYSIWYG 切换。
+- 正文不会因模式切换触发 serializer 风格改写，`_强调_`、`- item` 等 Markdown 原文可稳定保留。
+- 后台提供“插入图片”按钮，可在光标处插入 `![描述](./img/文件名)`。
 - Eleventy 与后台预览均启用 `markdown-it` 的 `html: true`，允许合法内联/块级 HTML。
 - 后台预览支持：Markdown、HTML、脚注、KaTeX、代码块、表格、图片。
 
@@ -78,6 +78,7 @@
 
 - posts 集合配置：`media_folder: img`、`public_folder: ./img`。
 - 新建/编辑文章时，图片会写入该文章目录下的 `img` 文件夹，并以 `./img/...` 引用。
+- Markdown-only 编辑下建议使用后台“插入图片”工具快速生成 `![描述](./img/<filename>)` 语法。
 - 若后台环境或插件对动态目录行为存在差异，可手动确认引用路径为 `./img/<filename>`。
 
 ### 草稿与发布

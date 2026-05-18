@@ -35,9 +35,8 @@
 
 ## 4. Markdown / HTML / 公式 / 脚注
 
-- 正文字段应同时保留 Markdown 与 Rich Text 模式。
-- 从 Rich Text 切回 Markdown 后，保存前应检查 `_`、`-`、列表 marker 或强调 marker 是否被 serializer 规范化。
-- 如检测到典型 serializer 风格变化，后台应显示非阻断提示；用户仍可继续编辑或保存。
+- 正文字段应锁定为 Markdown raw-only（`modes: [raw]`），不显示 Rich Text/WYSIWYG 切换。
+- 编辑过程中 `_强调_`、`- item`、列表 marker 与强调 marker 不应被模式切换改写。
 - Markdown 标题、列表、引用、代码块显示正常。
 - 合法内联/块级 HTML 在预览中可渲染。
 - `$...$` 与 `$$...$$`（含多行块写法）可渲染。
@@ -46,6 +45,7 @@
 ## 5. 图片与媒体
 
 - 上传图片成功，无权限或路径错误。
+- 正文编辑区应有“插入图片”工具，点击后可在光标处插入 Markdown 图片语法。
 - 图片引用路径为 `./img/<filename>`。
 - 预览中图片可显示。
 - 对含大媒体（>1MB）的文章执行归档迁移时应成功（服务端迁移通过 Git tree/blob 方式，不依赖浏览器 Contents API 文件内容）。

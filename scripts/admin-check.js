@@ -99,8 +99,17 @@ function main() {
   if (!/name:\s*body[\s\S]*?widget:\s*markdown\b/.test(configText)) {
     throw new Error('posts body field must remain a markdown widget.');
   }
-  if (/name:\s*body[\s\S]*?widget:\s*markdown[\s\S]*?modes:\s*\n\s*-\s*raw\b/.test(configText)) {
-    throw new Error('posts body markdown widget must not be locked to modes: [raw]; Rich Text should remain available.');
+  if (!/name:\s*body[\s\S]*?widget:\s*markdown[\s\S]*?modes:\s*\n\s*-\s*raw\b/.test(configText)) {
+    throw new Error('posts body markdown widget must be locked to modes: [raw].');
+  }
+
+  const adminIndexPath = path.join(root, 'src', 'admin', 'index.html');
+  if (!fs.existsSync(adminIndexPath)) {
+    throw new Error('Missing src/admin/index.html');
+  }
+  const adminHtml = fs.readFileSync(adminIndexPath, 'utf8');
+  if (!/markdown-image-insert-tool/.test(adminHtml) || !/insert-markdown-image-btn/.test(adminHtml)) {
+    throw new Error('Markdown image insert tool markers are missing in src/admin/index.html.');
   }
 
   console.log(`Admin checks passed: ${indexFiles.length} posts, ${actualDirs.length} archive dirs.`);
