@@ -75,3 +75,5 @@ Host my_device2
 $$
 asdads_{asd} = a_t
 $$
+
+![](result_l2_latency_pchase_sm1000_mem14800.png)
