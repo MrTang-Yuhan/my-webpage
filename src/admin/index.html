@@ -29,7 +29,7 @@
       <p><strong>写作能力：</strong>支持 Markdown、内联/块级 HTML、脚注、KaTeX 公式、代码块、表格、图片。</p>
       <p><strong>归档目录：</strong><code>archive</code> 字段可直接输入新目录名；文章将保存到 <code>src/posts/&lt;archive&gt;/&lt;slug&gt;/index.md</code>。</p>
       <p><strong>正文编辑：</strong>Markdown 源码是权威格式；后台已禁用 RichText 切换，避免保存时自动改写 <code>_</code>、<code>-</code>、列表和强调标记。</p>
-      <p><strong>图片上传：</strong>当前集合配置会将图片存到文章目录下的 <code>img</code>，正文使用 <code>./img/文件名</code> 引用。</p>
+      <p><strong>图片上传：</strong>当前集合配置会将图片存到文章目录下的 <code>img</code>，正文使用 <code>./img/文件名</code> 引用；编辑页也支持在线图片 URL 一键插入。</p>
       <p><strong>发布流程：</strong>先保存为草稿（Draft），审核后点击 Publish；发布模式为 Editorial Workflow，提交到 GitHub 仓库。</p>
     </div>
 
@@ -538,6 +538,126 @@
           });
         }
 
+        function ensureInlineImagePanel() {
+          let panel = document.getElementById('inline-image-panel');
+          if (panel) return panel;
+          panel = document.createElement('section');
+          panel.id = 'inline-image-panel';
+          panel.style.margin = '10px 14px';
+          panel.style.padding = '12px';
+          panel.style.border = '1px solid #cbd5e1';
+          panel.style.borderRadius = '8px';
+          panel.style.background = '#ffffff';
+          panel.style.fontSize = '14px';
+          panel.innerHTML =
+            '<div style="font-weight:600;margin-bottom:8px;">在线插图</div>' +
+            '<div style="display:grid;gap:8px;">' +
+              '<input id="inline-image-url" type="url" placeholder="粘贴图片 URL（https://...）" style="padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;" />' +
+              '<input id="inline-image-alt" type="text" placeholder="图片描述（alt，可选）" style="padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;" />' +
+              '<input id="inline-image-title" type="text" placeholder="图片标题（title，可选）" style="padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;" />' +
+              '<button id="inline-image-insert-btn" type="button" style="padding:8px 10px;border:0;border-radius:6px;background:#0f6c73;color:#fff;cursor:pointer;">插入到正文光标处</button>' +
+              '<div id="inline-image-status" style="color:#475569;"></div>' +
+            '</div>';
+          const anchor = document.getElementById('archive-move-panel') || document.querySelector('.admin-tip');
+          if (anchor && anchor.parentNode) {
+            anchor.parentNode.insertBefore(panel, anchor.nextSibling);
+          } else {
+            document.body.insertBefore(panel, document.body.firstChild);
+          }
+          return panel;
+        }
+
+        function findBodyTextarea() {
+          const textareas = Array.from(document.querySelectorAll('textarea'));
+          if (!textareas.length) return null;
+
+          const strongMatch = textareas.find(function (el) {
+            const label = [
+              el.getAttribute('name') || '',
+              el.getAttribute('id') || '',
+              el.getAttribute('aria-label') || '',
+              el.getAttribute('placeholder') || '',
+              el.getAttribute('data-testid') || ''
+            ].join(' ').toLowerCase();
+            return /(^|[\s_-])(body|content|markdown)([\s_-]|$)|正文/.test(label);
+          });
+          if (strongMatch) return strongMatch;
+
+          return textareas
+            .slice()
+            .sort(function (a, b) {
+              return String(b.value || '').length - String(a.value || '').length;
+            })[0] || null;
+        }
+
+        function appendImageMarkdownToBody(markdown) {
+          const textarea = findBodyTextarea();
+          if (!textarea) return false;
+
+          const start = typeof textarea.selectionStart === 'number' ? textarea.selectionStart : textarea.value.length;
+          const end = typeof textarea.selectionEnd === 'number' ? textarea.selectionEnd : textarea.value.length;
+          const before = textarea.value.slice(0, start);
+          const after = textarea.value.slice(end);
+          const needsLeadingBreak = before.length > 0 && !/\n$/.test(before);
+          const needsTrailingBreak = after.length > 0 && !/^\n/.test(after);
+          const insertText = (needsLeadingBreak ? '\n' : '') + markdown + (needsTrailingBreak ? '\n' : '');
+
+          textarea.focus();
+          textarea.value = before + insertText + after;
+          const nextCursor = before.length + insertText.length;
+          textarea.selectionStart = nextCursor;
+          textarea.selectionEnd = nextCursor;
+          textarea.dispatchEvent(new Event('input', { bubbles: true }));
+          textarea.dispatchEvent(new Event('change', { bubbles: true }));
+          return true;
+        }
+
+        function buildImageMarkdown(url, alt, title) {
+          const safeUrl = String(url || '').trim();
+          const safeAlt = String(alt || '').trim().replace(/[\r\n]+/g, ' ');
+          const safeTitle = String(title || '').trim().replace(/[\r\n]+/g, ' ').replace(/"/g, '\\"');
+          if (!safeTitle) return '![' + safeAlt + '](' + safeUrl + ')';
+          return '![' + safeAlt + '](' + safeUrl + ' "' + safeTitle + '")';
+        }
+
+        function syncInlineImageInsertPanel() {
+          const existing = document.getElementById('inline-image-panel');
+          if (!isPostsEditorRoute()) {
+            if (existing) existing.style.display = 'none';
+            return;
+          }
+
+          const panel = ensureInlineImagePanel();
+          panel.style.display = '';
+          const urlInput = panel.querySelector('#inline-image-url');
+          const altInput = panel.querySelector('#inline-image-alt');
+          const titleInput = panel.querySelector('#inline-image-title');
+          const insertBtn = panel.querySelector('#inline-image-insert-btn');
+          const statusEl = panel.querySelector('#inline-image-status');
+
+          if (insertBtn.dataset.bound === '1') return;
+          insertBtn.dataset.bound = '1';
+          insertBtn.addEventListener('click', function() {
+            const url = String(urlInput.value || '').trim();
+            if (!/^https?:\/\//i.test(url)) {
+              statusEl.style.color = '#b91c1c';
+              statusEl.textContent = '请输入以 http:// 或 https:// 开头的图片 URL。';
+              return;
+            }
+
+            const markdown = buildImageMarkdown(url, altInput.value, titleInput.value);
+            const ok = appendImageMarkdownToBody(markdown);
+            if (!ok) {
+              statusEl.style.color = '#b91c1c';
+              statusEl.textContent = '未找到正文编辑框。请先点击正文区域再重试。';
+              return;
+            }
+
+            statusEl.style.color = '#065f46';
+            statusEl.textContent = '已插入图片 Markdown 到正文光标处。';
+          });
+        }
+
         window.CMS.registerWidget('archive-combobox', ArchiveComboboxControl);
         window.CMS.registerPreviewStyle(scopedPreviewCss, { raw: true });
         window.CMS.registerPreviewStyle('https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css');
@@ -546,11 +666,8 @@
         window.CMS.init();
 
         function isPostsEditorRoute() {
-          const hash = String(window.location.hash || "");
-          return (
-            hash.indexOf("#/collections/posts/new") === 0 ||
-            hash.indexOf("#/collections/posts/entries/") === 0
-          );
+          const hash = decodeURIComponent(String(window.location.hash || '')).toLowerCase();
+          return /\/collections\/posts\/(?:new|entries\/)/.test(hash);
         }
 
         function syncEditorTabsVisibility() {
@@ -558,6 +675,7 @@
             const shouldHide = isPostsEditorRoute();
             document.body.classList.toggle('cms-editor-mode', shouldHide);
             syncArchiveMovePanel();
+            syncInlineImageInsertPanel();
             enforceMarkdownOnlyBodyEditor();
             const tablists = Array.from(document.querySelectorAll('[role="tablist"]'));
             tablists.forEach(function(tablist) {
@@ -565,10 +683,10 @@
               const tabLabels = tabs.map(function(t) {
                 return (t.textContent || '').trim().toLowerCase();
               });
-              const targetLabels = ['contents', 'workflow', 'media'];
-              const isTarget = targetLabels.every(function(label) {
-                return tabLabels.includes(label);
-              });
+              const hasContents = tabLabels.includes('contents') || tabLabels.includes('内容');
+              const hasWorkflow = tabLabels.includes('workflow') || tabLabels.includes('工作流');
+              const hasMedia = tabLabels.includes('media') || tabLabels.includes('媒体');
+              const isTarget = (hasContents && hasWorkflow) || (hasContents && hasMedia);
               if (!isTarget) return;
 
               if (shouldHide) {
