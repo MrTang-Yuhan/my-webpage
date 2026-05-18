@@ -36,10 +36,10 @@
       }
       #upload-image-only-panel {
         align-items: center;
-        display: flex;
+        display: inline-flex;
         gap: 8px;
-        margin: 10px 14px;
-        padding: 10px 12px;
+        margin: 0 0 0 8px;
+        padding: 0;
         border: 1px solid #cbd5e1;
         border-radius: 8px;
         background: #ffffff;
@@ -58,6 +58,15 @@
       }
       #upload-image-only-status {
         color: #475569;
+      }
+      [data-cms-editor-upload-toolbar="sticky"] {
+        position: sticky !important;
+        top: 0;
+        z-index: 2147482500;
+        align-items: center;
+        background: #ffffff;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 6px 0;
       }
     </style>
   </head>
@@ -519,13 +528,20 @@
 
         function ensureUploadImageOnlyPanel() {
           let panel = document.getElementById('upload-image-only-panel');
-          if (panel) return panel;
-          panel = document.createElement('section');
-          panel.id = 'upload-image-only-panel';
-          panel.innerHTML =
-            '<button id="upload-image-only-btn" type="button">上传图片</button>' +
-            '<span id="upload-image-only-status">仅上传到当前文章 img/，不修改正文。</span>';
-          ensureEditorToolsHost().appendChild(panel);
+          if (!panel) {
+            panel = document.createElement('span');
+            panel.id = 'upload-image-only-panel';
+            panel.innerHTML =
+              '<button id="upload-image-only-btn" type="button">上传图片</button>' +
+              '<span id="upload-image-only-status">仅上传到当前文章 img/，不修改正文。</span>';
+          }
+          const anchor = findAddComponentToolbarAnchor();
+          if (anchor && panel.parentNode !== anchor) {
+            anchor.setAttribute('data-cms-editor-upload-toolbar', 'sticky');
+            anchor.appendChild(panel);
+          } else if (!anchor && panel.parentNode !== ensureEditorToolsHost()) {
+            ensureEditorToolsHost().appendChild(panel);
+          }
           return panel;
         }
 
@@ -537,7 +553,7 @@
           }
 
           const panel = ensureUploadImageOnlyPanel();
-          panel.style.display = 'flex';
+          panel.style.display = 'inline-flex';
           const button = panel.querySelector('#upload-image-only-btn');
           const statusEl = panel.querySelector('#upload-image-only-status');
           if (button.dataset.bound === '1') return;
@@ -570,6 +586,42 @@
             ].join(' ').trim().toLowerCase();
             return /\bmedia\b|媒体/.test(label);
           }) || null;
+        }
+
+        function findAddComponentToolbarAnchor() {
+          const controls = Array.from(document.querySelectorAll('button, [role="button"], [role="tab"]'));
+          const addComponentControl = controls.find(function(control) {
+            if (control.closest('#cms-editor-tools-host')) return false;
+            if (control.closest('[data-cms-editor-global-nav="hidden"]')) return false;
+            const label = [
+              control.textContent || '',
+              control.getAttribute('aria-label') || '',
+              control.getAttribute('title') || ''
+            ].join(' ').trim().toLowerCase();
+            return /add\s*component|component|组件|添加/.test(label);
+          });
+          if (addComponentControl) {
+            return addComponentControl.parentElement || addComponentControl.parentNode;
+          }
+
+          const textarea = findBodyTextarea();
+          if (!textarea) return null;
+          let node = textarea.parentElement;
+          for (let i = 0; node && i < 5; i += 1, node = node.parentElement) {
+            const buttons = Array.from(node.querySelectorAll('button, [role="button"], [role="tab"]'));
+            const addComponentButton = buttons.find(function(button) {
+              if (button.closest('#cms-editor-tools-host')) return false;
+              if (button.closest('[data-cms-editor-global-nav="hidden"]')) return false;
+              const label = [
+                button.textContent || '',
+                button.getAttribute('aria-label') || '',
+                button.getAttribute('title') || ''
+              ].join(' ').trim().toLowerCase();
+              return /add\s*component|component|组件|添加/.test(label);
+            });
+            if (addComponentButton) return addComponentButton.parentElement || node;
+          }
+          return textarea.parentElement || textarea.parentNode;
         }
 
         function startUploadOnlyMarkdownGuard(snapshot) {
@@ -709,20 +761,18 @@
         function syncGlobalAdminNavVisibility(shouldHide) {
           const previous = Array.from(document.querySelectorAll('[data-cms-editor-global-nav="hidden"]'));
           previous.forEach(function(node) {
-            if (!shouldHide) {
-              node.removeAttribute('data-cms-editor-global-nav');
-              node.style.visibility = '';
-              node.style.height = '';
-              node.style.overflow = '';
-              node.style.margin = '';
-              node.style.padding = '';
-              node.style.border = '';
-            }
+            node.removeAttribute('data-cms-editor-global-nav');
+            node.style.visibility = '';
+            node.style.height = '';
+            node.style.overflow = '';
+            node.style.margin = '';
+            node.style.padding = '';
+            node.style.border = '';
           });
           if (!shouldHide) return;
 
           const candidates = Array.from(document.querySelectorAll(
-            '[role="tablist"], nav, header, [role="navigation"], [class*="Toolbar"], [class*="toolbar"]'
+            '[role="tablist"], nav, [role="navigation"]'
           ));
           candidates.forEach(function(candidate) {
             if (candidate.id === 'cms-editor-tools-host' || candidate.closest('#cms-editor-tools-host')) return;
@@ -734,7 +784,9 @@
             const hasContents = labels.includes('contents') || labels.includes('内容') || /\bcontents\b/.test(flatLabels);
             const hasWorkflow = labels.includes('workflow') || labels.includes('工作流') || /\bworkflow\b/.test(flatLabels);
             const hasMedia = labels.includes('media') || labels.includes('媒体') || /\bmedia\b/.test(flatLabels);
+            const hasEditorActions = /\bsave\b|\bpublish\b|保存|发布/.test(flatLabels);
             const isTarget = (hasContents && hasWorkflow) || (hasContents && hasMedia);
+            if (hasEditorActions) return;
             if (!isTarget) return;
 
             candidate.setAttribute('data-cms-editor-global-nav', 'hidden');

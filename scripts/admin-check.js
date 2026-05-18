@@ -117,6 +117,12 @@ function main() {
   if (!/upload-image-only-panel/.test(adminIndexText) || !/findGlobalMediaButton/.test(adminIndexText)) {
     throw new Error('admin editor must expose an upload-only image button that opens Decap native media.');
   }
+  if (!/findAddComponentToolbarAnchor/.test(adminIndexText) || !/add\\s\*component/.test(adminIndexText)) {
+    throw new Error('admin upload-only image button must mount next to the Add Component toolbar button.');
+  }
+  if (!/data-cms-editor-upload-toolbar/.test(adminIndexText)) {
+    throw new Error('admin upload-only image button toolbar must stay sticky while editing long posts.');
+  }
   if (!/startUploadOnlyMarkdownGuard/.test(adminIndexText)) {
     throw new Error('admin upload-only image button must guard the Markdown body from any edits.');
   }
