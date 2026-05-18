@@ -64,6 +64,4 @@ collections:
       - label: 正文
         name: body
         widget: markdown
-        modes:
-          - raw
         hint: 支持 Markdown 与内联/块级 HTML、脚注、表格、代码块、KaTeX 公式。

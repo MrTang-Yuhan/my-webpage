@@ -28,7 +28,7 @@
     <div class="admin-tip">
       <p><strong>写作能力：</strong>支持 Markdown、内联/块级 HTML、脚注、KaTeX 公式、代码块、表格、图片。</p>
       <p><strong>归档目录：</strong><code>archive</code> 字段可直接输入新目录名；文章将保存到 <code>src/posts/&lt;archive&gt;/&lt;slug&gt;/index.md</code>。</p>
-      <p><strong>正文编辑：</strong>Markdown 源码是权威格式；后台已禁用 RichText 切换，避免保存时自动改写 <code>_</code>、<code>-</code>、列表和强调标记。</p>
+      <p><strong>正文编辑：</strong>Markdown 与 Rich Text 均可使用；Rich Text 切回 Markdown 时可能规范化 <code>_</code>、<code>-</code>、列表和强调标记，发布前建议回到 Markdown 检查源码。</p>
       <p><strong>图片上传：</strong>当前集合配置会将图片存到文章目录下的 <code>img</code>，正文使用 <code>./img/文件名</code> 引用。</p>
       <p><strong>发布流程：</strong>先保存为草稿（Draft），审核后点击 Publish；发布模式为 Editorial Workflow，提交到 GitHub 仓库。</p>
     </div>
@@ -558,7 +558,7 @@
             const shouldHide = isPostsEditorRoute();
             document.body.classList.toggle('cms-editor-mode', shouldHide);
             syncArchiveMovePanel();
-            enforceMarkdownOnlyBodyEditor();
+            syncMarkdownSerializerWarning();
             const tablists = Array.from(document.querySelectorAll('[role="tablist"]'));
             tablists.forEach(function(tablist) {
               const tabs = Array.from(tablist.querySelectorAll('[role="tab"]'));
@@ -592,35 +592,93 @@
           }
         }
 
-        function enforceMarkdownOnlyBodyEditor() {
-          if (!isPostsEditorRoute()) return;
-          const controls = Array.from(document.querySelectorAll('button, [role="button"], [role="tab"]'));
-          controls.forEach(function(control) {
-            const label = [
-              control.textContent || '',
-              control.getAttribute('aria-label') || '',
-              control.getAttribute('title') || ''
-            ].join(' ').trim().toLowerCase();
-            if (!label) return;
+        function ensureMarkdownSerializerWarning() {
+          let warning = document.getElementById('markdown-serializer-warning');
+          if (warning) return warning;
+          warning = document.createElement('div');
+          warning.id = 'markdown-serializer-warning';
+          warning.setAttribute('role', 'status');
+          warning.style.display = 'none';
+          warning.style.margin = '10px 14px';
+          warning.style.padding = '10px 12px';
+          warning.style.border = '1px solid #f59e0b';
+          warning.style.borderRadius = '8px';
+          warning.style.background = '#fffbeb';
+          warning.style.color = '#92400e';
+          warning.style.fontSize = '14px';
+          warning.textContent = '已拦截并回滚 Rich Text 序列化导致的 Markdown 风格改写（如 _x_ -> *x*、- item -> * item）。请在 Markdown 模式下继续编辑并检查源码。';
+          const anchor = document.querySelector('.admin-tip');
+          if (anchor && anchor.parentNode) {
+            anchor.parentNode.insertBefore(warning, anchor.nextSibling);
+          } else {
+            document.body.insertBefore(warning, document.body.firstChild);
+          }
+          return warning;
+        }
 
-            const isRichText = /rich\s*text|richtext|wysiwyg|visual|富文本|所见即所得/.test(label);
-            if (isRichText) {
-              control.setAttribute('aria-hidden', 'true');
-              control.setAttribute('tabindex', '-1');
-              control.style.display = 'none';
-              control.disabled = true;
+        function getMarkdownTextAreas() {
+          return Array.from(document.querySelectorAll('textarea')).filter(function(textarea) {
+            const value = String(textarea.value || '');
+            if (value.length < 8) return false;
+            return /(^|\n)\s*[-*]\s+\S/.test(value) ||
+              /(^|[^\\])[_*][^_*]+[_*]/.test(value) ||
+              /```|#{1,6}\s|!\[[^\]]*\]\(|\[[^\]]+\]\(/.test(value);
+          });
+        }
+
+        function normalizeSerializerStyle(value) {
+          return String(value || '')
+            .replace(/(^|\n)(\s*)\*\s+/g, '$1$2- ')
+            .replace(/(^|[^\\])\*([^*\n]+)\*/g, '$1_$2_');
+        }
+
+        function looksLikeSerializerStyleChange(prev, next) {
+          if (!prev || !next || prev === next) return false;
+          const normalizedPrev = normalizeSerializerStyle(prev);
+          const normalizedNext = normalizeSerializerStyle(next);
+          if (normalizedPrev !== normalizedNext) return false;
+          return /(^|\n)\s*[-*]\s+/.test(prev + '\n' + next) ||
+            /(^|[^\\])[_*][^_*]+[_*]/.test(prev + '\n' + next);
+        }
+
+        const markdownTextareaSnapshots = new WeakMap();
+
+        function rollbackSerializerStyleChange(textarea, previousValue) {
+          textarea.dataset.serializerRollback = '1';
+          textarea.value = previousValue;
+          try {
+            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+          } catch (_) {}
+          textarea.dataset.serializerRollback = '';
+        }
+
+        function syncMarkdownSerializerWarning() {
+          if (!isPostsEditorRoute()) return;
+          const warning = ensureMarkdownSerializerWarning();
+          getMarkdownTextAreas().forEach(function(textarea) {
+            const current = String(textarea.value || '');
+            const previous = markdownTextareaSnapshots.get(textarea);
+            if (previous && looksLikeSerializerStyleChange(previous, current)) {
+              warning.style.display = '';
+              rollbackSerializerStyleChange(textarea, previous);
+              markdownTextareaSnapshots.set(textarea, previous);
               return;
             }
-
-            const isMarkdownMode = /markdown|raw|source|源码/.test(label);
-            const isSelected = control.getAttribute('aria-selected') === 'true' ||
-              control.getAttribute('aria-pressed') === 'true' ||
-              /\bactive\b/.test(String(control.className || ''));
-            if (isMarkdownMode && !isSelected && typeof control.click === 'function') {
-              try {
-                control.click();
-              } catch (_) {}
-            }
+            markdownTextareaSnapshots.set(textarea, current);
+            if (textarea.dataset.markdownSerializerGuard === '1') return;
+            textarea.dataset.markdownSerializerGuard = '1';
+            textarea.addEventListener('input', function() {
+              if (textarea.dataset.serializerRollback === '1') return;
+              const next = String(textarea.value || '');
+              const before = markdownTextareaSnapshots.get(textarea);
+              if (before && looksLikeSerializerStyleChange(before, next)) {
+                ensureMarkdownSerializerWarning().style.display = '';
+                rollbackSerializerStyleChange(textarea, before);
+                markdownTextareaSnapshots.set(textarea, before);
+                return;
+              }
+              markdownTextareaSnapshots.set(textarea, next);
+            });
           });
         }
 

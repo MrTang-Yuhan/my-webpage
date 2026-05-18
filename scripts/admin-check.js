@@ -96,8 +96,11 @@ function main() {
   }
 
   const configText = fs.readFileSync(adminConfigPath, 'utf8');
-  if (!/name:\s*body[\s\S]*?widget:\s*markdown[\s\S]*?modes:\s*\n\s*-\s*raw\b/.test(configText)) {
-    throw new Error('posts body markdown widget must be locked to modes: [raw] to prevent RichText serializer rewrites.');
+  if (!/name:\s*body[\s\S]*?widget:\s*markdown\b/.test(configText)) {
+    throw new Error('posts body field must remain a markdown widget.');
+  }
+  if (/name:\s*body[\s\S]*?widget:\s*markdown[\s\S]*?modes:\s*\n\s*-\s*raw\b/.test(configText)) {
+    throw new Error('posts body markdown widget must not be locked to modes: [raw]; Rich Text should remain available.');
   }
 
   console.log(`Admin checks passed: ${indexFiles.length} posts, ${actualDirs.length} archive dirs.`);

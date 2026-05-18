@@ -35,8 +35,9 @@
 
 ## 4. Markdown / HTML / 公式 / 脚注
 
-- 正文字段应只提供 Markdown 源码编辑，不应出现 RichText/富文本切换入口。
-- Markdown -> 预览 -> 返回编辑不应改写 `_`、`-`、列表 marker 或强调 marker。
+- 正文字段应同时保留 Markdown 与 Rich Text 模式。
+- 从 Rich Text 切回 Markdown 后，保存前应检查 `_`、`-`、列表 marker 或强调 marker 是否被 serializer 规范化。
+- 如检测到典型 serializer 风格变化，后台应显示非阻断提示；用户仍可继续编辑或保存。
 - Markdown 标题、列表、引用、代码块显示正常。
 - 合法内联/块级 HTML 在预览中可渲染。
 - `$...$` 与 `$$...$$`（含多行块写法）可渲染。
