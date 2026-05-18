@@ -18,13 +18,11 @@ tags:
 在本机（即 Windows 系统）中生成 SSH 公钥文件和私钥文件：
 
 ```bash
-
 # 方法1: 生成 ed25519 格式公钥和私钥文件
 ssh-keygen
 
 # 方法2: 生成 rsa 格式公钥和私钥文件
 ssh-keygen -t rsa -b 2048
-
 ```
 
 在 Windows 系统中，生成的公钥和私钥文件默认位于 `C:\Users\用户名\.ssh\` 目录下。
@@ -35,11 +33,9 @@ ssh-keygen -t rsa -b 2048
 
 将公钥中的内容复制到 `~/.ssh/authorized_keys` 文件中。
 
-
 # VSCode config 文件
 
 VSCode 远程连接服务器时，可以配置相应的 config。如下：
-
 
 ## 参考格式
 
@@ -67,11 +63,12 @@ Host my_device2
   IdentityFile C:\Users\i26298\.ssh\id_ed25519
 ```
 
-- asd
-- asdas
-
-- asd 
+* asd
+* asdas
+* asd 
 
 $$
 asdads_{asd} = a_t
 $$
+
+$v_{t}=v_t$
