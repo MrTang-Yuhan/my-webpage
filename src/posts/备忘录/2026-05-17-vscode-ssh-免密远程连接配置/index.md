@@ -67,13 +67,4 @@ Host my_device2
   IdentityFile C:\Users\i26298\.ssh\id_ed25519
 ```
 
-- asd
-- asdas
 
-- asd 
-
-$$
-asdads_{asd} = a_t
-$$
-
-![](img/result_l2_latency_pchase_sm2950_mem14800.png)
