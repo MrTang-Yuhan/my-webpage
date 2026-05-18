@@ -75,3 +75,4 @@ $$a_v$$
 $$a_{v}$$
 
 ![](img/result_l2_latency_pchase_sm2950_mem14800.png)
+a
