@@ -33,7 +33,7 @@ ssh-keygen -t rsa -b 2048
 
 在远程服务器上，`authorized_keys` 文件通常存储在用户的 `.ssh` 目录中。具体路径可能为 `~/.ssh/authorized_keys`。如果没有该文件，新建即可。
 
-将公钥中的内容复制到 `~/.ssh/authorized_keys` 文件中即可。
+将公钥中的内容复制到 `~/.ssh/authorized_keys` 文件中。
 
 
 # VSCode config 文件
