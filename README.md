@@ -68,15 +68,15 @@
 
 ### Markdown / HTML / 公式 / 脚注
 
-- 编辑器正文字段以 Markdown 源码为权威格式，并限制为 Markdown-only 编辑。
-- RichText/所见即所得模式不参与保存链路，避免模式切换时把 `_`、`-`、列表 marker 或强调 marker 自动规范化。
+- 编辑器正文字段以 Markdown 源码为权威格式；Rich Text 仅作为 Decap 原生插图工具入口。
+- 从 Rich Text 返回 Markdown 时，后台会恢复原 Markdown 源码，仅保留新增的 `./img/...` 图片引用，避免 `_`、`-`、列表 marker 或强调 marker 被自动规范化。
 - Eleventy 与后台预览均启用 `markdown-it` 的 `html: true`，允许合法内联/块级 HTML。
 - 后台预览支持：Markdown、HTML、脚注、KaTeX、代码块、表格、图片。
 
 ### 媒体上传
 
 - posts 集合配置：`media_folder: img`、`public_folder: ./img`。
-- 新建/编辑文章时，编辑器里的“在线插入”按钮会将本地图片写入该文章目录下的 `img` 文件夹，并以 `./img/...` 引用。
+- 新建/编辑文章时，使用 Decap 原生 Rich Text 插图工具上传图片；图片会写入该文章目录下的 `img` 文件夹，并以 `./img/...` 引用。
 - 若后台环境或插件对动态目录行为存在差异，可手动确认引用路径为 `./img/<filename>`。
 
 ### 草稿与发布

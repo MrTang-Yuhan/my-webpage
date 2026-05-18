@@ -6,7 +6,6 @@ const postsRoot = path.join(root, 'src', 'posts');
 const adminArchivesPath = path.join(root, '_site', 'admin-archives.json');
 const adminConfigPath = path.join(root, 'src', 'admin', 'config.yml');
 const adminIndexPath = path.join(root, 'src', 'admin', 'index.html');
-const adminUploadImagePath = path.join(root, 'functions', 'api', 'admin', 'upload-image.js');
 
 function walkIndexFiles(dir, out) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -51,9 +50,6 @@ function main() {
   }
   if (!fs.existsSync(adminIndexPath)) {
     throw new Error('Missing src/admin/index.html');
-  }
-  if (!fs.existsSync(adminUploadImagePath)) {
-    throw new Error('Missing functions/api/admin/upload-image.js');
   }
 
   const indexFiles = [];
@@ -104,29 +100,28 @@ function main() {
   }
 
   const configText = fs.readFileSync(adminConfigPath, 'utf8');
-  if (!/name:\s*body[\s\S]*?widget:\s*markdown[\s\S]*?modes:\s*\n\s*-\s*raw\b/.test(configText)) {
-    throw new Error('posts body markdown widget must be locked to modes: [raw] to prevent RichText serializer rewrites.');
+  if (!/name:\s*body[\s\S]*?widget:\s*markdown[\s\S]*?modes:\s*\n\s*-\s*raw\b[\s\S]*?\n\s*-\s*rich_text\b/.test(configText)) {
+    throw new Error('posts body markdown widget must keep raw mode first while exposing rich_text for native image insertion.');
   }
 
   const adminIndexText = fs.readFileSync(adminIndexPath, 'utf8');
-  if (!/inline-image-button-wrap/.test(adminIndexText) || !/在线插入/.test(adminIndexText)) {
-    throw new Error('admin editor must mount the inline local image insert button.');
+  if (/inline-image-button-wrap|inline-image-insert-btn|inline-image-file-input|在线插入|在线插入图片/.test(adminIndexText)) {
+    throw new Error('admin editor must not show the retired custom inline image insert module.');
   }
-  if (/inline-image-url|inline-image-alt|inline-image-title|粘贴图片 URL/.test(adminIndexText)) {
-    throw new Error('admin editor must not show the legacy URL/alt/title inline image panel.');
+  if (/\/api\/admin\/upload-image/.test(adminIndexText)) {
+    throw new Error('admin editor must not call the retired custom upload-image API.');
   }
-  if (!/type="file" accept="image\/\*"/.test(adminIndexText) || !/\/api\/admin\/upload-image/.test(adminIndexText)) {
-    throw new Error('admin editor inline image insert must use local file selection and upload API.');
+  if (!/protectMarkdownSourceForRichTextImages/.test(adminIndexText) || !/restoreMarkdownSourceExceptNewImages/.test(adminIndexText)) {
+    throw new Error('admin editor must protect Markdown source when Rich Text is used only for image insertion.');
+  }
+  if (!/beginRichTextImageSession/.test(adminIndexText) || !/richTextActive/.test(adminIndexText)) {
+    throw new Error('admin editor must lock the Markdown source snapshot for the whole Rich Text image insertion session.');
   }
   if (!/syncGlobalAdminNavVisibility/.test(adminIndexText) || !/data-cms-editor-global-nav/.test(adminIndexText)) {
     throw new Error('admin editor must hide the global CMS navigation on posts editor routes.');
   }
   if (!/MutationObserver\(scheduleEditorChromeSync\)/.test(adminIndexText) || !/hashchange', syncEditorChromeSoon/.test(adminIndexText)) {
     throw new Error('admin editor chrome sync must run across route changes and async CMS rerenders.');
-  }
-  const uploadImageText = fs.readFileSync(adminUploadImagePath, 'utf8');
-  if (!/sanitizePostDir/.test(uploadImageText) || !/\/img\/\$\{filename\}/.test(uploadImageText)) {
-    throw new Error('upload-image API must save images under the current post img directory.');
   }
 
   console.log(`Admin checks passed: ${indexFiles.length} posts, ${actualDirs.length} archive dirs.`);
