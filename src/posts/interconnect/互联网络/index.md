@@ -2,7 +2,7 @@
 layout: post.njk
 archive: interconnect
 post_id: 互联网络
-title: 互联网络（一）
+title: 互联网络（一）：集合通信原语
 date: 2026-04-30
 description: AI 加速卡的互联介绍
 tags:
