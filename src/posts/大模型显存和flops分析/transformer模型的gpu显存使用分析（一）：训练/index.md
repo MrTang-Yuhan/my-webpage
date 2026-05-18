@@ -111,7 +111,9 @@ Adam 很神奇，但它的内存效率非常低。除了需要保存模型参数
 
 ![](./img/activations.png)
 
-其中虚线红线表示 A100-80GB GPU 的内存容量，“present work”表示应用选择性激活重计算后的内存需求。详细信息以及下方公式的推导请参阅《Reducing Activation Recomputation in Large Transformer Models》。
+其中虚线红线表示 A100-80GB GPU 的内存容量，“present work”表示应用选择性激活重计算[^5]后的内存需求。详细信息以及下方公式的推导请参阅《Reducing Activation Recomputation in Large Transformer Models》。
+
+[^5]: 梯度检查点（Gradient Checkpointing）也被称为激活重计算（Activation Recompution）和激活检查点（Activation Checkpointing）。
 
 存储 Transformer 模型激活值所需内存的基本公式如下：
 
