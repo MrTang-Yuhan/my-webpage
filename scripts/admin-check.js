@@ -100,8 +100,11 @@ function main() {
   }
 
   const configText = fs.readFileSync(adminConfigPath, 'utf8');
-  if (!/name:\s*body[\s\S]*?widget:\s*markdown[\s\S]*?modes:\s*\n\s*-\s*raw\b[\s\S]*?\n\s*-\s*rich_text\b/.test(configText)) {
-    throw new Error('posts body markdown widget must keep raw mode first while exposing rich_text for native image insertion.');
+  if (!/name:\s*body[\s\S]*?widget:\s*markdown[\s\S]*?modes:\s*\n\s*-\s*raw\b/.test(configText)) {
+    throw new Error('posts body markdown widget must keep raw mode enabled.');
+  }
+  if (/name:\s*body[\s\S]*?widget:\s*markdown[\s\S]*?modes:\s*[\s\S]*?-\s*rich_text\b/.test(configText)) {
+    throw new Error('posts body markdown widget must not expose Rich Text mode.');
   }
 
   const adminIndexText = fs.readFileSync(adminIndexPath, 'utf8');
@@ -111,11 +114,14 @@ function main() {
   if (/\/api\/admin\/upload-image/.test(adminIndexText)) {
     throw new Error('admin editor must not call the retired custom upload-image API.');
   }
-  if (!/protectMarkdownSourceForRichTextImages/.test(adminIndexText) || !/restoreMarkdownSourceExceptNewImages/.test(adminIndexText)) {
-    throw new Error('admin editor must protect Markdown source when Rich Text is used only for image insertion.');
+  if (!/upload-image-only-panel/.test(adminIndexText) || !/findGlobalMediaButton/.test(adminIndexText)) {
+    throw new Error('admin editor must expose an upload-only image button that opens Decap native media.');
   }
-  if (!/beginRichTextImageSession/.test(adminIndexText) || !/richTextActive/.test(adminIndexText)) {
-    throw new Error('admin editor must lock the Markdown source snapshot for the whole Rich Text image insertion session.');
+  if (!/startUploadOnlyMarkdownGuard/.test(adminIndexText)) {
+    throw new Error('admin upload-only image button must guard the Markdown body from any edits.');
+  }
+  if (/protectMarkdownSourceForRichTextImages|restoreMarkdownSourceExceptNewImages|beginRichTextImageSession|richTextActive/.test(adminIndexText)) {
+    throw new Error('admin editor must not keep Rich Text image insertion guards after disabling Rich Text.');
   }
   if (!/syncGlobalAdminNavVisibility/.test(adminIndexText) || !/data-cms-editor-global-nav/.test(adminIndexText)) {
     throw new Error('admin editor must hide the global CMS navigation on posts editor routes.');

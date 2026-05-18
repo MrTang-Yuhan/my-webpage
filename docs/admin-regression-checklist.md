@@ -35,8 +35,8 @@
 
 ## 4. Markdown / HTML / 公式 / 脚注
 
-- 正文字段应同时提供 Rich Text 与 Markdown 模式；Rich Text 仅用于调用 Decap 原生插图工具。
-- Rich Text 插图后返回 Markdown，不应改写 `_`、`-`、列表 marker 或强调 marker，仅允许新增 `./img/...` 图片引用。
+- 正文字段应只提供 Markdown 源码编辑，不应出现 Rich Text/富文本切换入口。
+- Markdown 编辑不应改写 `_`、`-`、列表 marker 或强调 marker。
 - Markdown 标题、列表、引用、代码块显示正常。
 - 合法内联/块级 HTML 在预览中可渲染。
 - `$...$` 与 `$$...$$`（含多行块写法）可渲染。
@@ -45,7 +45,7 @@
 ## 5. 图片与媒体
 
 - 不显示自定义“在线插入图片 / 在线插入”按钮或 URL/alt/title 大面板。
-- 使用 Decap 原生 Rich Text 插图工具可选择本地图片，上传后图片落到当前文章目录的 `img/` 子目录。
+- 使用文章编辑页“上传图片”按钮可打开 Decap 原生媒体库，上传后图片落到当前文章目录的 `img/` 子目录，正文不应被自动修改。
 - 图片引用路径为 `./img/<filename>`。
 - 预览中图片可显示。
 - 对含大媒体（>1MB）的文章执行归档迁移时应成功（服务端迁移通过 Git tree/blob 方式，不依赖浏览器 Contents API 文件内容）。

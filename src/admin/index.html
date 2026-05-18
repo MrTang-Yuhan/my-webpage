@@ -34,13 +34,38 @@
       body.cms-editor-mode [data-cms-editor-global-nav="hidden"] {
         display: none !important;
       }
+      #upload-image-only-panel {
+        align-items: center;
+        display: flex;
+        gap: 8px;
+        margin: 10px 14px;
+        padding: 10px 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background: #ffffff;
+        color: #334155;
+        font-size: 13px;
+      }
+      #upload-image-only-btn {
+        border: 0;
+        border-radius: 6px;
+        background: #0f6c73;
+        color: #ffffff;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 600;
+        padding: 7px 10px;
+      }
+      #upload-image-only-status {
+        color: #475569;
+      }
     </style>
   </head>
   <body>
     <!-- <div class="admin-tip">
       <p><strong>写作能力：</strong>支持 Markdown、内联/块级 HTML、脚注、KaTeX 公式、代码块、表格、图片。</p>
       <p><strong>归档目录：</strong><code>archive</code> 字段可直接输入新目录名；文章将保存到 <code>src/posts/&lt;archive&gt;/&lt;slug&gt;/index.md</code>。</p>
-      <p><strong>正文编辑：</strong>Markdown 源码是权威格式；Rich Text 仅用于调用原生插图工具，返回源码时会保留原 Markdown 结构。</p>
+      <p><strong>正文编辑：</strong>Markdown 源码是权威格式；Rich Text 已禁用，避免自动改写源码格式。</p>
       <p><strong>图片上传：</strong>当前集合配置会将图片存到文章目录下的 <code>img</code>，正文使用 <code>./img/文件名</code> 引用。</p>
       <p><strong>发布流程：</strong>先保存为草稿（Draft），审核后点击 Publish；发布模式为 Editorial Workflow，提交到 GitHub 仓库。</p>
     </div> -->
@@ -492,6 +517,78 @@
           return panel;
         }
 
+        function ensureUploadImageOnlyPanel() {
+          let panel = document.getElementById('upload-image-only-panel');
+          if (panel) return panel;
+          panel = document.createElement('section');
+          panel.id = 'upload-image-only-panel';
+          panel.innerHTML =
+            '<button id="upload-image-only-btn" type="button">上传图片</button>' +
+            '<span id="upload-image-only-status">仅上传到当前文章 img/，不修改正文。</span>';
+          ensureEditorToolsHost().appendChild(panel);
+          return panel;
+        }
+
+        function syncUploadImageOnlyPanel() {
+          const existing = document.getElementById('upload-image-only-panel');
+          if (!isPostsEditorRoute()) {
+            if (existing) existing.style.display = 'none';
+            return;
+          }
+
+          const panel = ensureUploadImageOnlyPanel();
+          panel.style.display = 'flex';
+          const button = panel.querySelector('#upload-image-only-btn');
+          const statusEl = panel.querySelector('#upload-image-only-status');
+          if (button.dataset.bound === '1') return;
+          button.dataset.bound = '1';
+          button.addEventListener('click', function() {
+            const textarea = findBodyTextarea();
+            const snapshot = textarea ? String(textarea.value || '') : '';
+            const mediaButton = findGlobalMediaButton();
+            if (!mediaButton) {
+              statusEl.style.color = '#b91c1c';
+              statusEl.textContent = '未找到 Decap 原生 Media 上传入口。';
+              return;
+            }
+
+            statusEl.style.color = '#475569';
+            statusEl.textContent = '已打开 Decap 媒体库；上传后正文会保持不变。';
+            startUploadOnlyMarkdownGuard(snapshot);
+            mediaButton.click();
+          });
+        }
+
+        function findGlobalMediaButton() {
+          const controls = Array.from(document.querySelectorAll('button, [role="button"], a'));
+          return controls.find(function(control) {
+            if (control.closest('#cms-editor-tools-host')) return false;
+            const label = [
+              control.textContent || '',
+              control.getAttribute('aria-label') || '',
+              control.getAttribute('title') || ''
+            ].join(' ').trim().toLowerCase();
+            return /\bmedia\b|媒体/.test(label);
+          }) || null;
+        }
+
+        function startUploadOnlyMarkdownGuard(snapshot) {
+          if (!snapshot) return;
+          const startedAt = Date.now();
+          const stopAt = startedAt + 7000;
+          function restoreIfChanged() {
+            if (!isPostsEditorRoute()) return;
+            const textarea = findBodyTextarea();
+            if (textarea && String(textarea.value || '') !== snapshot) {
+              textarea.value = snapshot;
+              textarea.dispatchEvent(new Event('input', { bubbles: true }));
+              textarea.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            if (Date.now() < stopAt) window.setTimeout(restoreIfChanged, 160);
+          }
+          restoreIfChanged();
+        }
+
         async function syncArchiveMovePanel() {
           const entryPath = getRouteEntryPath();
           const parts = getPathParts(entryPath);
@@ -602,7 +699,7 @@
             const toolsHost = document.getElementById('cms-editor-tools-host');
             if (toolsHost && !shouldHide) toolsHost.style.display = 'none';
             syncArchiveMovePanel();
-            protectMarkdownSourceForRichTextImages();
+            syncUploadImageOnlyPanel();
             syncGlobalAdminNavVisibility(shouldHide);
           } catch (_) {
             // Keep CMS UI available if editor chrome sync fails.
@@ -664,155 +761,6 @@
           window.setTimeout(syncEditorTabsVisibility, 120);
           window.setTimeout(syncEditorTabsVisibility, 500);
           window.setTimeout(syncEditorTabsVisibility, 1200);
-        }
-
-        const richTextImageGuard = {
-          raw: '',
-          cursor: 0,
-          richTextActive: false,
-          restoring: false,
-          listenersBound: false
-        };
-
-        function protectMarkdownSourceForRichTextImages() {
-          if (!isPostsEditorRoute()) return;
-          rememberMarkdownSourceState();
-          const controls = Array.from(document.querySelectorAll('button, [role="button"], [role="tab"]'));
-          controls.forEach(function(control) {
-            const label = [
-              control.textContent || '',
-              control.getAttribute('aria-label') || '',
-              control.getAttribute('title') || ''
-            ].join(' ').trim().toLowerCase();
-            if (!label) return;
-
-            const isRichText = /rich\s*text|richtext|wysiwyg|visual|富文本|所见即所得/.test(label);
-            if (isRichText) {
-              control.removeAttribute('aria-hidden');
-              control.removeAttribute('tabindex');
-              control.style.display = '';
-              control.disabled = false;
-              if (control.dataset.richTextImageGuard !== '1') {
-                control.dataset.richTextImageGuard = '1';
-                control.addEventListener('mousedown', beginRichTextImageSession);
-                control.addEventListener('click', beginRichTextImageSession);
-              }
-              return;
-            }
-
-            const isMarkdownMode = /markdown|raw|source|源码/.test(label);
-            if (isMarkdownMode && control.dataset.richTextImageGuard !== '1') {
-              control.dataset.richTextImageGuard = '1';
-              control.addEventListener('click', function() {
-                window.setTimeout(finishRichTextImageSession, 40);
-                window.setTimeout(finishRichTextImageSession, 160);
-                window.setTimeout(finishRichTextImageSession, 450);
-              });
-            }
-          });
-
-          if (!richTextImageGuard.listenersBound) {
-            richTextImageGuard.listenersBound = true;
-            document.addEventListener('selectionchange', rememberMarkdownSourceState);
-            document.addEventListener('input', function(event) {
-              if (event && event.target && event.target.tagName === 'TEXTAREA') rememberMarkdownSourceState();
-            }, true);
-            document.addEventListener('keyup', rememberMarkdownSourceState, true);
-            document.addEventListener('click', rememberMarkdownSourceState, true);
-          }
-        }
-
-        function beginRichTextImageSession() {
-          if (richTextImageGuard.restoring || !isPostsEditorRoute()) return;
-          if (richTextImageGuard.richTextActive) return;
-          rememberMarkdownSourceState({ force: true });
-          richTextImageGuard.richTextActive = true;
-        }
-
-        function finishRichTextImageSession() {
-          restoreMarkdownSourceExceptNewImages();
-          richTextImageGuard.richTextActive = false;
-        }
-
-        function rememberMarkdownSourceState() {
-          if (arguments[0] && arguments[0].force) {
-            // Continue below and capture the visible Markdown textarea before Rich Text takes over.
-          } else if (richTextImageGuard.richTextActive) {
-            return;
-          }
-          if (richTextImageGuard.restoring || !isPostsEditorRoute()) return;
-          const textarea = findBodyTextarea();
-          if (!textarea || !isElementLikelyVisible(textarea)) return;
-          richTextImageGuard.raw = String(textarea.value || '');
-          richTextImageGuard.cursor = typeof textarea.selectionStart === 'number' ? textarea.selectionStart : richTextImageGuard.raw.length;
-        }
-
-        function isElementLikelyVisible(el) {
-          if (!el) return false;
-          if (el.hidden) return false;
-          if (el.getAttribute && el.getAttribute('aria-hidden') === 'true') return false;
-          if (el.style && (el.style.display === 'none' || el.style.visibility === 'hidden')) return false;
-          return true;
-        }
-
-        function restoreMarkdownSourceExceptNewImages() {
-          if (richTextImageGuard.restoring || !isPostsEditorRoute() || !richTextImageGuard.raw) return;
-          const textarea = findBodyTextarea();
-          if (!textarea) return;
-          const current = String(textarea.value || '');
-          const original = String(richTextImageGuard.raw || '');
-          if (!current || current === original) return;
-
-          const newImages = extractImgMarkdown(current).filter(function(image) {
-            return original.indexOf(image) < 0;
-          });
-          const restored = insertMarkdownImages(original, newImages, richTextImageGuard.cursor);
-          if (restored === current) return;
-
-          richTextImageGuard.restoring = true;
-          textarea.value = restored;
-          const nextCursor = Math.min(restored.length, Math.max(0, richTextImageGuard.cursor + newImages.join('\n').length));
-          textarea.selectionStart = nextCursor;
-          textarea.selectionEnd = nextCursor;
-          textarea.dispatchEvent(new Event('input', { bubbles: true }));
-          textarea.dispatchEvent(new Event('change', { bubbles: true }));
-          richTextImageGuard.raw = restored;
-          richTextImageGuard.restoring = false;
-        }
-
-        function extractImgMarkdown(markdown) {
-          const images = [];
-          const seen = new Set();
-          const pattern = /!\[[^\]\r\n]*\]\((?:\.\/img\/|img\/)[^) \r\n]+(?:\s+"[^"]*")?\)/g;
-          let match;
-          while ((match = pattern.exec(String(markdown || ''))) !== null) {
-            const normalized = match[0].replace(/\]\(img\//, '](./img/');
-            if (seen.has(normalized)) continue;
-            seen.add(normalized);
-            images.push(normalized);
-          }
-          const imgTagPattern = /<img\b[^>]*\bsrc=["']((?:\.\/img\/|img\/)[^"']+)["'][^>]*>/gi;
-          while ((match = imgTagPattern.exec(String(markdown || ''))) !== null) {
-            const src = String(match[1] || '').replace(/^img\//, './img/');
-            const altMatch = match[0].match(/\balt=["']([^"']*)["']/i);
-            const alt = altMatch ? altMatch[1].replace(/[\r\n\]]+/g, ' ') : '';
-            const normalized = '![' + alt + '](' + src + ')';
-            if (seen.has(normalized)) continue;
-            seen.add(normalized);
-            images.push(normalized);
-          }
-          return images;
-        }
-
-        function insertMarkdownImages(markdown, images, cursor) {
-          if (!images.length) return markdown;
-          const pos = Math.min(String(markdown || '').length, Math.max(0, Number(cursor) || 0));
-          const before = markdown.slice(0, pos);
-          const after = markdown.slice(pos);
-          const block = images.join('\n');
-          const prefix = before && !/\n$/.test(before) ? '\n' : '';
-          const suffix = after && !/^\n/.test(after) ? '\n' : '';
-          return before + prefix + block + suffix + after;
         }
 
         window.addEventListener('hashchange', syncEditorChromeSoon);

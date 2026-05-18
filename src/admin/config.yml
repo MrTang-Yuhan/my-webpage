@@ -66,5 +66,4 @@ collections:
         widget: markdown
         modes:
           - raw
-          - rich_text
-        hint: Markdown 源码是权威格式；Rich Text 仅用于调用原生插图工具。
+        hint: Markdown 源码是权威格式；Rich Text 已禁用，避免自动改写源码格式。
