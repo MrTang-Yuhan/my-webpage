@@ -126,6 +126,12 @@ function main() {
   if (!/startUploadOnlyMarkdownGuard/.test(adminIndexText)) {
     throw new Error('admin upload-only image button must guard the Markdown body from any edits.');
   }
+  if (!/isEditorBodyReady/.test(adminIndexText)) {
+    throw new Error('admin editor tools must wait for the editor body before showing custom controls.');
+  }
+  if (!/getCachedArchiveDirs/.test(adminIndexText)) {
+    throw new Error('admin archive directory lookup must be cached to avoid slow repeated editor sync fetches.');
+  }
   if (/protectMarkdownSourceForRichTextImages|restoreMarkdownSourceExceptNewImages|beginRichTextImageSession|richTextActive/.test(adminIndexText)) {
     throw new Error('admin editor must not keep Rich Text image insertion guards after disabling Rich Text.');
   }

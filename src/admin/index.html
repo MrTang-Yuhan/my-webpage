@@ -370,6 +370,22 @@
           if (!existing) document.body.appendChild(datalist);
         }
 
+        let archiveDirsCache = null;
+        let archiveDirsPromise = null;
+        async function getCachedArchiveDirs() {
+          if (archiveDirsCache) return archiveDirsCache;
+          if (!archiveDirsPromise) {
+            archiveDirsPromise = fetchArchiveDirs().then(function(options) {
+              archiveDirsCache = options;
+              return options;
+            }).catch(function() {
+              archiveDirsCache = [];
+              return [];
+            });
+          }
+          return archiveDirsPromise;
+        }
+
         function ensureEditorToolsHost() {
           let host = document.getElementById('cms-editor-tools-host');
           if (host) return host;
@@ -539,8 +555,6 @@
           if (anchor && panel.parentNode !== anchor) {
             anchor.setAttribute('data-cms-editor-upload-toolbar', 'sticky');
             anchor.appendChild(panel);
-          } else if (!anchor && panel.parentNode !== ensureEditorToolsHost()) {
-            ensureEditorToolsHost().appendChild(panel);
           }
           return panel;
         }
@@ -552,7 +566,16 @@
             return;
           }
 
+          if (!isEditorBodyReady()) {
+            if (existing) existing.style.display = 'none';
+            return;
+          }
           const panel = ensureUploadImageOnlyPanel();
+          const anchor = findAddComponentToolbarAnchor();
+          if (!anchor) {
+            panel.style.display = 'none';
+            return;
+          }
           panel.style.display = 'inline-flex';
           const button = panel.querySelector('#upload-image-only-btn');
           const statusEl = panel.querySelector('#upload-image-only-status');
@@ -624,6 +647,11 @@
           return textarea.parentElement || textarea.parentNode;
         }
 
+        function isEditorBodyReady() {
+          const textarea = findBodyTextarea();
+          return !!(textarea && textarea.parentNode);
+        }
+
         function startUploadOnlyMarkdownGuard(snapshot) {
           if (!snapshot) return;
           const startedAt = Date.now();
@@ -645,7 +673,7 @@
           const entryPath = getRouteEntryPath();
           const parts = getPathParts(entryPath);
           const existing = document.getElementById('archive-move-panel');
-          if (!parts) {
+          if (!parts || !isEditorBodyReady()) {
             if (existing) existing.style.display = 'none';
             return;
           }
@@ -659,7 +687,7 @@
           currentEl.textContent = '当前路径: ' + parts.path;
           if (!targetInput.value) targetInput.value = parts.archive;
 
-          const options = await fetchArchiveDirs();
+          const options = await getCachedArchiveDirs();
           syncArchiveDatalist(options);
 
           if (moveBtn.dataset.bound === '1') return;
@@ -805,7 +833,7 @@
           editorSyncTimer = window.setTimeout(function() {
             editorSyncTimer = null;
             syncEditorTabsVisibility();
-          }, 30);
+          }, 120);
         }
 
         function syncEditorChromeSoon() {
