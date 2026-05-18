@@ -67,4 +67,11 @@ Host my_device2
   IdentityFile C:\Users\i26298\.ssh\id_ed25519
 ```
 
+测试加入图片
+- asda
+- asdasd
+$a_v$
+$$a_v$$
+$$a_{v}$$
 
+![](img/result_l2_latency_pchase_sm2950_mem14800.png)
