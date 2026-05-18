@@ -76,4 +76,4 @@ $$
 asdads_{asd} = a_t
 $$
 
-[](./img/result_l2_latency_pchase_sm2950_mem14800.png)
+![](img/result_l2_latency_pchase_sm2950_mem14800.png)
