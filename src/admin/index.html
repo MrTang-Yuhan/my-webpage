@@ -68,6 +68,9 @@
         border-bottom: 1px solid #e5e7eb;
         padding: 6px 0;
       }
+      [data-cms-editor-ui="hidden"] {
+        display: none !important;
+      }
     </style>
   </head>
   <body>
@@ -542,6 +545,16 @@
           return panel;
         }
 
+        function isElementVisible(el) {
+          if (!el || !(el instanceof Element)) return false;
+          if (el.closest('[data-cms-editor-global-nav="hidden"]')) return false;
+          const style = window.getComputedStyle(el);
+          if (!style) return false;
+          if (style.display === 'none' || style.visibility === 'hidden') return false;
+          const rect = el.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        }
+
         function ensureUploadImageOnlyPanel() {
           let panel = document.getElementById('upload-image-only-panel');
           if (!panel) {
@@ -602,6 +615,7 @@
           const controls = Array.from(document.querySelectorAll('button, [role="button"], a'));
           return controls.find(function(control) {
             if (control.closest('#cms-editor-tools-host')) return false;
+            if (!isElementVisible(control)) return false;
             const label = [
               control.textContent || '',
               control.getAttribute('aria-label') || '',
@@ -616,6 +630,7 @@
           const addComponentControl = controls.find(function(control) {
             if (control.closest('#cms-editor-tools-host')) return false;
             if (control.closest('[data-cms-editor-global-nav="hidden"]')) return false;
+            if (!isElementVisible(control)) return false;
             const label = [
               control.textContent || '',
               control.getAttribute('aria-label') || '',
@@ -635,6 +650,7 @@
             const addComponentButton = buttons.find(function(button) {
               if (button.closest('#cms-editor-tools-host')) return false;
               if (button.closest('[data-cms-editor-global-nav="hidden"]')) return false;
+              if (!isElementVisible(button)) return false;
               const label = [
                 button.textContent || '',
                 button.getAttribute('aria-label') || '',
@@ -669,7 +685,9 @@
           restoreIfChanged();
         }
 
+        let archiveMoveSyncToken = 0;
         async function syncArchiveMovePanel() {
+          const token = ++archiveMoveSyncToken;
           const entryPath = getRouteEntryPath();
           const parts = getPathParts(entryPath);
           const existing = document.getElementById('archive-move-panel');
@@ -688,6 +706,7 @@
           if (!targetInput.value) targetInput.value = parts.archive;
 
           const options = await getCachedArchiveDirs();
+          if (token !== archiveMoveSyncToken) return;
           syncArchiveDatalist(options);
 
           if (moveBtn.dataset.bound === '1') return;
@@ -775,9 +794,14 @@
         function syncEditorTabsVisibility() {
           try {
             const shouldHide = isPostsEditorRoute();
+            const bodyReady = shouldHide && isEditorBodyReady();
             document.body.classList.toggle('cms-editor-mode', shouldHide);
-            const toolsHost = document.getElementById('cms-editor-tools-host');
-            if (toolsHost && !shouldHide) toolsHost.style.display = 'none';
+            document.body.setAttribute('data-cms-route', shouldHide ? 'posts-editor' : 'admin-root');
+            const toolsHost = ensureEditorToolsHost();
+            if (toolsHost) {
+              toolsHost.toggleAttribute('data-cms-editor-ui', !bodyReady);
+              if (!shouldHide) toolsHost.style.display = 'none';
+            }
             syncArchiveMovePanel();
             syncUploadImageOnlyPanel();
             syncGlobalAdminNavVisibility(shouldHide);
@@ -828,11 +852,20 @@
         }
 
         let editorSyncTimer = null;
+        let lastChromeStateKey = '';
         function scheduleEditorChromeSync() {
           if (editorSyncTimer !== null) window.clearTimeout(editorSyncTimer);
           editorSyncTimer = window.setTimeout(function() {
             editorSyncTimer = null;
-            syncEditorTabsVisibility();
+            const stateKey = [
+              String(window.location.hash || ''),
+              isPostsEditorRoute() ? 'editor' : 'other',
+              isEditorBodyReady() ? 'ready' : 'loading'
+            ].join('|');
+            if (stateKey !== lastChromeStateKey) {
+              lastChromeStateKey = stateKey;
+              syncEditorTabsVisibility();
+            }
           }, 120);
         }
 
