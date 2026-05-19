@@ -22,10 +22,11 @@ tags:
 
 # 为什么要优化 GEMM 维度
 
-通过测量 Transformer 层内各组件（或算子类型）的延迟占比可以发现，随着模型规模增大，无论是否使用 FlashAttention，GEMM 操作的延迟都占据主导地位。
-
+下图 2 测量 Transformer 层内各组件（或算子类型）的延迟占比。可以发现，随着模型规模增大，无论是否使用 FlashAttention，GEMM 操作的延迟都占据主导地位。
 
 ![](img/latency-percentage.png)
+
+
 
 
 
