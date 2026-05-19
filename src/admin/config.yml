@@ -35,7 +35,7 @@ collections:
         widget: archive-combobox
         required: true
         options:
-          - mode-parallelism
+          - model-parallelism
           - interconnect
           - 备忘录
           - triosim模拟器

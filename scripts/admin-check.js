@@ -6,6 +6,7 @@ const postsRoot = path.join(root, 'src', 'posts');
 const adminArchivesPath = path.join(root, '_site', 'admin-archives.json');
 const adminConfigPath = path.join(root, 'src', 'admin', 'config.yml');
 const adminIndexPath = path.join(root, 'src', 'admin', 'index.html');
+const legacyArchiveAliases = ['mode-parallelism'];
 
 function walkIndexFiles(dir, out) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -56,12 +57,16 @@ function main() {
   walkIndexFiles(postsRoot, indexFiles);
 
   const mismatches = [];
+  const legacyArchiveRefs = [];
   for (const file of indexFiles) {
     const rel = normalizeSlash(path.relative(root, file));
     const m = rel.match(/^src\/posts\/([^/]+)\/[^/]+\/index\.md$/);
     if (!m) continue;
     const expectedArchive = m[1];
     const actualArchive = readFrontMatterArchive(file);
+    if (legacyArchiveAliases.includes(actualArchive)) {
+      legacyArchiveRefs.push({ file: rel, archive: actualArchive });
+    }
     if (actualArchive !== expectedArchive) {
       mismatches.push({ file: rel, expectedArchive, actualArchive });
     }
@@ -71,6 +76,13 @@ function main() {
     console.error('Archive mismatch detected:');
     for (const item of mismatches) {
       console.error(`- ${item.file}: front matter archive="${item.actualArchive}" expected="${item.expectedArchive}"`);
+    }
+    process.exit(1);
+  }
+  if (legacyArchiveRefs.length) {
+    console.error('Legacy archive aliases are not allowed in post front matter:');
+    for (const item of legacyArchiveRefs) {
+      console.error(`- ${item.file}: archive="${item.archive}"`);
     }
     process.exit(1);
   }
@@ -100,6 +112,11 @@ function main() {
   }
 
   const configText = fs.readFileSync(adminConfigPath, 'utf8');
+  for (const legacyArchive of legacyArchiveAliases) {
+    if (new RegExp(`\\b${legacyArchive}\\b`).test(configText)) {
+      throw new Error(`admin config must not contain legacy archive alias "${legacyArchive}".`);
+    }
+  }
   if (!/name:\s*body[\s\S]*?widget:\s*markdown[\s\S]*?modes:\s*\n\s*-\s*raw\b/.test(configText)) {
     throw new Error('posts body markdown widget must keep raw mode enabled.');
   }

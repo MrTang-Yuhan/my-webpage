@@ -1,6 +1,6 @@
 ---
 layout: post.njk
-archive: mode-parallelism
+archive: model-parallelism
 title: Sequence Parallelism序列并行（一）
 date: 2026-05-14
 tags:
@@ -18,9 +18,9 @@ tags:
 
 关于张量并行，请参考我的文章：
 
-* [Tensor Parallelism张量并行（一）](https://my-webpage-adu.pages.dev/posts/mode-parallelism/tensor-parallelism%E5%BC%A0%E9%87%8F%E5%B9%B6%E8%A1%8C%EF%BC%88%E4%B8%80%EF%BC%89/)
-* [Tensor Parallelism张量并行（二）](https://my-webpage-adu.pages.dev/posts/mode-parallelism/tensor-parallelism%E5%BC%A0%E9%87%8F%E5%B9%B6%E8%A1%8C%EF%BC%88%E4%BA%8C%EF%BC%89/)
-* [Tensor Parallelism张量并行（三）](https://my-webpage-adu.pages.dev/posts/mode-parallelism/tensor-parallelism%E5%BC%A0%E9%87%8F%E5%B9%B6%E8%A1%8C%EF%BC%88%E4%B8%89%EF%BC%89/)
+* [Tensor Parallelism张量并行（一）](https://my-webpage-adu.pages.dev/posts/model-parallelism/tensor-parallelism%E5%BC%A0%E9%87%8F%E5%B9%B6%E8%A1%8C%EF%BC%88%E4%B8%80%EF%BC%89/)
+* [Tensor Parallelism张量并行（二）](https://my-webpage-adu.pages.dev/posts/model-parallelism/tensor-parallelism%E5%BC%A0%E9%87%8F%E5%B9%B6%E8%A1%8C%EF%BC%88%E4%BA%8C%EF%BC%89/)
+* [Tensor Parallelism张量并行（三）](https://my-webpage-adu.pages.dev/posts/model-parallelism/tensor-parallelism%E5%BC%A0%E9%87%8F%E5%B9%B6%E8%A1%8C%EF%BC%88%E4%B8%89%EF%BC%89/)
 
 # “中间值”显存占用分析
 

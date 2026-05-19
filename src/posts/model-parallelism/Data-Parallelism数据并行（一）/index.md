@@ -9,7 +9,7 @@ tags:
   - data parallelism
   - model parallelism
 
-archive: mode-parallelism
+archive: model-parallelism
 ---
 
 
