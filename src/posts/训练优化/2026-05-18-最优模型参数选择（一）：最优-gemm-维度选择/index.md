@@ -26,21 +26,47 @@ tags:
 
 ![](img/latency-percentage.png)
 
+# NVIDIA GEMM 实现与性能影响因素
 
+对于矩阵运算
 
+$$
+C_i = \alpha A_i B_i + \beta C_i, \quad i=1,\dots,N
+$$
 
+其中 $\{A_i\}$ 和 $\{B_i\}$ 表示一个 batch 的输入矩阵，$\alpha$ 和 $\beta$ 为标量系数，$\{C_i\}$ 为对应的输出矩阵，共包含 $N$ 个 batch。
 
+- 当 $\alpha=1$ 且 $\beta=0$ 时，即为标准的 GEMM 运算。
+- 当 $\alpha=1$ 且 $\beta=1$ 时，则引入了残差连接。
 
+GEMM 的性能主要受两个关键因素影响：矩阵维度和线程块数量。
 
+## 矩阵维度
 
+设输入矩阵 $A$ 的维度为 $[m, k]$，$B$ 的维度为 $[k, n]$。**为充分利用 Tensor Core 并避免产生尾块浪费 Tensor Core 资源，要求维度 $m$、$k$、$n$ 均能被 Tensor Core 的维度整除。**
 
+例如，A100 GPU 的 Tensor Core 维度为 128 字节。若输入采用 FP16 精度（每个元素占 2 字节），则 Tensor Core 维度对应 64 个 FP16 元素。因此，要求 $m$、$k$、$n$ 均能被 64 整除[^1]。
 
+[^1]: 这里增加脉动阵列的代码，说明尾块的影响。
 
+## 线程块数量
 
+此外，**线程块数量最好也能被 SM 数量整除**。以拥有 108 个 SM 的 GPU 为例，若 Kernel 生成 108 个线程块，则第一波执行 108 个线程块；若生成 109 个，则第二波仅剩 1 个线程块。后者的执行延迟几乎与前者相当，但计算资源利用率却大幅下降。
 
+# Transformer 模型的维度设计建议
 
+[The Case for Co-Designing Model Architectures with Hardware](https://arxiv.org/abs/2401.14489) 这篇论文通过实验提出了一套 Transformer 模型的维度设计建议；遵循这些建议，可使模型在训练和推理过程中达到最高的硬件利用效率[^2]。
 
+[^2]: 论文中使用 throughput (TFLOP/s) 作为测量指标。
 
+完整建议如下：
+
+1.  **词表大小 $v$ 应能被 64 整除。**
+2.  **微批次大小 (Microbatch size) 应尽可能大。**
+3.  **$b*s$, $\frac{h}{a}$ 和 $\frac{h}{t}$ 应能被 2 的幂整除**。
+4.  **$\frac{b*a}{t}$ 应为整数。**
+5.  **$t$ 应尽可能小。**
+6.  **对于 SwiGLU 激活函数，搜索性能最佳的隐藏层大小，该值在 $\frac{8}{3}h$ 附近。搜索代码[如下](#swiglu-maf-bench)**。
 
 
 <a id="swiglu-maf-bench"></a>
