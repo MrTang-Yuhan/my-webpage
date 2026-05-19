@@ -11,7 +11,21 @@ tags:
 
 [The Case for Co-Designing Model Architectures with Hardware](https://arxiv.org/abs/2401.14489)
 
-# 
+# 符号约定
+| 变量 | 含义 | 变量 | 含义 |
+| :---: | :--- | :---: | :--- |
+| $a$ | Number of attention heads | $s$ | Sequence length |
+| $b$ | Microbatch size | $t$ | Tensor-parallel size |
+| $h$ | Hidden dimension size | $v$ | Vocabulary size |
+| $L$ | Number of transformer layers | | |
+
+
+# 为什么要优化 GEMM 维度
+
+通过测量 Transformer 层内各组件（或算子类型）的延迟占比可以发现，随着模型规模增大，无论是否使用 FlashAttention，GEMM 操作的延迟都占据主导地位。
+
+
+![](img/latency-percentage.png)
 
 
 
