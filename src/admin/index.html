@@ -283,6 +283,9 @@
         const LEGACY_ARCHIVE_HISTORY_KEY = 'admin_archive_history_v1';
         const ARCHIVE_DATALIST_ID = 'archive-combobox-options';
         const ARCHIVE_NAME_PATTERN = /^[\p{L}\p{N}_-]+$/u;
+        const EMPTY_BODY_RECOVERY_KEY_PREFIX = 'admin_empty_body_recovery_v1:';
+        let emptyBodyRecoveryTimer = null;
+        let emptyBodyRecoveryPath = '';
 
         function normalizeArchiveName(value) {
           let name = String(value || '').trim();
@@ -481,6 +484,52 @@
           }
         }
 
+        function getDecodedHash() {
+          try {
+            return decodeURIComponent(String(window.location.hash || ''));
+          } catch (_) {
+            return String(window.location.hash || '');
+          }
+        }
+
+        function isExistingPostsEntryRoute() {
+          return /^#\/collections\/posts\/entries\//.test(getDecodedHash());
+        }
+
+        function isPostsEditorLoading() {
+          if (!isExistingPostsEntryRoute()) return false;
+          const text = document.body ? String(document.body.textContent || '') : '';
+          return /\bloading\s+entry\b/i.test(text);
+        }
+
+        function setTemporarilyHidden(node, hidden) {
+          if (!node) return;
+          if (hidden) {
+            if (!node.hasAttribute('data-cms-editor-loading-hidden')) {
+              node.setAttribute('data-cms-editor-loading-hidden', 'true');
+              node.setAttribute('data-cms-editor-loading-display', node.style.display || '');
+            }
+            node.style.display = 'none';
+            return;
+          }
+          if (!node.hasAttribute('data-cms-editor-loading-hidden')) return;
+          node.style.display = node.getAttribute('data-cms-editor-loading-display') || '';
+          node.removeAttribute('data-cms-editor-loading-hidden');
+          node.removeAttribute('data-cms-editor-loading-display');
+        }
+
+        function syncLoadingEditorTools() {
+          const isLoading = isPostsEditorLoading();
+          // Safety fallback:
+          // Decap DOM updates can change button nesting. Hiding controls during loading
+          // may accidentally hide the whole editor container, causing a blank editor pane.
+          // Keep this hook, but make it no-op to preserve editor availability.
+          Array.from(document.querySelectorAll('[data-cms-editor-loading-hidden="true"]')).forEach(function(node) {
+            setTemporarilyHidden(node, false);
+          });
+          return isLoading;
+        }
+
         function getPathParts(path) {
           const normalized = String(path || '').replace(/\\/g, '/').replace(/^\/+/, '');
           const match = normalized.match(/^src\/posts\/([^/]+)\/([^/]+)\/index\.md$/);
@@ -552,16 +601,32 @@
               '<span id="upload-image-only-status">仅上传到当前文章 img/，不修改正文。</span>';
           }
           const anchor = findAddComponentToolbarAnchor();
-          if (anchor && panel.parentNode !== anchor) {
-            anchor.setAttribute('data-cms-editor-upload-toolbar', 'sticky');
-            anchor.appendChild(panel);
+          const fallbackAnchor = findEditorToolbarFallbackAnchor();
+          const mountAnchor = anchor || fallbackAnchor || ensureEditorToolsHost();
+          if (mountAnchor && panel.parentNode !== mountAnchor) {
+            if (isSafeUploadToolbarAnchor(mountAnchor)) {
+              mountAnchor.setAttribute('data-cms-editor-upload-toolbar', 'sticky');
+            } else {
+              mountAnchor.removeAttribute('data-cms-editor-upload-toolbar');
+            }
+            mountAnchor.appendChild(panel);
           }
           return panel;
         }
 
         function syncUploadImageOnlyPanel() {
+          Array.from(document.querySelectorAll('[data-cms-editor-upload-toolbar="sticky"]')).forEach(function(node) {
+            if (!isSafeUploadToolbarAnchor(node)) {
+              node.removeAttribute('data-cms-editor-upload-toolbar');
+            }
+          });
           const existing = document.getElementById('upload-image-only-panel');
           if (!isPostsEditorRoute()) {
+            if (existing) existing.style.display = 'none';
+            return;
+          }
+
+          if (isPostsEditorLoading()) {
             if (existing) existing.style.display = 'none';
             return;
           }
@@ -571,7 +636,7 @@
             return;
           }
           const panel = ensureUploadImageOnlyPanel();
-          const anchor = findAddComponentToolbarAnchor();
+          const anchor = findAddComponentToolbarAnchor() || findEditorToolbarFallbackAnchor() || ensureEditorToolsHost();
           if (!anchor) {
             panel.style.display = 'none';
             return;
@@ -607,8 +672,35 @@
               control.getAttribute('aria-label') || '',
               control.getAttribute('title') || ''
             ].join(' ').trim().toLowerCase();
-            return /\bmedia\b|媒体/.test(label);
+            return /\bmedia\b|媒体|图片|图像|image|asset/.test(label);
           }) || null;
+        }
+
+        function findEditorToolbarFallbackAnchor() {
+          const textarea = findBodyTextarea();
+          if (!textarea) return null;
+          let node = textarea.parentElement;
+          for (let i = 0; node && i < 8; i += 1, node = node.parentElement) {
+            const controls = Array.from(node.querySelectorAll('button, [role="button"], [role="tab"], a'));
+            const hasEditorControls = controls.some(function(control) {
+              const label = [
+                control.textContent || '',
+                control.getAttribute('aria-label') || '',
+                control.getAttribute('title') || ''
+              ].join(' ').trim().toLowerCase();
+              return /\bsave\b|publish|media|图片|image|markdown|预览|preview|编辑/.test(label);
+            });
+            if (hasEditorControls) return node;
+          }
+          return textarea.parentElement || textarea.parentNode;
+        }
+
+        function isSafeUploadToolbarAnchor(node) {
+          if (!node || !(node instanceof Element)) return false;
+          if (node.id === 'cms-editor-tools-host') return false;
+          if (node.querySelector('textarea, [role="textbox"], [contenteditable="true"]')) return false;
+          const controls = node.querySelectorAll('button, [role="button"], [role="tab"], a');
+          return controls.length > 0 && controls.length < 20;
         }
 
         function findAddComponentToolbarAnchor() {
@@ -649,7 +741,7 @@
 
         function isEditorBodyReady() {
           const textarea = findBodyTextarea();
-          return !!(textarea && textarea.parentNode);
+          return !!(textarea && textarea.parentNode && !isPostsEditorLoading());
         }
 
         function startUploadOnlyMarkdownGuard(snapshot) {
@@ -737,6 +829,63 @@
           });
         }
 
+        function hideEditorTransientPanels() {
+          const uploadPanel = document.getElementById('upload-image-only-panel');
+          if (uploadPanel) uploadPanel.style.display = 'none';
+          const movePanel = document.getElementById('archive-move-panel');
+          if (movePanel) movePanel.style.display = 'none';
+        }
+
+        function clearEmptyBodyRecovery() {
+          if (emptyBodyRecoveryTimer !== null) {
+            window.clearTimeout(emptyBodyRecoveryTimer);
+            emptyBodyRecoveryTimer = null;
+          }
+          emptyBodyRecoveryPath = '';
+        }
+
+        function syncEmptyBodyRecovery() {
+          if (!isExistingPostsEntryRoute() || isPostsEditorLoading()) {
+            clearEmptyBodyRecovery();
+            return;
+          }
+
+          const entryPath = getRouteEntryPath();
+          const textarea = findBodyTextarea();
+          if (!entryPath || !textarea || !textarea.parentNode) {
+            clearEmptyBodyRecovery();
+            return;
+          }
+
+          if (String(textarea.value || '').trim()) {
+            try {
+              sessionStorage.removeItem(EMPTY_BODY_RECOVERY_KEY_PREFIX + entryPath);
+            } catch (_) {}
+            clearEmptyBodyRecovery();
+            return;
+          }
+
+          try {
+            if (sessionStorage.getItem(EMPTY_BODY_RECOVERY_KEY_PREFIX + entryPath) === '1') return;
+          } catch (_) {}
+
+          if (emptyBodyRecoveryTimer !== null && emptyBodyRecoveryPath === entryPath) return;
+          clearEmptyBodyRecovery();
+          emptyBodyRecoveryPath = entryPath;
+          emptyBodyRecoveryTimer = window.setTimeout(function() {
+            emptyBodyRecoveryTimer = null;
+            if (!isExistingPostsEntryRoute() || isPostsEditorLoading()) return;
+            if (getRouteEntryPath() !== entryPath) return;
+            const latestTextarea = findBodyTextarea();
+            if (!latestTextarea || String(latestTextarea.value || '').trim()) return;
+            if (document.activeElement === latestTextarea) return;
+            try {
+              sessionStorage.setItem(EMPTY_BODY_RECOVERY_KEY_PREFIX + entryPath, '1');
+            } catch (_) {}
+            window.location.reload();
+          }, 3200);
+        }
+
         function findBodyTextarea() {
           const textareas = Array.from(document.querySelectorAll('textarea'));
           if (!textareas.length) return null;
@@ -760,6 +909,24 @@
             })[0] || null;
         }
 
+        function forceRevealEditorPane() {
+          if (!isPostsEditorRoute()) return;
+          const textarea = findBodyTextarea();
+          if (!textarea) return;
+          let node = textarea;
+          for (let i = 0; node && i < 8; i += 1, node = node.parentElement) {
+            const style = window.getComputedStyle(node);
+            if (style.display === 'none') node.style.display = '';
+            if (style.visibility === 'hidden') node.style.visibility = '';
+            if (style.height === '0px') node.style.height = '';
+            if (style.overflow === 'hidden' && !node.textContent.trim()) node.style.overflow = '';
+            if (node.hasAttribute('data-cms-editor-loading-hidden')) {
+              node.removeAttribute('data-cms-editor-loading-hidden');
+              node.removeAttribute('data-cms-editor-loading-display');
+            }
+          }
+        }
+
         window.CMS.registerWidget('archive-combobox', ArchiveComboboxControl);
         window.CMS.registerPreviewStyle(scopedPreviewCss, { raw: true });
         window.CMS.registerPreviewStyle('https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css');
@@ -768,7 +935,7 @@
         window.CMS.init();
 
         function isPostsEditorRoute() {
-          const hash = decodeURIComponent(String(window.location.hash || '')).toLowerCase();
+          const hash = getDecodedHash().toLowerCase();
           return /\/collections\/posts\/(?:new|entries\/)/.test(hash);
         }
 
@@ -778,8 +945,17 @@
             document.body.classList.toggle('cms-editor-mode', shouldHide);
             const toolsHost = document.getElementById('cms-editor-tools-host');
             if (toolsHost && !shouldHide) toolsHost.style.display = 'none';
+            if (!shouldHide) hideEditorTransientPanels();
+            const isLoading = syncLoadingEditorTools();
+            if (isLoading) {
+              hideEditorTransientPanels();
+              syncGlobalAdminNavVisibility(shouldHide);
+              syncEmptyBodyRecovery();
+              return;
+            }
             syncArchiveMovePanel();
             syncUploadImageOnlyPanel();
+            syncEmptyBodyRecovery();
             syncGlobalAdminNavVisibility(shouldHide);
           } catch (_) {
             // Keep CMS UI available if editor chrome sync fails.
@@ -838,9 +1014,17 @@
 
         function syncEditorChromeSoon() {
           syncEditorTabsVisibility();
+          syncUploadImageOnlyPanel();
+          forceRevealEditorPane();
           window.setTimeout(syncEditorTabsVisibility, 120);
+          window.setTimeout(syncUploadImageOnlyPanel, 130);
+          window.setTimeout(forceRevealEditorPane, 140);
           window.setTimeout(syncEditorTabsVisibility, 500);
+          window.setTimeout(syncUploadImageOnlyPanel, 520);
+          window.setTimeout(forceRevealEditorPane, 540);
           window.setTimeout(syncEditorTabsVisibility, 1200);
+          window.setTimeout(syncUploadImageOnlyPanel, 1220);
+          window.setTimeout(forceRevealEditorPane, 1240);
         }
 
         window.addEventListener('hashchange', syncEditorChromeSoon);
