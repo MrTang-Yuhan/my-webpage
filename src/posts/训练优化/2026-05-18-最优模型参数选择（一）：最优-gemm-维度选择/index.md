@@ -45,9 +45,9 @@ GEMM 的性能主要受两个关键因素影响：矩阵维度和线程块数量
 
 设输入矩阵 $A$ 的维度为 $[m, k]$，$B$ 的维度为 $[k, n]$。**为充分利用 Tensor Core 并避免产生尾块浪费 Tensor Core 资源，要求维度 $m$、$k$、$n$ 均能被 Tensor Core 的维度整除。**
 
-例如，A100 GPU 的 Tensor Core 维度为 128 字节。若输入采用 FP16 精度（每个元素占 2 字节），则 Tensor Core 维度对应 64 个 FP16 元素。因此，要求 $m$、$k$、$n$ 均能被 64 整除[^1]。
+例如，A100 GPU 的 Tensor Core 维度为 128 字节。若输入采用 FP16 精度（每个元素占 2 字节），则 Tensor Core 维度对应 64 个 FP16 元素。因此，要求 $m$、$k$、$n$ 均能被 64 整除。
 
-[^1]: 这里增加脉动阵列的代码，说明尾块的影响。
+我的这篇 [github](https://github.com/MrTang-Yuhan/systolic_array_python/blob/main/README.md) 介绍了脉动阵列。从示意图中可以清楚地看出，为什么要求 $m$、$k$、$n$ 能被 Tensor Core 的维度整除。
 
 ## 线程块数量
 
