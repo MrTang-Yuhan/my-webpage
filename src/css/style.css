@@ -111,9 +111,12 @@ a:hover { text-decoration: underline; }
 .post-toc-inline { border: 1px solid var(--line); border-radius: 12px; padding: 0.9rem; background: var(--panel); margin: 0 0 1.25rem; }
 .toc-inline-title { font-size: 0.82rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 0.5rem; }
 .toc-inline-nav { display: flex; flex-direction: column; gap: 0.35rem; }
-.toc-link { color: var(--muted); font-size: 0.9rem; line-height: 1.35; }
-.toc-level-h3 { padding-left: 0.7rem; }
-.toc-level-h4 { padding-left: 1.2rem; }
+.toc-link { color: var(--muted); display: block; font-size: 0.9rem; line-height: 1.35; }
+.toc-level-h1 { padding-left: 0; }
+.toc-level-h2 { padding-left: 0.75rem; }
+.toc-level-h3 { padding-left: 1.5rem; }
+.toc-level-h4 { padding-left: 2.25rem; }
+.toc-level-h5 { padding-left: 3rem; }
 
 .post-content {
   min-width: 0;

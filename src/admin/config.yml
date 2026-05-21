@@ -21,6 +21,7 @@ collections:
     extension: md
     format: frontmatter
     identifier_field: post_id
+    summary: "{{title}}"
     nested:
       depth: 10
       summary: "{{title}}"
@@ -33,9 +34,8 @@ collections:
         default: post.njk
       - label: 固定路径 ID
         name: post_id
-        widget: string
+        widget: hidden
         required: true
-        hint: 用于生成 src/posts/<archive>/<post_id>/index.md。首次创建后请勿修改；日期和标题可以自由修改。
       - label: 归档目录
         name: archive
         widget: archive-combobox

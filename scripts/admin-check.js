@@ -145,6 +145,12 @@ function main() {
   if (!/identifier_field:\s*post_id\b/.test(configText)) {
     throw new Error('posts collection must use post_id as the stable identifier field.');
   }
+  if (!/summary:\s*["']\{\{title\}\}["']/.test(configText)) {
+    throw new Error('posts collection summary must display the title in the admin list.');
+  }
+  if (!/name:\s*post_id[\s\S]*?widget:\s*hidden\b/.test(configText)) {
+    throw new Error('posts post_id field must stay hidden in the editor.');
+  }
   if (!/path:\s*["']\{\{archive\}\}\/\{\{slug\}\}\/index["']/.test(configText)) {
     throw new Error('posts path must use archive plus stable identifier-derived slug.');
   }
@@ -185,6 +191,9 @@ function main() {
   }
   if (!/syncGlobalAdminNavVisibility/.test(adminIndexText) || !/data-cms-editor-global-nav/.test(adminIndexText)) {
     throw new Error('admin editor must hide the global CMS navigation on posts editor routes.');
+  }
+  if (!/registerEventListener\(\{\s*name:\s*'preSave'/.test(adminIndexText) || !/post_id/.test(adminIndexText)) {
+    throw new Error('admin editor must auto-generate hidden post_id before saving new posts.');
   }
   if (!/MutationObserver\(scheduleEditorChromeSync\)/.test(adminIndexText) || !/hashchange', syncEditorChromeSoon/.test(adminIndexText)) {
     throw new Error('admin editor chrome sync must run across route changes and async CMS rerenders.');

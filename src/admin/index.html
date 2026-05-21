@@ -931,6 +931,28 @@
         window.CMS.registerPreviewStyle(scopedPreviewCss, { raw: true });
         window.CMS.registerPreviewStyle('https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css');
         window.CMS.registerPreviewTemplate('posts', PostPreview);
+        window.CMS.registerEventListener({
+          name: 'preSave',
+          handler: function(args) {
+            const entry = args && args.entry;
+            const data = entry && typeof entry.get === 'function' ? entry.get('data') : null;
+            if (!data || typeof data.get !== 'function' || typeof data.set !== 'function') return data;
+            const existingPostId = String(data.get('post_id') || '').trim();
+            if (existingPostId) return data;
+
+            const title = String(data.get('title') || 'untitled').trim();
+            const date = String(data.get('date') || '').slice(0, 10);
+            const source = [date, title].filter(Boolean).join('-') || 'untitled';
+            const generatedPostId = source
+              .toLocaleLowerCase('zh-Hans-CN')
+              .replace(/\s+/g, '-')
+              .replace(/[\\/]+/g, '-')
+              .replace(/[^\w\u4e00-\u9fff-]+/g, '-')
+              .replace(/-+/g, '-')
+              .replace(/^-|-$/g, '') || 'untitled';
+            return data.set('post_id', generatedPostId);
+          }
+        });
 
         window.CMS.init();
 
