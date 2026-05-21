@@ -22,7 +22,7 @@ tags:
 # 代码和脚本
 
 - [锁频脚本](#gpu_clock_lock)
-- [cuda 编译 makefile](#)
+- [cuda 编译 makefile](#makefile)
 - DRAM 带宽分析
   - [DRAM 标准 float 带宽分析](#dram_1fp)
   - [DRAM 标准 float4 带宽分析](#dram_4fp)
