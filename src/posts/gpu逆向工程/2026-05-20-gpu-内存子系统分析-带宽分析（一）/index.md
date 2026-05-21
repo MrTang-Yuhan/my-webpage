@@ -175,7 +175,6 @@ static float time_benchmark(
 }
 ```
 
-
 ## warmup_iters 和 measured_iters 限制
 
 
@@ -189,17 +188,27 @@ static float time_benchmark(
 
 ## `kernel` 和 `launch` 选择
 
+在实际的测量中，如果选用 `kernel`，会带来缓存的干扰。
 
-xxxxx
+选择 `kernel`参数，限制 warmup_iters 为 0，measured_iters 为 10。分别选择 `.cs` 和 `.cg` 参数，测量结果如下：
 
+- `cs`:
 
+  ![](img/cs.png)
+
+- `cg`:
+  ![](img/cg.png)
+
+观察发现：
+  - 在 READ 测试中，无论采用 `cs` 还是 `cg`，测得的 DRAM 实际带宽均超出其物理带宽上限，这不合常理，表明存在缓存干扰。
+  - 此外，`cg` 测得的带宽显著高于 `cs`，证明 `cs` 的“优先逐出”（evict-first）缓存策略确实在生效。
+
+结论：**为了避免缓存干扰 DRAM 带宽测量，测量 DRAM 带宽必须 `launch`**。
 
 
 ## 测量结果
 
-
 `cs` + `launch` 配置下，warmup_iters 为 0，measured_iters 为 10。测得结果：
-
 
 - scalar float
 
@@ -209,7 +218,23 @@ xxxxx
   
   ![](img/vector-result.png)
 
-可见，两者的带宽差距都不大。根据 [RTX 5080 GPU 架构白皮书](https://images.nvidia.cn/aem-dam/Solutions/geforce/blackwell/nvidia-rtx-blackwell-gpu-architecture.pdf)，其 DRAM 物理带宽为 960 GB/s。实测逻辑带宽已接近该物理带宽，说明此时性能瓶颈主要在于物理带宽限制。
+可见，两者的带宽差距都不大。根据 [RTX 5080 GPU 架构白皮书](https://images.nvidia.cn/aem-dam/Solutions/geforce/blackwell/nvidia-rtx-blackwell-gpu-architecture.pdf)，其 DRAM 物理带宽为 960 GB/s。实测带宽已接近该物理带宽，说明此时性能瓶颈主要在于物理带宽限制。
+
+
+# 结果分析
+
+分析 scalar float 与 vector float4 在单次搬运数据量相差四倍的情况下，为何 DRAM 实测带宽却依然接近。
+
+首先引出 Little's Laws，然后进行结果分析。
+
+## Little's Laws
+
+Little’s Law（利特定律）的形式是
+
+
+
+
+## 结果分析
 
 **原因分析**：DRAM 因为物理带宽相对低、延迟高，连续 coalesced 的 scalar float 访问已经能通过足够多 warp 和 outstanding request 把片外带宽打满；float4 减少了指令数，但不能突破 DRAM 物理带宽，所以提升小。
 
