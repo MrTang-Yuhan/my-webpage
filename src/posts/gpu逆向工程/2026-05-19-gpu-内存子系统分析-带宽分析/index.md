@@ -152,6 +152,7 @@ static float time_benchmark(
 
 ## `kernel` 和 `launch` 选择
 
+xxxxx
 
 
 ## 测量结果
@@ -159,6 +160,7 @@ static float time_benchmark(
 `cs` + `launch` 配置下，warmup_iters 为 0，measured_iters 为 10。测得结果：
 
 ### scalar float
+
 
 ![](img/scalar-test.png)
 
