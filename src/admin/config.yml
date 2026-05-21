@@ -20,16 +20,22 @@ collections:
     create: true
     extension: md
     format: frontmatter
+    identifier_field: post_id
     nested:
       depth: 10
       summary: "{{title}}"
       subfolders: true
-    slug: "{{year}}-{{month}}-{{day}}-{{slug}}"
+    slug: "{{slug}}"
     fields:
       - label: Layout
         name: layout
         widget: hidden
         default: post.njk
+      - label: 固定路径 ID
+        name: post_id
+        widget: string
+        required: true
+        hint: 用于生成 src/posts/<archive>/<post_id>/index.md。首次创建后请勿修改；日期和标题可以自由修改。
       - label: 归档目录
         name: archive
         widget: archive-combobox

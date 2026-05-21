@@ -1,5 +1,6 @@
 ---
 layout: post.njk
+post_id: 2026-05-17-vscode-ssh-免密远程连接配置
 archive: 备忘录
 title: VSCode SSH 免密远程连接配置
 date: 2026-05-18

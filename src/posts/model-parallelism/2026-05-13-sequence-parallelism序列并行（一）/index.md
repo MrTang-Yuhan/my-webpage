@@ -1,5 +1,6 @@
 ---
 layout: post.njk
+post_id: 2026-05-13-sequence-parallelism序列并行（一）
 archive: model-parallelism
 title: Sequence Parallelism序列并行（一）
 date: 2026-05-14

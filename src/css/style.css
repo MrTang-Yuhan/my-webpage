@@ -209,6 +209,12 @@ a:hover { text-decoration: underline; }
   overflow-x: auto;
 }
 .code-block-body pre code { background: transparent; padding: 0; }
+.shiki code {
+  display: block;
+  background: transparent;
+  min-width: max-content;
+  padding: 0;
+}
 .code-block-wrapper.is-collapsed .code-block-body {
   max-height: 14rem;
   overflow: hidden;

@@ -20,12 +20,21 @@ function walkIndexFiles(dir, out) {
   }
 }
 
-function readFrontMatterArchive(filePath) {
+function readFrontMatterValue(filePath, key) {
   const text = fs.readFileSync(filePath, 'utf8');
-  const fm = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  const fm = text.match(/^\uFEFF?---\r?\n([\s\S]*?)\r?\n---/);
   if (!fm) return '';
-  const archiveLine = fm[1].match(/^archive:\s*(.*)\s*$/m);
-  return archiveLine ? archiveLine[1].trim() : '';
+  const pattern = new RegExp(`^${key}:\\s*(.*)\\s*$`, 'm');
+  const line = fm[1].match(pattern);
+  return line ? line[1].trim() : '';
+}
+
+function readFrontMatterArchive(filePath) {
+  return readFrontMatterValue(filePath, 'archive');
+}
+
+function readFrontMatterPostId(filePath) {
+  return readFrontMatterValue(filePath, 'post_id');
 }
 
 function normalizeSlash(p) {
@@ -57,18 +66,24 @@ function main() {
   walkIndexFiles(postsRoot, indexFiles);
 
   const mismatches = [];
+  const postIdMismatches = [];
   const legacyArchiveRefs = [];
   for (const file of indexFiles) {
     const rel = normalizeSlash(path.relative(root, file));
     const m = rel.match(/^src\/posts\/([^/]+)\/[^/]+\/index\.md$/);
     if (!m) continue;
     const expectedArchive = m[1];
+    const expectedPostId = rel.split('/')[3];
     const actualArchive = readFrontMatterArchive(file);
+    const actualPostId = readFrontMatterPostId(file);
     if (legacyArchiveAliases.includes(actualArchive)) {
       legacyArchiveRefs.push({ file: rel, archive: actualArchive });
     }
     if (actualArchive !== expectedArchive) {
       mismatches.push({ file: rel, expectedArchive, actualArchive });
+    }
+    if (actualPostId !== expectedPostId) {
+      postIdMismatches.push({ file: rel, expectedPostId, actualPostId });
     }
   }
 
@@ -83,6 +98,13 @@ function main() {
     console.error('Legacy archive aliases are not allowed in post front matter:');
     for (const item of legacyArchiveRefs) {
       console.error(`- ${item.file}: archive="${item.archive}"`);
+    }
+    process.exit(1);
+  }
+  if (postIdMismatches.length) {
+    console.error('Post ID mismatch detected:');
+    for (const item of postIdMismatches) {
+      console.error(`- ${item.file}: front matter post_id="${item.actualPostId}" expected="${item.expectedPostId}"`);
     }
     process.exit(1);
   }
@@ -119,6 +141,15 @@ function main() {
   }
   if (!/name:\s*body[\s\S]*?widget:\s*markdown[\s\S]*?modes:\s*\n\s*-\s*raw\b/.test(configText)) {
     throw new Error('posts body markdown widget must keep raw mode enabled.');
+  }
+  if (!/identifier_field:\s*post_id\b/.test(configText)) {
+    throw new Error('posts collection must use post_id as the stable identifier field.');
+  }
+  if (!/path:\s*["']\{\{archive\}\}\/\{\{slug\}\}\/index["']/.test(configText)) {
+    throw new Error('posts path must use archive plus stable identifier-derived slug.');
+  }
+  if (!/slug:\s*["']\{\{slug\}\}["']/.test(configText)) {
+    throw new Error('posts slug must not include date fields.');
   }
   if (/name:\s*body[\s\S]*?widget:\s*markdown[\s\S]*?modes:\s*[\s\S]*?-\s*rich_text\b/.test(configText)) {
     throw new Error('posts body markdown widget must not expose Rich Text mode.');

@@ -1,5 +1,6 @@
 ---
 layout: post.njk
+post_id: 2026-05-18-最优模型参数选择（一）：最优-gemm-维度选择
 archive: 训练优化
 title: 最优模型参数选择（一）：最优 GEMM 维度选择
 date: 2026-05-19

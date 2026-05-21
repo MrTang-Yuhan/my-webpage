@@ -1,7 +1,7 @@
 ---
 layout: post.njk
 archive: interconnect
-post_id: 互联网络
+post_id: 2026-05-13-互联网络（二）
 title: 互联网络（二）：伴随通信算子
 date: 2026-05-14
 description: 介绍通信算子和伴随通信算子

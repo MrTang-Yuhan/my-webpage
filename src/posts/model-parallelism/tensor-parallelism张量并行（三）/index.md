@@ -1,5 +1,6 @@
 ---
 layout: post.njk
+post_id: tensor-parallelism张量并行（三）
 archive: model-parallelism
 title: Tensor Parallelism张量并行（三）
 date: 2026-05-13

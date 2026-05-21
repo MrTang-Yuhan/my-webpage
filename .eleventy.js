@@ -1,13 +1,33 @@
 const markdownIt = require("markdown-it");
 const markdownItFootnote = require("markdown-it-footnote");
 
-module.exports = function(eleventyConfig) {
+module.exports = async function(eleventyConfig) {
+  const { default: markdownItShiki } = await import("@shikijs/markdown-it");
+
   const md = markdownIt({
     html: true,
     breaks: false,
     linkify: true
-  }).use(markdownItFootnote);
+  })
+    .use(markdownItFootnote)
+    .use(await markdownItShiki({
+      theme: "github-light",
+      langs: ["cpp", "python", "bash", "makefile", "markdown"],
+      langAlias: {
+        cuda: "cpp",
+        cu: "cpp",
+        sh: "bash"
+      },
+      fallbackLanguage: "text"
+    }));
   eleventyConfig.setLibrary("md", md);
+
+  eleventyConfig.addPreprocessor("rawCodeFences", "md", function(data, content) {
+    return content.replace(
+      /(^[ \t]{0,3}```[^\r\n]*(?:\r?\n)[\s\S]*?^[ \t]{0,3}```[ \t]*$)/gm,
+      "{% raw %}\n$1\n{% endraw %}"
+    );
+  });
 
   // Pass through static files
   eleventyConfig.addPassthroughCopy("src/css");

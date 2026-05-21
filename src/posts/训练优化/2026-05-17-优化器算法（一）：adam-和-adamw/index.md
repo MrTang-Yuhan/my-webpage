@@ -1,5 +1,6 @@
 ---
 layout: post.njk
+post_id: 2026-05-17-优化器算法（一）：adam-和-adamw
 archive: 训练优化
 title: 优化器算法（一）：Adam 和 AdamW
 date: 2026-05-18
