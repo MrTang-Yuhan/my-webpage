@@ -4,6 +4,7 @@ post_id: 2026-05-20-gpu-内存子系统分析-带宽分析（一）
 archive: gpu逆向工程
 title: GPU 内存子系统分析--带宽分析（一）
 date: 2026-05-21
+description: DRAM 带宽分析
 tags:
   - post
 ---
@@ -200,20 +201,24 @@ xxxxx
 `cs` + `launch` 配置下，warmup_iters 为 0，measured_iters 为 10。测得结果：
 
 
-### scalar float
+- scalar float
+
+  ![](img/scalar-test.png)
+
+- vector float4
+  
+  ![](img/vector-result.png)
+
+可见，两者的带宽差距都不大。根据 [RTX 5080 GPU 架构白皮书](https://images.nvidia.cn/aem-dam/Solutions/geforce/blackwell/nvidia-rtx-blackwell-gpu-architecture.pdf)，其 DRAM 物理带宽为 960 GB/s。实测逻辑带宽已接近该物理带宽，说明此时性能瓶颈主要在于物理带宽限制。
+
+**原因分析**：DRAM 因为物理带宽相对低、延迟高，连续 coalesced 的 scalar float 访问已经能通过足够多 warp 和 outstanding request 把片外带宽打满；float4 减少了指令数，但不能突破 DRAM 物理带宽，所以提升小。
+
+**合理推测**： L1/L2 因为片上带宽高、延迟低，scalar float 的每条 load payload 太小，容易受 load 指令发射/请求处理/返回路径限制；float4 每条 load 有 4 倍 payload，所以 effective logical bandwidth 可以接近 4 倍。
 
 
 
 
-![](img/scalar-test.png)
 
-
-
-
-### vector float4
-
-
-![](img/vector-result.png)
 
 
 
