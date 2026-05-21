@@ -189,6 +189,7 @@ xxxxx
 ## 锁频脚本
 
 `gpu_clock_lock.sh`
+
 <a id="gpu_clock_lock"></a>
 ```bash
 #!/usr/bin/env bash
@@ -349,6 +350,7 @@ esac
 ## makefile
 
 `makefile`
+
 <a id="makefile"></a>
 ```makefile
 # ==============================
@@ -445,11 +447,13 @@ clean:
 
 ## DRAM 带宽分析代码
 
-<a id="dram_1fp"></a>
+
 ### DRAM 标准 float 带宽分析
+
 
 `bench_dram_float.cu`
 
+<a id="dram_1fp"></a>
 ```cuda
 // ============================================================
 // bench_dram_float.cu
@@ -1459,11 +1463,12 @@ int main(int argc, char** argv) {
 ```
 
 
-<a id="dram_4fp"></a>
+
 ### DRAM float4 带宽分析
 
 `bench_dram_float4.cu`
 
+<a id="dram_4fp"></a>
 ```cuda
 // ============================================================
 // bench_dram_float4.cu
