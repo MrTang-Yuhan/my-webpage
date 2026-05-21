@@ -345,8 +345,7 @@ $$
   ![](img/32-warp-dram.png)
 
 观察到：
-- `Gridblk/SM = 8, Threads = 128` 时，Read 实测带宽接近物理带宽。因为此时每个 SM 可以总分配 32 个 warps。
-- `Gridblk/SM < 8 或 Threads < 128` 时，Read 实测带宽远小于物理带宽。因为此时每个 SM 最多只能分配 16 个 warps，小于打满 DRAM 带宽需要 28 个 warps 的要求。
+- `Gridblk/SM < 14, Threads = 64` 时，Read 实测带宽变化幅度比较大。因为此时每个 SM 最多只能分配 16 个 warps，小于打满 DRAM 带宽需要 28 个 warps 的要求。
 
 
 再次回顾 scalar float 的测量结果：
@@ -1275,21 +1274,32 @@ int main(int argc, char** argv) {
     // ------------------------------------------------------------
     // 扫描配置
     // ------------------------------------------------------------
-    std::vector<int> thread_candidates = {
-        128,
-        256,
-        512,
-        1024
-    };  // 每个 block 的 threads 数量
+    std::vector<int> thread_candidates = {};
+    for (int i = 32; i <= 1536; i += 32)
+    {   
+        thread_candidates.push_back(i);
+    }
+    std::vector<int> block_per_sm_candidates = {};
+    for (int i = 1; i <= 24; ++i)
+    {
+        block_per_sm_candidates.push_back(i);
+    }
+    // std::vector<int> thread_candidates = {
+    //     128,
+    //     256,
+    //     512,
+    //     1024,
+    //     1536,
+    // };
 
-    std::vector<int> block_per_sm_candidates = {
-        1,
-        2,
-        4,
-        8,
-        16,
-        32
-    };
+    // std::vector<int> block_per_sm_candidates = {
+    //     1,
+    //     2,
+    //     3,
+    //     4,
+    //     8,
+    //     16
+    // };
 
     std::vector<int> thread_list; 
 
@@ -2308,21 +2318,32 @@ int main(int argc, char** argv) {
     // ------------------------------------------------------------
     // 扫描配置
     // ------------------------------------------------------------
-    std::vector<int> thread_candidates = {
-        128,
-        256,
-        512,
-        1024
-    };  // 每个 block 的 threads 数量
+    std::vector<int> thread_candidates = {};
+    for (int i = 32; i <= 1536; i += 32)
+    {   
+        thread_candidates.push_back(i);
+    }
+    std::vector<int> block_per_sm_candidates = {};
+    for (int i = 1; i <= 24; ++i)
+    {
+        block_per_sm_candidates.push_back(i);
+    }
+    // std::vector<int> thread_candidates = {
+    //     128,
+    //     256,
+    //     512,
+    //     1024,
+    //     1536,
+    // };
 
-    std::vector<int> block_per_sm_candidates = {
-        1,
-        2,
-        4,
-        8,
-        16,
-        32
-    };
+    // std::vector<int> block_per_sm_candidates = {
+    //     1,
+    //     2,
+    //     3,
+    //     4,
+    //     8,
+    //     16
+    // };
 
     std::vector<int> thread_list;
 
