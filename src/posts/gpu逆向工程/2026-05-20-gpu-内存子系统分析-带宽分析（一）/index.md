@@ -262,7 +262,7 @@ $$
 如果你想达到峰值带宽 $ B $，就必须维持 $ B \cdot L $ 这么多在途数据。$ B \cdot L $ 常称为***延迟带宽积***[^3]。
 
 [^3]: 可以把内存系统想象成一条管道。带宽 $B$ 为管道每秒流多少水；延迟 $L$ 为水从入口到出口要留多久；$B \cdot L$ 则是为了让管道出口满速出水，管道中必须已经装着多少水。<br>
-![](/img/pipeline.png)
+![](img/pipeline.png)
 
 ## 结果分析
 
@@ -339,7 +339,7 @@ $$
 
 注意：这 512 warps/SM **不是**同时 resident 的 warps 数量，而是每个 SM 分到的总工作量。真正同时 resident 的 warp 数会受线程数、寄存器、block 上限等限制。满足 28 个 warp-level load 请求/SM轻而易举。
 
-此外，我们找到个 32\text{ 个 warp-level load 请求/SM} 的案例，它的 Read 案例实测带宽也应该接近物理带宽，结果如图：
+此外，我们找到个 $32\text{ 个 warp-level load 请求/SM}$ 的案例，它的 Read 案例实测带宽也应该接近物理带宽，结果如图：
 
 - scalar float, 配置 `cg` 和 `launch`
   ![](img/32-warp-dram.png)
@@ -355,11 +355,7 @@ $$
 
 另一个现象是：单独 READ 和单独 WRITE 的实测带宽最高，Mixed（5R1W）次之，而 Copy（1R1W）相比前三者显著下降。这表明底层读写资源存在共享，读写操作会相互竞争，并引入读写切换等调度开销。
 
-## 总结
 
-- **原因分析**：根据 Litter's Laws, DRAM 因为物理带宽相对低、延迟高，连续 coalesced 的 scalar float 访问已经能通过足够多 warp 和 outstanding request 把片外带宽打满；float4 减少了指令数，但不能突破 DRAM 物理带宽，所以提升小。
-
-- **合理推测**： L1/L2 因为片上带宽高、延迟低，scalar float 的每条 load payload 太小，容易受 load 指令发射/请求处理/返回路径限制；float4 每条 load 有 4 倍 payload，所以 effective logical bandwidth 可以接近 4 倍。
 
 
 
