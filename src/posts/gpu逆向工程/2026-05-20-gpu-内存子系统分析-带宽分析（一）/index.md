@@ -231,47 +231,135 @@ static float time_benchmark(
 
 Little’s Law（利特定律）的形式是
 
+$$
+ N = \lambda \cdot T 
+$$
 
+其中：
 
+- $ N $：系统中的平均在途任务数；
+- $ \lambda $：吞吐率；
+- $ T $：平均停留时间，也就是延迟。
+
+映射到内存系统：
+
+- $ N $：在途内存请求数量，或者在途字节数；
+- $ \lambda $：内存吞吐率，也就是带宽；
+- $ T $：内存访问延迟。
+
+所以：
+
+$$
+ \text{in-flight bytes} = \text{bandwidth} \times \text{latency} 
+$$
+
+也就是：
+
+$$
+ N_{\text{bytes}} = B \cdot L 
+$$
+
+如果你想达到峰值带宽 $ B $，就必须维持 $ B \cdot L $ 这么多在途数据。$ B \cdot L $ 常称为***延迟带宽积***[^3]。
+
+[^3]: 可以把内存系统想象成一条管道。带宽 $B$ 为管道每秒流多少水；延迟 $L$ 为水从入口到出口要留多久；$B \cdot L$ 则是为了让管道出口满速出水，管道中必须已经装着多少水。<br>
+![](/img/pipeline.png)
 
 ## 结果分析
 
-**原因分析**：DRAM 因为物理带宽相对低、延迟高，连续 coalesced 的 scalar float 访问已经能通过足够多 warp 和 outstanding request 把片外带宽打满；float4 减少了指令数，但不能突破 DRAM 物理带宽，所以提升小。
+以 READ 最优配置为例：
+- 每个 SM 总分配的 block 数 GridBlk/SM = 32
+- 每个 block 的线程数 Threads/block = 512
+- Best = 907.99 GB/s
 
-**合理推测**： L1/L2 因为片上带宽高、延迟低，scalar float 的每条 load payload 太小，容易受 load 指令发射/请求处理/返回路径限制；float4 每条 load 有 4 倍 payload，所以 effective logical bandwidth 可以接近 4 倍。
+GPU 参数：
+
+- 物理带宽 B_peak = 960 GB/s
+- SM 数量 = 84
+- GPU 频率 = 2947 MHz[^4]
+- DRAM 访问延迟（相对于 GPU 频率） = 920 cycles
+
+[^4]: GPU 频率和对应的 DRAM 访问延迟测量参考 [GPU 内存子系统分析--延迟分析](https://my-webpage-adu.pages.dev/posts/gpu%E9%80%86%E5%90%91%E5%B7%A5%E7%A8%8B/2026-05-14-gpu-%E5%86%85%E5%AD%98%E5%AD%90%E7%B3%BB%E7%BB%9F%E5%88%86%E6%9E%90-%E5%BB%B6%E8%BF%9F%E5%88%86%E6%9E%90/)
+
+将物理带宽换算成每个 GPU core cycle 的带宽：
+
+$$
+B_{\text{peak,cycle}} = \frac{960 \times 10^9}{2.947 \times 10^9} \approx 325.75 \text{ bytes/cycle}
+$$
+
+也就是说，整个 GPU 想打满 960 GB/s，相当于每个 core cycle 要从 DRAM 返回：
+
+$$
+\approx 326 \text{ bytes/cycle}
+$$
+
+DRAM 延迟：
+
+$$
+L = 920 \text{ cycles}
+$$
+
+所以全 GPU 为了打满 960 GB/s，需要的 in-flight 数据量是：
+
+$$
+N_{\text{bytes}} = 325.75 \times 920 \approx 299690 \text{ bytes}
+$$
+
+说明，想让 960 GB/s 的 DRAM 管道持续满速流出数据，整个 GPU 至少要让 299690 bytes 的读请求同时处于 in-flight 状态。
+
+SM 数量是 84，所以每个 SM 平均需要贡献：
+
+$$
+\frac{299690}{84} \approx 3568 \text{ bytes/SM}
+$$
+
+换句话说，虽然全 GPU 的 DRAM 延迟很高，但是从每个 SM 的角度看，想打满全局带宽，每个 SM 平均只需要维持大约 3568 Bytes 的 DRAM 请求在路上。
+
+对于 scalar float，代码中一个 warp 的一次 load 指令对应的有效数据量为 $32 \times 4 = 128$ bytes（vector float4 则为 $512 \text{ bytes}$）。由于循环内部的访问模式是同一个 warp 的 32 个 lane 访问连续地址，因此可以实现内存合并访问，从而粗略认为：
+
+$$
+\text{每个 warp load instruction 访存} \approx 128 \text{ bytes}
+$$
+
+由于打满 DRAM 带宽要求每个 SM 平均需要贡献 $3568 \text{ byte}$，也就是:
+$$
+\frac{3568}{128} \approx 28\text{ 个 warp-level load 请求/SM}
+$$
+
+在我的最优配置中，每个 block 的 warp 数：
+
+$$
+\frac{512}{32} = 16 \text{ warps/block}
+$$
+
+平均到每个 SM 的 grid warp 数：
+
+$$
+32 \times 16 = 512 \text{ warps/SM}
+$$
+
+注意：这 512 warps/SM **不是**同时 resident 的 warps 数量，而是每个 SM 分到的总工作量。真正同时 resident 的 warp 数会受线程数、寄存器、block 上限等限制。满足 28 个 warp-level load 请求/SM轻而易举。
+
+此外，我们找到个 32\text{ 个 warp-level load 请求/SM} 的案例，它的 Read 案例实测带宽也应该接近物理带宽，结果如图：
+
+- scalar float, 配置 `cg` 和 `launch`
+  ![](img/32-warp-dram.png)
+
+观察到：
+- `Gridblk/SM = 8, Threads = 128` 时，Read 实测带宽接近物理带宽。因为此时每个 SM 可以总分配 32 个 warps。
+- `Gridblk/SM < 8 或 Threads < 128` 时，Read 实测带宽远小于物理带宽。因为此时每个 SM 最多只能分配 16 个 warps，小于打满 DRAM 带宽需要 28 个 warps 的要求。
 
 
+再次回顾 scalar float 的测量结果：
 
+![](img/scalar-test.png)
 
+另一个现象是：单独 READ 和单独 WRITE 的实测带宽最高，Mixed（5R1W）次之，而 Copy（1R1W）相比前三者显著下降。这表明底层读写资源存在共享，读写操作会相互竞争，并引入读写切换等调度开销。
 
+## 总结
 
+- **原因分析**：根据 Litter's Laws, DRAM 因为物理带宽相对低、延迟高，连续 coalesced 的 scalar float 访问已经能通过足够多 warp 和 outstanding request 把片外带宽打满；float4 减少了指令数，但不能突破 DRAM 物理带宽，所以提升小。
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+- **合理推测**： L1/L2 因为片上带宽高、延迟低，scalar float 的每条 load payload 太小，容易受 load 指令发射/请求处理/返回路径限制；float4 每条 load 有 4 倍 payload，所以 effective logical bandwidth 可以接近 4 倍。
 
 
 
@@ -623,9 +711,7 @@ clean:
 //   原 float4 版本每条 load/store 指令访问 16 bytes。
 // ============================================================
 
-
 #include <cuda_runtime.h>
-
 
 #include <cstdio>
 #include <cstdlib>
@@ -635,7 +721,6 @@ clean:
 #include <cstring>
 #include <cmath>
 #include <string>
-
 
 #define CHECK_CUDA(call)                                                   \
     do {                                                                   \
@@ -647,25 +732,21 @@ clean:
         }                                                                  \
     } while (0)
 
-
 enum CachePolicy {
     CACHE_CS = 0,
     CACHE_CG = 1
 };
-
 
 enum LoopMode {
     LOOP_LAUNCH = 0,
     LOOP_KERNEL = 1
 };
 
-
 // ------------------------------------------------------------
 // .cs scalar float load
 // ------------------------------------------------------------
 __device__ __forceinline__ float load_cs_float(const float* ptr) {
     float v;
-
 
     asm volatile(
         "ld.global.cs.f32 %0, [%1];"
@@ -674,17 +755,14 @@ __device__ __forceinline__ float load_cs_float(const float* ptr) {
         : "memory"
     );
 
-
     return v;
 }
-
 
 // ------------------------------------------------------------
 // .cg scalar float load
 // ------------------------------------------------------------
 __device__ __forceinline__ float load_cg_float(const float* ptr) {
     float v;
-
 
     asm volatile(
         "ld.global.cg.f32 %0, [%1];"
@@ -693,10 +771,8 @@ __device__ __forceinline__ float load_cg_float(const float* ptr) {
         : "memory"
     );
 
-
     return v;
 }
-
 
 // ------------------------------------------------------------
 // runtime policy scalar float load
@@ -711,7 +787,6 @@ __device__ __forceinline__ float load_policy_float(
         return load_cs_float(ptr);
     }
 }
-
 
 // ------------------------------------------------------------
 // .cs scalar float store
@@ -728,7 +803,6 @@ __device__ __forceinline__ void store_cs_float(
     );
 }
 
-
 // ------------------------------------------------------------
 // .cg scalar float store
 // ------------------------------------------------------------
@@ -743,7 +817,6 @@ __device__ __forceinline__ void store_cg_float(
         : "memory"
     );
 }
-
 
 // ------------------------------------------------------------
 // runtime policy scalar float store
@@ -760,7 +833,6 @@ __device__ __forceinline__ void store_policy_float(
     }
 }
 
-
 // ------------------------------------------------------------
 // Device hash
 // ------------------------------------------------------------
@@ -772,23 +844,19 @@ __device__ __forceinline__ uint32_t dev_hash_u32(uint64_t x) {
     return static_cast<uint32_t>(x);
 }
 
-
 __device__ __forceinline__ float dev_u32_to_float(uint32_t x) {
     union {
         uint32_t u;
         float f;
     } v;
 
-
     v.u = 0x3f800000u | (x & 0x007fffffu);
     return v.f;
 }
 
-
 __device__ __forceinline__ float dev_u32_to_float_fast(uint32_t x) {
     return __uint_as_float(0x3f800000u | (x & 0x007fffffu));
 }
-
 
 // ------------------------------------------------------------
 // Scalar pattern
@@ -803,11 +871,9 @@ __device__ __forceinline__ float make_pattern_float(
         static_cast<uint64_t>(it) * 0x100000001b3ull +
         static_cast<uint64_t>(seed);
 
-
     uint32_t h = dev_hash_u32(x);
     return dev_u32_to_float(h);
 }
-
 
 __device__ __forceinline__ float make_light_pattern_float(
     size_t i,
@@ -819,13 +885,10 @@ __device__ __forceinline__ float make_light_pattern_float(
         static_cast<uint32_t>(it * 747796405u) ^
         seed;
 
-
     x += 0x11111111u;
-
 
     return dev_u32_to_float_fast(x);
 }
-
 
 // ------------------------------------------------------------
 // Read kernel
@@ -848,13 +911,10 @@ __global__ void dram_read_kernel(
     size_t tid =
         static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
-
     size_t stride =
         static_cast<size_t>(gridDim.x) * blockDim.x;
 
-
     float acc = 0.0f;
-
 
     for (int it = 0; it < iters; ++it) {
         for (size_t i = tid; i < elems; i += stride) {
@@ -863,10 +923,8 @@ __global__ void dram_read_kernel(
         }
     }
 
-
     sink[tid] = acc;
 }
-
 
 // ------------------------------------------------------------
 // Write kernel
@@ -881,10 +939,8 @@ __global__ void dram_write_kernel(
     size_t tid =
         static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
-
     size_t stride =
         static_cast<size_t>(gridDim.x) * blockDim.x;
-
 
     for (int it = 0; it < iters; ++it) {
         for (size_t i = tid; i < elems; i += stride) {
@@ -893,7 +949,6 @@ __global__ void dram_write_kernel(
         }
     }
 }
-
 
 // ------------------------------------------------------------
 // Copy kernel
@@ -908,10 +963,8 @@ __global__ void dram_copy_kernel(
     size_t tid =
         static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
-
     size_t stride =
         static_cast<size_t>(gridDim.x) * blockDim.x;
-
 
     for (int it = 0; it < iters; ++it) {
         for (size_t i = tid; i < elems; i += stride) {
@@ -920,7 +973,6 @@ __global__ void dram_copy_kernel(
         }
     }
 }
-
 
 // ------------------------------------------------------------
 // Mixed 5-read-1-write kernel
@@ -939,10 +991,8 @@ __global__ void dram_mixed_5r1w_kernel(
     size_t tid =
         static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
-
     size_t stride =
         static_cast<size_t>(gridDim.x) * blockDim.x;
-
 
     for (int it = 0; it < iters; ++it) {
         for (size_t i = tid; i < elems; i += stride) {
@@ -952,15 +1002,12 @@ __global__ void dram_mixed_5r1w_kernel(
             float v3 = load_policy_float(a3 + i, policy);
             float v4 = load_policy_float(a4 + i, policy);
 
-
             float out = v0 + v1 + v2 + v3 + v4;
-
 
             store_policy_float(dst + i, out, policy);
         }
     }
 }
-
 
 // ------------------------------------------------------------
 // Host hash
@@ -973,16 +1020,13 @@ static inline uint32_t host_hash_u32(uint64_t x) {
     return static_cast<uint32_t>(x);
 }
 
-
 static inline float host_u32_to_float(uint32_t x) {
     uint32_t bits = 0x3f800000u | (x & 0x007fffffu);
-
 
     float f;
     std::memcpy(&f, &bits, sizeof(float));
     return f;
 }
-
 
 // ------------------------------------------------------------
 // 初始化 float device array
@@ -991,24 +1035,18 @@ static void init_float_pattern(float* d, size_t elems, uint32_t seed) {
     const size_t chunk = 1 << 20;
     std::vector<float> h(chunk);
 
-
     size_t off = 0;
-
 
     while (off < elems) {
         size_t now = std::min(chunk, elems - off);
 
-
         for (size_t i = 0; i < now; ++i) {
             uint64_t idx = static_cast<uint64_t>(off + i);
 
-
             uint32_t hv = host_hash_u32(idx + seed);
-
 
             h[i] = host_u32_to_float(hv);
         }
-
 
         CHECK_CUDA(cudaMemcpy(
             d + off,
@@ -1017,11 +1055,9 @@ static void init_float_pattern(float* d, size_t elems, uint32_t seed) {
             cudaMemcpyHostToDevice
         ));
 
-
         off += now;
     }
 }
-
 
 // ------------------------------------------------------------
 // 统一计时函数
@@ -1054,21 +1090,16 @@ static float time_benchmark(
             launcher(warmup_iters, 0);
         }
 
-
         CHECK_CUDA(cudaDeviceSynchronize());
         CHECK_CUDA(cudaGetLastError());
     }
 
-
     cudaEvent_t start, stop;
-
 
     CHECK_CUDA(cudaEventCreate(&start));
     CHECK_CUDA(cudaEventCreate(&stop));
 
-
     CHECK_CUDA(cudaEventRecord(start));
-
 
     if (mode == LOOP_LAUNCH) {
         for (int r = 0; r < measured_iters; ++r) {
@@ -1078,25 +1109,19 @@ static float time_benchmark(
         launcher(measured_iters, 0);
     }
 
-
     CHECK_CUDA(cudaEventRecord(stop));
     CHECK_CUDA(cudaEventSynchronize(stop));
 
-
     CHECK_CUDA(cudaGetLastError());
-
 
     float ms = 0.0f;
     CHECK_CUDA(cudaEventElapsedTime(&ms, start, stop));
 
-
     CHECK_CUDA(cudaEventDestroy(start));
     CHECK_CUDA(cudaEventDestroy(stop));
 
-
     return ms;
 }
-
 
 // ------------------------------------------------------------
 // bytes / ms -> GB/s
@@ -1105,16 +1130,13 @@ static double gbps(double bytes, double ms) {
     return bytes / (ms / 1000.0) / 1e9;
 }
 
-
 static const char* policy_name(CachePolicy p) {
     return p == CACHE_CG ? "cg" : "cs";
 }
 
-
 static const char* mode_name(LoopMode m) {
     return m == LOOP_KERNEL ? "kernel" : "launch";
 }
-
 
 static bool parse_policy(const char* s, CachePolicy& p) {
     if (std::strcmp(s, "cs") == 0 || std::strcmp(s, ".cs") == 0) {
@@ -1122,16 +1144,13 @@ static bool parse_policy(const char* s, CachePolicy& p) {
         return true;
     }
 
-
     if (std::strcmp(s, "cg") == 0 || std::strcmp(s, ".cg") == 0) {
         p = CACHE_CG;
         return true;
     }
 
-
     return false;
 }
-
 
 static bool parse_mode(const char* s, LoopMode& m) {
     if (std::strcmp(s, "launch") == 0) {
@@ -1139,16 +1158,13 @@ static bool parse_mode(const char* s, LoopMode& m) {
         return true;
     }
 
-
     if (std::strcmp(s, "kernel") == 0) {
         m = LOOP_KERNEL;
         return true;
     }
 
-
     return false;
 }
-
 
 static void print_usage(const char* prog) {
     fprintf(stderr,
@@ -1162,17 +1178,14 @@ static void print_usage(const char* prog) {
             prog, prog, prog, prog, prog);
 }
 
-
 int main(int argc, char** argv) {
     if (argc < 3) {
         print_usage(argv[0]);
         return 1;
     }
 
-
     CachePolicy cache_policy = CACHE_CS;
     LoopMode loop_mode = LOOP_LAUNCH;
-
 
     if (!parse_policy(argv[1], cache_policy)) {
         fprintf(stderr, "Invalid cache policy: %s\n", argv[1]);
@@ -1180,28 +1193,22 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-
     if (!parse_mode(argv[2], loop_mode)) {
         fprintf(stderr, "Invalid loop mode: %s\n", argv[2]);
         print_usage(argv[0]);
         return 1;
     }
 
-
     int dev = 0;
     CHECK_CUDA(cudaSetDevice(dev));
-
 
     cudaDeviceProp prop{};
     CHECK_CUDA(cudaGetDeviceProperties(&prop, dev));
 
-
     int sms = prop.multiProcessorCount;
-
 
     size_t l2_bytes = prop.l2CacheSize;
     size_t global_mem = prop.totalGlobalMem;
-
 
     // ------------------------------------------------------------
     // 默认 working set
@@ -1211,37 +1218,29 @@ int main(int argc, char** argv) {
         2ull * 1024ull * 1024ull * 1024ull
     );
 
-
-    default_bytes = std::min(default_bytes, global_mem / 8);
-
+    default_bytes = std::min(default_bytes, global_mem / 8);    // 防止 OOM
 
     size_t bytes = default_bytes;
-
 
     // argv[3] 可选：working set MiB
     if (argc >= 4) {
         double mib = std::atof(argv[3]);
-
 
         if (mib <= 0.0) {
             fprintf(stderr, "Invalid working_set_mib: %s\n", argv[3]);
             return 1;
         }
 
-
         bytes = static_cast<size_t>(mib * 1024.0 * 1024.0);
     }
 
-
     size_t elems = bytes / sizeof(float);
     bytes = elems * sizeof(float);
-
 
     if (elems == 0) {
         fprintf(stderr, "Working set too small.\n");
         return 1;
     }
-
 
     if (bytes * 6 > global_mem * 9 / 10) {
         fprintf(stderr,
@@ -1253,7 +1252,6 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-
     printf("GPU: %s\n", prop.name);
     printf("SM count: %d\n", sms);
     printf("Max threads per block: %d\n", prop.maxThreadsPerBlock);
@@ -1264,7 +1262,6 @@ int main(int argc, char** argv) {
     printf("Cache policy: .%s\n", policy_name(cache_policy));
     printf("Loop mode: %s\n", mode_name(loop_mode));
 
-
     if (cache_policy == CACHE_CS) {
         printf("Load policy:  ld.global.cs.f32\n");
         printf("Store policy: st.global.cs.f32\n");
@@ -1273,11 +1270,9 @@ int main(int argc, char** argv) {
         printf("Store policy: st.global.cg.f32\n");
     }
 
-
     printf("Element type: float\n");
     printf("Bytes per scalar load/store instruction: 4\n");
     printf("\n");
-
 
     // ------------------------------------------------------------
     // 扫描配置
@@ -1287,8 +1282,7 @@ int main(int argc, char** argv) {
         256,
         512,
         1024
-    };
-
+    };  // 每个 block 的 threads 数量
 
     std::vector<int> block_per_sm_candidates = {
         1,
@@ -1299,9 +1293,7 @@ int main(int argc, char** argv) {
         32
     };
 
-
-    std::vector<int> thread_list;
-
+    std::vector<int> thread_list; 
 
     for (int t : thread_candidates) {
         if (t <= prop.maxThreadsPerBlock) {
@@ -1309,16 +1301,13 @@ int main(int argc, char** argv) {
         }
     }
 
-
     if (thread_list.empty()) {
         fprintf(stderr, "No valid thread block size found.\n");
         return 1;
     }
 
-
     int max_threads =
         *std::max_element(thread_list.begin(), thread_list.end());
-
 
     int max_blocks_per_sm =
         *std::max_element(
@@ -1326,9 +1315,7 @@ int main(int argc, char** argv) {
             block_per_sm_candidates.end()
         );
 
-
     int max_blocks = sms * max_blocks_per_sm;
-
 
     // ------------------------------------------------------------
     // 分配 device memory
@@ -1340,9 +1327,7 @@ int main(int argc, char** argv) {
     float* d_a4 = nullptr;
     float* d_dst = nullptr;
 
-
     float* d_sink = nullptr;
-
 
     CHECK_CUDA(cudaMalloc(&d_a0, bytes));
     CHECK_CUDA(cudaMalloc(&d_a1, bytes));
@@ -1351,7 +1336,6 @@ int main(int argc, char** argv) {
     CHECK_CUDA(cudaMalloc(&d_a4, bytes));
     CHECK_CUDA(cudaMalloc(&d_dst, bytes));
 
-
     CHECK_CUDA(cudaMalloc(
         &d_sink,
         static_cast<size_t>(max_blocks) *
@@ -1359,9 +1343,7 @@ int main(int argc, char** argv) {
         sizeof(float)
     ));
 
-
     printf("Initializing arrays with pseudo-random patterns...\n");
-
 
     init_float_pattern(d_a0, elems, 0x12345678u);
     init_float_pattern(d_a1, elems, 0x23456789u);
@@ -1369,9 +1351,7 @@ int main(int argc, char** argv) {
     init_float_pattern(d_a3, elems, 0x456789abu);
     init_float_pattern(d_a4, elems, 0x56789abcu);
 
-
     CHECK_CUDA(cudaMemset(d_dst, 0, bytes));
-
 
     CHECK_CUDA(cudaMemset(
         d_sink,
@@ -1381,45 +1361,36 @@ int main(int argc, char** argv) {
         sizeof(float)
     ));
 
-
     printf("Initialization done.\n\n");
-
 
     // ------------------------------------------------------------
     // 为避免缓存对 DRAM 测量结果造成干扰：
     // 默认每个测试只做 1 次 pass，不做 warmup。
     // 如果使用 kernel mode 且增加 iters，可能因为缓存命中提升而使带宽偏高。
     // ------------------------------------------------------------
-    int read_iters  = 1;
-    int write_iters = 1;
-    int copy_iters  = 1;
-    int mixed_iters = 1;
-
+    int read_iters  = 10;
+    int write_iters = 10;
+    int copy_iters  = 10;
+    int mixed_iters = 10;
 
     int warmup_read  = 0;
     int warmup_write = 0;
     int warmup_copy  = 0;
     int warmup_mixed = 0;
 
-
     double read_bytes =
         static_cast<double>(bytes) * read_iters;
-
 
     double write_bytes =
         static_cast<double>(bytes) * write_iters;
 
-
     double copy_bytes =
         static_cast<double>(bytes) * copy_iters * 2.0;
-
 
     double mixed_bytes =
         static_cast<double>(bytes) * mixed_iters * 6.0;
 
-
     printf("Scan settings:\n");
-
 
     printf("  thread candidates: ");
     for (int t : thread_list) {
@@ -1427,20 +1398,17 @@ int main(int argc, char** argv) {
     }
     printf("\n");
 
-
     printf("  GridBlk/SM candidates: ");
     for (int bpsm : block_per_sm_candidates) {
         printf("%d ", bpsm);
     }
     printf("\n");
 
-
     printf("  read_iters  = %d, warmup = %d\n", read_iters, warmup_read);
     printf("  write_iters = %d, warmup = %d\n", write_iters, warmup_write);
     printf("  copy_iters  = %d, warmup = %d\n", copy_iters, warmup_copy);
     printf("  mixed_iters = %d, warmup = %d\n", mixed_iters, warmup_mixed);
     printf("\n");
-
 
     printf("%10s %8s %10s %14s %16s %12s %12s %16s\n",
            "GridBlk/SM",
@@ -1452,52 +1420,41 @@ int main(int argc, char** argv) {
            "Time_ms",
            "GB/s");
 
-
     printf("----------------------------------------------------------------------------------------------------------\n");
-
 
     double best_read_gbps  = 0.0;
     double best_write_gbps = 0.0;
     double best_copy_gbps  = 0.0;
     double best_mixed_gbps = 0.0;
 
-
     int best_read_threads = 0;
     int best_read_bpsm = 0;
-
 
     int best_write_threads = 0;
     int best_write_bpsm = 0;
 
-
     int best_copy_threads = 0;
     int best_copy_bpsm = 0;
-
 
     int best_mixed_threads = 0;
     int best_mixed_bpsm = 0;
 
-
     int policy_int = static_cast<int>(cache_policy);
-
 
     // ------------------------------------------------------------
     // 正式扫描
     // ------------------------------------------------------------
     for (int threads : thread_list) {
         for (int blocks_per_sm : block_per_sm_candidates) {
-            int blocks = sms * blocks_per_sm;
-
+            int blocks = sms * blocks_per_sm;           // GPU 上总共的 blocks 数量
 
             double grid_warps_per_sm =
                 static_cast<double>(blocks_per_sm) *
                 static_cast<double>(threads) / 32.0;
 
-
             size_t sink_elems =
                 static_cast<size_t>(blocks) *
                 static_cast<size_t>(threads);
-
 
             CHECK_CUDA(cudaMemset(
                 d_sink,
@@ -1505,14 +1462,12 @@ int main(int argc, char** argv) {
                 sink_elems * sizeof(float)
             ));
 
-
             // ---------------------------
             // Read-only
             // ---------------------------
             float ms_read = time_benchmark(
                 [&](int kernel_iters, int r) {
                     (void)r;
-
 
                     dram_read_kernel<<<blocks, threads>>>(
                         d_a0,
@@ -1527,9 +1482,7 @@ int main(int argc, char** argv) {
                 loop_mode
             );
 
-
             double read_gbps = gbps(read_bytes, ms_read);
-
 
             printf("%10d %8d %10d %14.1f %16s %12d %12.3f %16.2f\n",
                    blocks_per_sm,
@@ -1541,13 +1494,11 @@ int main(int argc, char** argv) {
                    ms_read,
                    read_gbps);
 
-
             if (read_gbps > best_read_gbps) {
                 best_read_gbps = read_gbps;
                 best_read_threads = threads;
                 best_read_bpsm = blocks_per_sm;
             }
-
 
             // ---------------------------
             // Write-only
@@ -1557,7 +1508,6 @@ int main(int argc, char** argv) {
                     uint32_t seed =
                         0xdeadbeefu +
                         static_cast<uint32_t>(r * 1315423911u);
-
 
                     dram_write_kernel<<<blocks, threads>>>(
                         d_dst,
@@ -1572,9 +1522,7 @@ int main(int argc, char** argv) {
                 loop_mode
             );
 
-
             double write_gbps = gbps(write_bytes, ms_write);
-
 
             printf("%10d %8d %10d %14.1f %16s %12d %12.3f %16.2f\n",
                    blocks_per_sm,
@@ -1586,13 +1534,11 @@ int main(int argc, char** argv) {
                    ms_write,
                    write_gbps);
 
-
             if (write_gbps > best_write_gbps) {
                 best_write_gbps = write_gbps;
                 best_write_threads = threads;
                 best_write_bpsm = blocks_per_sm;
             }
-
 
             // ---------------------------
             // Copy 1R1W
@@ -1600,7 +1546,6 @@ int main(int argc, char** argv) {
             float ms_copy = time_benchmark(
                 [&](int kernel_iters, int r) {
                     (void)r;
-
 
                     dram_copy_kernel<<<blocks, threads>>>(
                         d_a0,
@@ -1615,9 +1560,7 @@ int main(int argc, char** argv) {
                 loop_mode
             );
 
-
             double copy_gbps = gbps(copy_bytes, ms_copy);
-
 
             printf("%10d %8d %10d %14.1f %16s %12d %12.3f %16.2f\n",
                    blocks_per_sm,
@@ -1629,13 +1572,11 @@ int main(int argc, char** argv) {
                    ms_copy,
                    copy_gbps);
 
-
             if (copy_gbps > best_copy_gbps) {
                 best_copy_gbps = copy_gbps;
                 best_copy_threads = threads;
                 best_copy_bpsm = blocks_per_sm;
             }
-
 
             // ---------------------------
             // Mixed 5R1W
@@ -1643,7 +1584,6 @@ int main(int argc, char** argv) {
             float ms_mixed = time_benchmark(
                 [&](int kernel_iters, int r) {
                     (void)r;
-
 
                     dram_mixed_5r1w_kernel<<<blocks, threads>>>(
                         d_a0,
@@ -1662,9 +1602,7 @@ int main(int argc, char** argv) {
                 loop_mode
             );
 
-
             double mixed_gbps = gbps(mixed_bytes, ms_mixed);
-
 
             printf("%10d %8d %10d %14.1f %16s %12d %12.3f %16.2f\n",
                    blocks_per_sm,
@@ -1676,21 +1614,17 @@ int main(int argc, char** argv) {
                    ms_mixed,
                    mixed_gbps);
 
-
             if (mixed_gbps > best_mixed_gbps) {
                 best_mixed_gbps = mixed_gbps;
                 best_mixed_threads = threads;
                 best_mixed_bpsm = blocks_per_sm;
             }
 
-
             printf("----------------------------------------------------------------------------------------------------------\n");
         }
     }
 
-
     printf("\nBest results:\n");
-
 
     printf("%16s %14s %12s %16s\n",
            "Test",
@@ -1698,13 +1632,11 @@ int main(int argc, char** argv) {
            "Threads",
            "Best GB/s");
 
-
     printf("%16s %14d %12d %16.2f\n",
            "Read",
            best_read_bpsm,
            best_read_threads,
            best_read_gbps);
-
 
     printf("%16s %14d %12d %16.2f\n",
            "Write",
@@ -1712,13 +1644,11 @@ int main(int argc, char** argv) {
            best_write_threads,
            best_write_gbps);
 
-
     printf("%16s %14d %12d %16.2f\n",
            "Copy_1R1W",
            best_copy_bpsm,
            best_copy_threads,
            best_copy_gbps);
-
 
     printf("%16s %14d %12d %16.2f\n",
            "Mixed_5R1W",
@@ -1726,12 +1656,10 @@ int main(int argc, char** argv) {
            best_mixed_threads,
            best_mixed_gbps);
 
-
     printf("\nConfiguration summary:\n");
     printf("  Cache policy: .%s\n", policy_name(cache_policy));
     printf("  Loop mode: %s\n", mode_name(loop_mode));
     printf("  Element type: float\n");
-
 
     if (cache_policy == CACHE_CS) {
         printf("  Load instruction:  ld.global.cs.f32\n");
@@ -1741,9 +1669,7 @@ int main(int argc, char** argv) {
         printf("  Store instruction: st.global.cg.f32\n");
     }
 
-
     printf("  Bytes per scalar load/store instruction: 4\n");
-
 
     if (loop_mode == LOOP_LAUNCH) {
         printf("  Meaning of Iters: number of host-side kernel launches.\n");
@@ -1753,7 +1679,6 @@ int main(int argc, char** argv) {
         printf("  Host launches one timed kernel per test/configuration.\n");
     }
 
-
     CHECK_CUDA(cudaFree(d_a0));
     CHECK_CUDA(cudaFree(d_a1));
     CHECK_CUDA(cudaFree(d_a2));
@@ -1762,12 +1687,9 @@ int main(int argc, char** argv) {
     CHECK_CUDA(cudaFree(d_dst));
     CHECK_CUDA(cudaFree(d_sink));
 
-
     return 0;
 }
 ```
-
-
 
 
 <a id="dram_4fp"></a>
@@ -1802,9 +1724,7 @@ int main(int argc, char** argv) {
 //
 // ============================================================
 
-
 #include <cuda_runtime.h>
-
 
 #include <cstdio>
 #include <cstdlib>
@@ -1814,7 +1734,6 @@ int main(int argc, char** argv) {
 #include <cstring>
 #include <cmath>
 #include <string>
-
 
 #define CHECK_CUDA(call)                                                   \
     do {                                                                   \
@@ -1826,25 +1745,21 @@ int main(int argc, char** argv) {
         }                                                                  \
     } while (0)
 
-
 enum CachePolicy {
     CACHE_CS = 0,
     CACHE_CG = 1
 };
-
 
 enum LoopMode {
     LOOP_LAUNCH = 0,
     LOOP_KERNEL = 1
 };
 
-
 // ------------------------------------------------------------
 // .cs load
 // ------------------------------------------------------------
 __device__ __forceinline__ float4 load_cs_float4(const float4* ptr) {
     float4 v;
-
 
     asm volatile(
         "ld.global.cs.v4.f32 {%0, %1, %2, %3}, [%4];"
@@ -1853,17 +1768,14 @@ __device__ __forceinline__ float4 load_cs_float4(const float4* ptr) {
         : "memory"
     );
 
-
     return v;
 }
-
 
 // ------------------------------------------------------------
 // .cg load
 // ------------------------------------------------------------
 __device__ __forceinline__ float4 load_cg_float4(const float4* ptr) {
     float4 v;
-
 
     asm volatile(
         "ld.global.cg.v4.f32 {%0, %1, %2, %3}, [%4];"
@@ -1872,10 +1784,8 @@ __device__ __forceinline__ float4 load_cg_float4(const float4* ptr) {
         : "memory"
     );
 
-
     return v;
 }
-
 
 // ------------------------------------------------------------
 // runtime policy load
@@ -1890,7 +1800,6 @@ __device__ __forceinline__ float4 load_policy_float4(
         return load_cs_float4(ptr);
     }
 }
-
 
 // ------------------------------------------------------------
 // .cs store
@@ -1907,7 +1816,6 @@ __device__ __forceinline__ void store_cs_float4(
     );
 }
 
-
 // ------------------------------------------------------------
 // .cg store
 // ------------------------------------------------------------
@@ -1922,7 +1830,6 @@ __device__ __forceinline__ void store_cg_float4(
         : "memory"
     );
 }
-
 
 // ------------------------------------------------------------
 // runtime policy store
@@ -1939,7 +1846,6 @@ __device__ __forceinline__ void store_policy_float4(
     }
 }
 
-
 // ------------------------------------------------------------
 // Device hash
 // ------------------------------------------------------------
@@ -1951,19 +1857,15 @@ __device__ __forceinline__ uint32_t dev_hash_u32(uint64_t x) {
     return static_cast<uint32_t>(x);
 }
 
-
 __device__ __forceinline__ float dev_u32_to_float(uint32_t x) {
     union {
         uint32_t u;
         float f;
     } v;
 
-
     v.u = 0x3f800000u | (x & 0x007fffffu);
     return v.f;
 }
-
-
 
 
 __device__ __forceinline__ float4 make_pattern_float4(
@@ -1976,12 +1878,10 @@ __device__ __forceinline__ float4 make_pattern_float4(
         static_cast<uint64_t>(it) * 0x100000001b3ull +
         static_cast<uint64_t>(seed);
 
-
     uint32_t h0 = dev_hash_u32(base + 0);
     uint32_t h1 = dev_hash_u32(base + 1);
     uint32_t h2 = dev_hash_u32(base + 2);
     uint32_t h3 = dev_hash_u32(base + 3);
-
 
     return make_float4(
         dev_u32_to_float(h0),
@@ -1991,11 +1891,9 @@ __device__ __forceinline__ float4 make_pattern_float4(
     );
 }
 
-
 __device__ __forceinline__ float dev_u32_to_float_fast(uint32_t x) {
     return __uint_as_float(0x3f800000u | (x & 0x007fffffu));
 }
-
 
 __device__ __forceinline__ float4 make_light_pattern_float4(
     size_t i,
@@ -2007,12 +1905,10 @@ __device__ __forceinline__ float4 make_light_pattern_float4(
         static_cast<uint32_t>(it * 747796405u) ^
         seed;
 
-
     uint32_t x0 = x + 0x11111111u;
     uint32_t x1 = x + 0x22222222u;
     uint32_t x2 = x + 0x33333333u;
     uint32_t x3 = x + 0x44444444u;
-
 
     return make_float4(
         dev_u32_to_float_fast(x0),
@@ -2021,7 +1917,6 @@ __device__ __forceinline__ float4 make_light_pattern_float4(
         dev_u32_to_float_fast(x3)
     );
 }
-
 
 // ------------------------------------------------------------
 // Read kernel
@@ -2044,13 +1939,10 @@ __global__ void dram_read_kernel(
     size_t tid =
         static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
-
     size_t stride =
         static_cast<size_t>(gridDim.x) * blockDim.x;
 
-
     float acc = 0.0f;
-
 
     for (int it = 0; it < iters; ++it) {
         for (size_t i = tid; i < elems; i += stride) {
@@ -2059,10 +1951,8 @@ __global__ void dram_read_kernel(
         }
     }
 
-
     sink[tid] = acc;
 }
-
 
 // ------------------------------------------------------------
 // Write kernel
@@ -2077,10 +1967,8 @@ __global__ void dram_write_kernel(
     size_t tid =
         static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
-
     size_t stride =
         static_cast<size_t>(gridDim.x) * blockDim.x;
-
 
     for (int it = 0; it < iters; ++it) {
         for (size_t i = tid; i < elems; i += stride) {
@@ -2089,7 +1977,6 @@ __global__ void dram_write_kernel(
         }
     }
 }
-
 
 // ------------------------------------------------------------
 // Copy kernel
@@ -2104,10 +1991,8 @@ __global__ void dram_copy_kernel(
     size_t tid =
         static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
-
     size_t stride =
         static_cast<size_t>(gridDim.x) * blockDim.x;
-
 
     for (int it = 0; it < iters; ++it) {
         for (size_t i = tid; i < elems; i += stride) {
@@ -2116,7 +2001,6 @@ __global__ void dram_copy_kernel(
         }
     }
 }
-
 
 // ------------------------------------------------------------
 // Mixed 5-read-1-write kernel
@@ -2135,10 +2019,8 @@ __global__ void dram_mixed_5r1w_kernel(
     size_t tid =
         static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
-
     size_t stride =
         static_cast<size_t>(gridDim.x) * blockDim.x;
-
 
     for (int it = 0; it < iters; ++it) {
         for (size_t i = tid; i < elems; i += stride) {
@@ -2148,21 +2030,17 @@ __global__ void dram_mixed_5r1w_kernel(
             float4 v3 = load_policy_float4(a3 + i, policy);
             float4 v4 = load_policy_float4(a4 + i, policy);
 
-
             float4 out;
-
 
             out.x = v0.x + v1.x + v2.x + v3.x + v4.x;
             out.y = v0.y + v1.y + v2.y + v3.y + v4.y;
             out.z = v0.z + v1.z + v2.z + v3.z + v4.z;
             out.w = v0.w + v1.w + v2.w + v3.w + v4.w;
 
-
             store_policy_float4(dst + i, out, policy);
         }
     }
 }
-
 
 // ------------------------------------------------------------
 // Host hash
@@ -2175,16 +2053,13 @@ static inline uint32_t host_hash_u32(uint64_t x) {
     return static_cast<uint32_t>(x);
 }
 
-
 static inline float host_u32_to_float(uint32_t x) {
     uint32_t bits = 0x3f800000u | (x & 0x007fffffu);
-
 
     float f;
     std::memcpy(&f, &bits, sizeof(float));
     return f;
 }
-
 
 // ------------------------------------------------------------
 // 初始化 float4 device array
@@ -2193,23 +2068,18 @@ static void init_float4_pattern(float4* d, size_t elems, uint32_t seed) {
     const size_t chunk = 1 << 20;
     std::vector<float4> h(chunk);
 
-
     size_t off = 0;
-
 
     while (off < elems) {
         size_t now = std::min(chunk, elems - off);
 
-
         for (size_t i = 0; i < now; ++i) {
             uint64_t idx = static_cast<uint64_t>(off + i);
-
 
             uint32_t h0 = host_hash_u32(idx * 4 + 0 + seed);
             uint32_t h1 = host_hash_u32(idx * 4 + 1 + seed);
             uint32_t h2 = host_hash_u32(idx * 4 + 2 + seed);
             uint32_t h3 = host_hash_u32(idx * 4 + 3 + seed);
-
 
             h[i] = make_float4(
                 host_u32_to_float(h0),
@@ -2219,7 +2089,6 @@ static void init_float4_pattern(float4* d, size_t elems, uint32_t seed) {
             );
         }
 
-
         CHECK_CUDA(cudaMemcpy(
             d + off,
             h.data(),
@@ -2227,11 +2096,9 @@ static void init_float4_pattern(float4* d, size_t elems, uint32_t seed) {
             cudaMemcpyHostToDevice
         ));
 
-
         off += now;
     }
 }
-
 
 // ------------------------------------------------------------
 // 统一计时函数
@@ -2264,21 +2131,16 @@ static float time_benchmark(
             launcher(warmup_iters, 0);
         }
 
-
         CHECK_CUDA(cudaDeviceSynchronize());
         CHECK_CUDA(cudaGetLastError());
     }
 
-
     cudaEvent_t start, stop;
-
 
     CHECK_CUDA(cudaEventCreate(&start));
     CHECK_CUDA(cudaEventCreate(&stop));
 
-
     CHECK_CUDA(cudaEventRecord(start));
-
 
     if (mode == LOOP_LAUNCH) {
         for (int r = 0; r < measured_iters; ++r) {
@@ -2288,25 +2150,19 @@ static float time_benchmark(
         launcher(measured_iters, 0);
     }
 
-
     CHECK_CUDA(cudaEventRecord(stop));
     CHECK_CUDA(cudaEventSynchronize(stop));
 
-
     CHECK_CUDA(cudaGetLastError());
-
 
     float ms = 0.0f;
     CHECK_CUDA(cudaEventElapsedTime(&ms, start, stop));
 
-
     CHECK_CUDA(cudaEventDestroy(start));
     CHECK_CUDA(cudaEventDestroy(stop));
 
-
     return ms;
 }
-
 
 // ------------------------------------------------------------
 // bytes / ms -> GB/s
@@ -2315,16 +2171,13 @@ static double gbps(double bytes, double ms) {
     return bytes / (ms / 1000.0) / 1e9;
 }
 
-
 static const char* policy_name(CachePolicy p) {
     return p == CACHE_CG ? "cg" : "cs";
 }
 
-
 static const char* mode_name(LoopMode m) {
     return m == LOOP_KERNEL ? "kernel" : "launch";
 }
-
 
 static bool parse_policy(const char* s, CachePolicy& p) {
     if (std::strcmp(s, "cs") == 0 || std::strcmp(s, ".cs") == 0) {
@@ -2332,16 +2185,13 @@ static bool parse_policy(const char* s, CachePolicy& p) {
         return true;
     }
 
-
     if (std::strcmp(s, "cg") == 0 || std::strcmp(s, ".cg") == 0) {
         p = CACHE_CG;
         return true;
     }
 
-
     return false;
 }
-
 
 static bool parse_mode(const char* s, LoopMode& m) {
     if (std::strcmp(s, "launch") == 0) {
@@ -2349,16 +2199,13 @@ static bool parse_mode(const char* s, LoopMode& m) {
         return true;
     }
 
-
     if (std::strcmp(s, "kernel") == 0) {
         m = LOOP_KERNEL;
         return true;
     }
 
-
     return false;
 }
-
 
 static void print_usage(const char* prog) {
     fprintf(stderr,
@@ -2372,17 +2219,14 @@ static void print_usage(const char* prog) {
             prog, prog, prog, prog, prog);
 }
 
-
 int main(int argc, char** argv) {
     if (argc < 3) {
         print_usage(argv[0]);
         return 1;
     }
 
-
     CachePolicy cache_policy = CACHE_CS;
     LoopMode loop_mode = LOOP_LAUNCH;
-
 
     if (!parse_policy(argv[1], cache_policy)) {
         fprintf(stderr, "Invalid cache policy: %s\n", argv[1]);
@@ -2390,28 +2234,22 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-
     if (!parse_mode(argv[2], loop_mode)) {
         fprintf(stderr, "Invalid loop mode: %s\n", argv[2]);
         print_usage(argv[0]);
         return 1;
     }
 
-
     int dev = 0;
     CHECK_CUDA(cudaSetDevice(dev));
-
 
     cudaDeviceProp prop{};
     CHECK_CUDA(cudaGetDeviceProperties(&prop, dev));
 
-
     int sms = prop.multiProcessorCount;
-
 
     size_t l2_bytes = prop.l2CacheSize;
     size_t global_mem = prop.totalGlobalMem;
-
 
     // ------------------------------------------------------------
     // 默认 working set
@@ -2421,12 +2259,9 @@ int main(int argc, char** argv) {
         2ull * 1024ull * 1024ull * 1024ull
     );
 
-
-    default_bytes = std::min(default_bytes, global_mem / 8);
-
+    default_bytes = std::min(default_bytes, global_mem / 8);    // 防止 OOM
 
     size_t bytes = default_bytes;
-
 
     // argv[3] 可选：working set MiB
     if (argc >= 4) {
@@ -2434,16 +2269,13 @@ int main(int argc, char** argv) {
         bytes = static_cast<size_t>(mib * 1024.0 * 1024.0);
     }
 
-
     size_t elems = bytes / sizeof(float4);
     bytes = elems * sizeof(float4);
-
 
     if (elems == 0) {
         fprintf(stderr, "Working set too small.\n");
         return 1;
     }
-
 
     if (bytes * 6 > global_mem * 9 / 10) {
         fprintf(stderr,
@@ -2455,7 +2287,6 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-
     printf("GPU: %s\n", prop.name);
     printf("SM count: %d\n", sms);
     printf("Max threads per block: %d\n", prop.maxThreadsPerBlock);
@@ -2466,7 +2297,6 @@ int main(int argc, char** argv) {
     printf("Cache policy: .%s\n", policy_name(cache_policy));
     printf("Loop mode: %s\n", mode_name(loop_mode));
 
-
     if (cache_policy == CACHE_CS) {
         printf("Load policy:  ld.global.cs.v4.f32\n");
         printf("Store policy: st.global.cs.v4.f32\n");
@@ -2475,9 +2305,7 @@ int main(int argc, char** argv) {
         printf("Store policy: st.global.cg.v4.f32\n");
     }
 
-
     printf("\n");
-
 
     // ------------------------------------------------------------
     // 扫描配置
@@ -2487,8 +2315,7 @@ int main(int argc, char** argv) {
         256,
         512,
         1024
-    };
-
+    };  // 每个 block 的 threads 数量
 
     std::vector<int> block_per_sm_candidates = {
         1,
@@ -2499,9 +2326,7 @@ int main(int argc, char** argv) {
         32
     };
 
-
     std::vector<int> thread_list;
-
 
     for (int t : thread_candidates) {
         if (t <= prop.maxThreadsPerBlock) {
@@ -2509,16 +2334,13 @@ int main(int argc, char** argv) {
         }
     }
 
-
     if (thread_list.empty()) {
         fprintf(stderr, "No valid thread block size found.\n");
         return 1;
     }
 
-
     int max_threads =
         *std::max_element(thread_list.begin(), thread_list.end());
-
 
     int max_blocks_per_sm =
         *std::max_element(
@@ -2526,9 +2348,7 @@ int main(int argc, char** argv) {
             block_per_sm_candidates.end()
         );
 
-
     int max_blocks = sms * max_blocks_per_sm;
-
 
     // ------------------------------------------------------------
     // 分配 device memory
@@ -2540,9 +2360,7 @@ int main(int argc, char** argv) {
     float4* d_a4 = nullptr;
     float4* d_dst = nullptr;
 
-
     float* d_sink = nullptr;
-
 
     CHECK_CUDA(cudaMalloc(&d_a0, bytes));
     CHECK_CUDA(cudaMalloc(&d_a1, bytes));
@@ -2551,7 +2369,6 @@ int main(int argc, char** argv) {
     CHECK_CUDA(cudaMalloc(&d_a4, bytes));
     CHECK_CUDA(cudaMalloc(&d_dst, bytes));
 
-
     CHECK_CUDA(cudaMalloc(
         &d_sink,
         static_cast<size_t>(max_blocks) *
@@ -2559,9 +2376,7 @@ int main(int argc, char** argv) {
         sizeof(float)
     ));
 
-
     printf("Initializing arrays with pseudo-random patterns...\n");
-
 
     init_float4_pattern(d_a0, elems, 0x12345678u);
     init_float4_pattern(d_a1, elems, 0x23456789u);
@@ -2569,9 +2384,7 @@ int main(int argc, char** argv) {
     init_float4_pattern(d_a3, elems, 0x456789abu);
     init_float4_pattern(d_a4, elems, 0x56789abcu);
 
-
     CHECK_CUDA(cudaMemset(d_dst, 0, bytes));
-
 
     CHECK_CUDA(cudaMemset(
         d_sink,
@@ -2581,42 +2394,33 @@ int main(int argc, char** argv) {
         sizeof(float)
     ));
 
-
     printf("Initialization done.\n\n");
-
 
     // 为避免缓存对测量结果造成干扰，在测量 DRAM 带宽时不应进行预热和多轮迭代。
     // 实际测试表明，若增大迭代次数（iters）和预热轮次（warmup），受缓存命中率提升的影响，测得的带宽值会明显偏高
-    int read_iters  = 1;
-    int write_iters = 1;
-    int copy_iters  = 1;
-    int mixed_iters = 1;
-
+    int read_iters  = 10;
+    int write_iters = 10;
+    int copy_iters  = 10;
+    int mixed_iters = 10;
 
     int warmup_read  = 0;
     int warmup_write = 0;
     int warmup_copy  = 0;
     int warmup_mixed = 0;
 
-
     double read_bytes =
         static_cast<double>(bytes) * read_iters;
-
 
     double write_bytes =
         static_cast<double>(bytes) * write_iters;
 
-
     double copy_bytes =
         static_cast<double>(bytes) * copy_iters * 2.0;
-
 
     double mixed_bytes =
         static_cast<double>(bytes) * mixed_iters * 6.0;
 
-
     printf("Scan settings:\n");
-
 
     printf("  thread candidates: ");
     for (int t : thread_list) {
@@ -2624,20 +2428,17 @@ int main(int argc, char** argv) {
     }
     printf("\n");
 
-
     printf("  GridBlk/SM candidates: ");
     for (int bpsm : block_per_sm_candidates) {
         printf("%d ", bpsm);
     }
     printf("\n");
 
-
     printf("  read_iters  = %d, warmup = %d\n", read_iters, warmup_read);
     printf("  write_iters = %d, warmup = %d\n", write_iters, warmup_write);
     printf("  copy_iters  = %d, warmup = %d\n", copy_iters, warmup_copy);
     printf("  mixed_iters = %d, warmup = %d\n", mixed_iters, warmup_mixed);
     printf("\n");
-
 
     printf("%10s %8s %10s %14s %16s %12s %12s %16s\n",
            "GridBlk/SM",
@@ -2649,34 +2450,26 @@ int main(int argc, char** argv) {
            "Time_ms",
            "GB/s");
 
-
     printf("----------------------------------------------------------------------------------------------------------\n");
-
 
     double best_read_gbps  = 0.0;
     double best_write_gbps = 0.0;
     double best_copy_gbps  = 0.0;
     double best_mixed_gbps = 0.0;
 
-
     int best_read_threads = 0;
     int best_read_bpsm = 0;
-
 
     int best_write_threads = 0;
     int best_write_bpsm = 0;
 
-
     int best_copy_threads = 0;
     int best_copy_bpsm = 0;
-
 
     int best_mixed_threads = 0;
     int best_mixed_bpsm = 0;
 
-
     int policy_int = static_cast<int>(cache_policy);
-
 
     // ------------------------------------------------------------
     // 正式扫描
@@ -2685,16 +2478,13 @@ int main(int argc, char** argv) {
         for (int blocks_per_sm : block_per_sm_candidates) {
             int blocks = sms * blocks_per_sm;
 
-
             double grid_warps_per_sm =
                 static_cast<double>(blocks_per_sm) *
                 static_cast<double>(threads) / 32.0;
 
-
             size_t sink_elems =
                 static_cast<size_t>(blocks) *
                 static_cast<size_t>(threads);
-
 
             CHECK_CUDA(cudaMemset(
                 d_sink,
@@ -2702,14 +2492,12 @@ int main(int argc, char** argv) {
                 sink_elems * sizeof(float)
             ));
 
-
             // ---------------------------
             // Read-only
             // ---------------------------
             float ms_read = time_benchmark(
                 [&](int kernel_iters, int r) {
                     (void)r;
-
 
                     dram_read_kernel<<<blocks, threads>>>(
                         d_a0,
@@ -2724,9 +2512,7 @@ int main(int argc, char** argv) {
                 loop_mode
             );
 
-
             double read_gbps = gbps(read_bytes, ms_read);
-
 
             printf("%10d %8d %10d %14.1f %16s %12d %12.3f %16.2f\n",
                    blocks_per_sm,
@@ -2738,13 +2524,11 @@ int main(int argc, char** argv) {
                    ms_read,
                    read_gbps);
 
-
             if (read_gbps > best_read_gbps) {
                 best_read_gbps = read_gbps;
                 best_read_threads = threads;
                 best_read_bpsm = blocks_per_sm;
             }
-
 
             // ---------------------------
             // Write-only
@@ -2754,7 +2538,6 @@ int main(int argc, char** argv) {
                     uint32_t seed =
                         0xdeadbeefu +
                         static_cast<uint32_t>(r * 1315423911u);
-
 
                     dram_write_kernel<<<blocks, threads>>>(
                         d_dst,
@@ -2769,9 +2552,7 @@ int main(int argc, char** argv) {
                 loop_mode
             );
 
-
             double write_gbps = gbps(write_bytes, ms_write);
-
 
             printf("%10d %8d %10d %14.1f %16s %12d %12.3f %16.2f\n",
                    blocks_per_sm,
@@ -2783,13 +2564,11 @@ int main(int argc, char** argv) {
                    ms_write,
                    write_gbps);
 
-
             if (write_gbps > best_write_gbps) {
                 best_write_gbps = write_gbps;
                 best_write_threads = threads;
                 best_write_bpsm = blocks_per_sm;
             }
-
 
             // ---------------------------
             // Copy 1R1W
@@ -2797,7 +2576,6 @@ int main(int argc, char** argv) {
             float ms_copy = time_benchmark(
                 [&](int kernel_iters, int r) {
                     (void)r;
-
 
                     dram_copy_kernel<<<blocks, threads>>>(
                         d_a0,
@@ -2812,9 +2590,7 @@ int main(int argc, char** argv) {
                 loop_mode
             );
 
-
             double copy_gbps = gbps(copy_bytes, ms_copy);
-
 
             printf("%10d %8d %10d %14.1f %16s %12d %12.3f %16.2f\n",
                    blocks_per_sm,
@@ -2826,13 +2602,11 @@ int main(int argc, char** argv) {
                    ms_copy,
                    copy_gbps);
 
-
             if (copy_gbps > best_copy_gbps) {
                 best_copy_gbps = copy_gbps;
                 best_copy_threads = threads;
                 best_copy_bpsm = blocks_per_sm;
             }
-
 
             // ---------------------------
             // Mixed 5R1W
@@ -2840,7 +2614,6 @@ int main(int argc, char** argv) {
             float ms_mixed = time_benchmark(
                 [&](int kernel_iters, int r) {
                     (void)r;
-
 
                     dram_mixed_5r1w_kernel<<<blocks, threads>>>(
                         d_a0,
@@ -2859,9 +2632,7 @@ int main(int argc, char** argv) {
                 loop_mode
             );
 
-
             double mixed_gbps = gbps(mixed_bytes, ms_mixed);
-
 
             printf("%10d %8d %10d %14.1f %16s %12d %12.3f %16.2f\n",
                    blocks_per_sm,
@@ -2873,21 +2644,17 @@ int main(int argc, char** argv) {
                    ms_mixed,
                    mixed_gbps);
 
-
             if (mixed_gbps > best_mixed_gbps) {
                 best_mixed_gbps = mixed_gbps;
                 best_mixed_threads = threads;
                 best_mixed_bpsm = blocks_per_sm;
             }
 
-
             printf("----------------------------------------------------------------------------------------------------------\n");
         }
     }
 
-
     printf("\nBest results:\n");
-
 
     printf("%16s %14s %12s %16s\n",
            "Test",
@@ -2895,13 +2662,11 @@ int main(int argc, char** argv) {
            "Threads",
            "Best GB/s");
 
-
     printf("%16s %14d %12d %16.2f\n",
            "Read",
            best_read_bpsm,
            best_read_threads,
            best_read_gbps);
-
 
     printf("%16s %14d %12d %16.2f\n",
            "Write",
@@ -2909,13 +2674,11 @@ int main(int argc, char** argv) {
            best_write_threads,
            best_write_gbps);
 
-
     printf("%16s %14d %12d %16.2f\n",
            "Copy_1R1W",
            best_copy_bpsm,
            best_copy_threads,
            best_copy_gbps);
-
 
     printf("%16s %14d %12d %16.2f\n",
            "Mixed_5R1W",
@@ -2923,11 +2686,9 @@ int main(int argc, char** argv) {
            best_mixed_threads,
            best_mixed_gbps);
 
-
     printf("\nConfiguration summary:\n");
     printf("  Cache policy: .%s\n", policy_name(cache_policy));
     printf("  Loop mode: %s\n", mode_name(loop_mode));
-
 
     if (loop_mode == LOOP_LAUNCH) {
         printf("  Meaning of Iters: number of host-side kernel launches.\n");
@@ -2937,7 +2698,6 @@ int main(int argc, char** argv) {
         printf("  Host launches one timed kernel per test/configuration.\n");
     }
 
-
     CHECK_CUDA(cudaFree(d_a0));
     CHECK_CUDA(cudaFree(d_a1));
     CHECK_CUDA(cudaFree(d_a2));
@@ -2945,7 +2705,6 @@ int main(int argc, char** argv) {
     CHECK_CUDA(cudaFree(d_a4));
     CHECK_CUDA(cudaFree(d_dst));
     CHECK_CUDA(cudaFree(d_sink));
-
 
     return 0;
 }
