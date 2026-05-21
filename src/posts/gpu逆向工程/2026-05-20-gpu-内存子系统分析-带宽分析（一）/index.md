@@ -231,10 +231,121 @@ static float time_benchmark(
 
 Little’s Law（利特定律）的形式是
 
+$$
+ N = \lambda \cdot T 
+$$
 
+其中：
 
+- $ N $：系统中的平均在途任务数；
+- $ \lambda $：吞吐率；
+- $ T $：平均停留时间，也就是延迟。
+
+映射到内存系统：
+
+- $ N $：在途内存请求数量，或者在途字节数；
+- $ \lambda $：内存吞吐率，也就是带宽；
+- $ T $：内存访问延迟。
+
+所以：
+
+$$
+ \text{in-flight bytes} = \text{bandwidth} \times \text{latency} 
+$$
+
+也就是：
+
+$$
+ N_{\text{bytes}} = B \cdot L 
+$$
+
+如果你想达到峰值带宽 $ B $，就必须维持 $ B \cdot L $ 这么多在途数据。$ B \cdot L $ 常称为***延迟带宽积***[^3]。
+
+[^3]: 可以把内存系统想象成一条管道。带宽 $B$ 为管道每秒流多少水；延迟 $L$ 为水从入口到出口要留多久；$B \cdot L$ 则是为了让管道出口满速出水，管道中必须已经装着多少水。<br>
+![](/img/pipeline.png)
 
 ## 结果分析
+
+以 READ 最优配置为例：
+- 每个 SM 总分配的 block 数 GridBlk/SM = 32
+- 每个 block 的线程数 Threads/block = 512
+- Best = 907.99 GB/s
+
+GPU 参数：
+
+- 物理带宽 B_peak = 960 GB/s
+- SM 数量 = 84
+- GPU 频率 = 2947 MHz[^4]
+- DRAM 访问延迟（相对于 GPU 频率） = 920 cycles
+
+[^4]: GPU 频率和对应的 DRAM 访问延迟测量参考 [GPU 内存子系统分析--延迟分析](https://my-webpage-adu.pages.dev/posts/gpu%E9%80%86%E5%90%91%E5%B7%A5%E7%A8%8B/2026-05-14-gpu-%E5%86%85%E5%AD%98%E5%AD%90%E7%B3%BB%E7%BB%9F%E5%88%86%E6%9E%90-%E5%BB%B6%E8%BF%9F%E5%88%86%E6%9E%90/)
+
+将物理带宽换算成每个 GPU core cycle 的带宽：
+
+$$
+B_{\text{peak,cycle}} = \frac{960 \times 10^9}{2.947 \times 10^9} \approx 325.75 \text{ bytes/cycle}
+$$
+
+也就是说，整个 GPU 想打满 960 GB/s，相当于每个 core cycle 要从 DRAM 返回：
+
+$$
+\approx 326 \text{ bytes/cycle}
+$$
+
+DRAM 延迟：
+
+$$
+L = 920 \text{ cycles}
+$$
+
+所以全 GPU 为了打满 960 GB/s，需要的 in-flight 数据量是：
+
+$$
+N_{\text{bytes}} = 325.75 \times 920 \approx 299690 \text{ bytes}
+$$
+
+说明，想让 960 GB/s 的 DRAM 管道持续满速流出数据，整个 GPU 至少要让 299690 bytes 的读请求同时处于 in-flight 状态。
+
+SM 数量是 84，所以每个 SM 平均需要贡献：
+
+$$
+\frac{299690}{84} \approx 3568 \text{ bytes/SM}
+$$
+
+换句话说，虽然全 GPU 的 DRAM 延迟很高，但是从每个 SM 的角度看，想打满全局带宽，每个 SM 平均只需要维持大约 3568 Bytes 的 DRAM 请求在路上。
+
+对于 scalar float，代码中一个 warp 的一次 load 指令对应的有效数据量为 $32 \times 4 = 128$ bytes（vector float4 则为 $512 \text{ bytes}$）。由于循环内部的访问模式是同一个 warp 的 32 个 lane 访问连续地址，因此可以实现内存合并访问，从而粗略认为：
+
+$$
+\text{每个 warp load instruction 访存} \approx 128 \text{ bytes}
+$$
+
+由于打满 DRAM 带宽要求每个 SM 平均需要贡献 $3568 \text{ byte}$，也就是:
+$$
+\frac{3568}{128} \approx 28\text{ 个 warp-level load 请求/SM}
+$$
+
+在我的最优配置中，每个 block 的 warp 数：
+
+$$
+\frac{512}{32} = 16 \text{ warps/block}
+$$
+
+平均到每个 SM 的 grid warp 数：
+
+$$
+32 \times 16 = 512 \text{ warps/SM}
+$$
+
+注意：这 512 warps/SM **不是**同时 resident 的 warps 数量，而是每个 SM 分到的总工作量。真正同时 resident 的 warp 数会受线程数、寄存器、block 上限等限制。满足 28 个 warp-level load 请求/SM轻而易举。
+
+此外，我们找到个 32\text{ 个 warp-level load 请求/SM} 的案例，它的 READ 案例实测带宽也应该接近理论带宽，结果如图：
+
+![](img/32-warp-dram.png)
+
+符合预期。
+
+## 总结
 
 **原因分析**：DRAM 因为物理带宽相对低、延迟高，连续 coalesced 的 scalar float 访问已经能通过足够多 warp 和 outstanding request 把片外带宽打满；float4 减少了指令数，但不能突破 DRAM 物理带宽，所以提升小。
 
