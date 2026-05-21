@@ -2,7 +2,7 @@
 layout: post.njk
 archive: gpu逆向工程
 title: GPU 内存子系统分析--带宽分析
-date: 2026-05-20
+date: 2026-05-19
 tags:
   - post
 ---
@@ -22,7 +22,7 @@ tags:
 # 代码和脚本
 
 - [锁频脚本](#gpu_clock_lock)
-- [cuda 编译 makefile](#)
+- [cuda 编译 makefile](#makefile)
 - DRAM 带宽分析
   - [DRAM 标准 float 带宽分析](#dram_1fp)
   - [DRAM 标准 float4 带宽分析](#dram_4fp)
@@ -349,8 +349,8 @@ esac
 ## makefile
 
 `makefile`
-```makefile
 <a id="makefile"></a>
+```makefile
 # ==============================
 # Makefile for RTX 5080 / sm_120
 # ==============================
