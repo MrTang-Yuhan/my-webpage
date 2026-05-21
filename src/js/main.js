@@ -156,10 +156,16 @@
   bindPostEnhancements() {
     const postContent = document.getElementById('post-content');
     if (!postContent) return;
+    const postLayout = postContent.closest('.post-layout') || postContent;
 
-    postContent.querySelectorAll('img').forEach((img) => {
+    postLayout.querySelectorAll('img').forEach((img) => {
       img.style.cursor = 'zoom-in';
-      img.addEventListener('click', () => this.openLightbox(img.src, img.alt));
+    });
+
+    postLayout.addEventListener('click', (event) => {
+      const img = event.target.closest('img');
+      if (!img || !postLayout.contains(img)) return;
+      this.openLightbox(img.src, img.alt);
     });
 
     postContent.querySelectorAll('pre').forEach((pre, index) => {
