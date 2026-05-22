@@ -33,7 +33,7 @@ DataLoader(dataset, batch_size=1, shuffle=False, sampler=None,
 - `pin_memory`：拷贝数据到 CUDA Pinned Memory。
 - `persistent_workers`: `True` 代表一个 epoch 结束后不销毁 worker，下个 epoch 继续复用。只能在 `num_workers > 0` 时设置为 `True`。
 
-
+<a id="num_workers_choose"></a>
 # DataLoader 中 `num_workers` 参数的选择
 
 ##  workers 介绍
@@ -181,6 +181,8 @@ docker run --ipc=host ...
 
 
 ## 选择最佳 `pin_memory` 和 `non_blocking`
+
+脚本使用也有注意事项，参看[此处](#num_workers_choose)。
 
 `pin-memory-non-block-bench.py`
 ```python
