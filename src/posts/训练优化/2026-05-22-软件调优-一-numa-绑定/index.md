@@ -8,27 +8,20 @@ description: NUMA 亲和性和 NUMA 绑定
 tags:
   - post
 ---
-# 什么是 NUMA 亲和性
-
-## 为什么要绑定 NUMA
-
-如果没有绑定 NUMA，GPU 进程可以使用任意的 CPU 核心和任意 NUMA 节点的内存。
-绑定 NUMA 的核心作用：让 GPU 进程使用与它物理上最近的 CPU 和内存，减少数据传输延迟，提升训练吞吐量。
-
-
-
-
 # 环境配置
 
 ## 安装工具
 ```bash
+apt update
+
 # 安装控制 NUMA 内存和 CPU 亲和性的命令行工具
 apt install numactl
-
 
 # 安装 NVIDIA Management Library (NVML) 的 Python 库
 pip install nvidia-ml-py
 
+# 安装 hwloc 查看 NUMA 拓扑
+apt install hwloc
 ```
 
 ## 显示系统 NUMA 硬件拓扑信息
@@ -49,9 +42,82 @@ numactl --hardware
 - **如果当前的 NUMA 节点为 1，则不需要 NUMA 绑定。只有多节点才需要进行 NUMA 绑定。**
 
 
+
+# NUMA
+
+## 什么是 NUMA
+
+在多 CPU 服务器上，内存不是所有 CPU 都“等距离”访问的。这种“访问距离不一样”的架构，就叫 NUMA。
+
+NUMA node 可以简单理解成：**一组 CPU 核心 + 和它们更近的内存 + 和它们更近的 PCIe/GPU 设备**。
+
+使用 `hwloc` 包内的 `lstopo --whole-io topology.svg` 可以导出当前设备的 NUMA 节点拓扑信息。例如：
+
+![](img/numa.png)
+
+这些拓扑信息的含义是：
+| 项目                   | 信息                              |
+| :------------------- | :------------------------------ |
+| CPU Package 数量       | 2 个                             |
+| NUMA Node 数量         | 2 个                             |
+| NUMA Node 0 内存       | 669 GB                          |
+| NUMA Node 1 内存       | 669 GB                          |
+| 总内存                  | 约 1338 GB                       |
+| 每个 Package 核心数       | 24 cores                        |
+| 总 CPU core 数         | 48 cores                        |
+| 每个 core 对应 PU 数      | 1 个 PU / core                   |
+| 每个 core 对应 LU  数      | 1 个 LU / core (如果>1，说明开启了超线程)  |
+| GPU / Accelerator 数量 | 8 个                             |
+| GPU 名称显示             | CoProc opencl0 到 CoProc opencl7 |
+| 每个 GPU 计算单元          | 108 compute units               |
+| 每个 GPU 显存            | 79 GB                           |
+| NVMe 盘数量             | 8 个 NVMe，每个 375 GB              |
+| 系统盘                  | sda，100 GB                      |
+| 网卡                   | ens9                            |
+
+常用命令：
+```
+# 导出完整拓扑的 svg 图
+lstopo --whole-io topology.svg
+
+# 导出 XML 供程序分析
+lstopo topology.xml
+
+# 终端查看完整文本
+lstopo-no-graphics --whole-io
+
+# 终端查看简略文本
+lstopy
+```
+
+如果使用超线程，CPU 逻辑核的数量会比物理核多，使用 `lstopo -l` 查看。
+
+## 为什么要绑定 NUMA
+
+如果没有绑定 NUMA，GPU 进程可以使用任意的 CPU 核心和任意 NUMA 节点的内存。
+绑定 NUMA 的核心作用：让 GPU 进程使用与它物理上最近的 CPU 和内存，减少数据传输延迟，提升训练吞吐量。
+
+对于 GPU，可使用 `nvidia-smi topo -m` 快速查询当前系统推荐的 NUMA 绑定策略：
+
+```bash
+$ nvidia-smi topo -m
+     GPU0 GPU1 GPU2 GPU3 GPU4 GPU5 GPU6 GPU7 CPU Affinity  NUMA Affinity
+GPU0 X    NV18 NV18 NV18 NV18 NV18 NV18 NV18 0-51,         104-155 0
+GPU1 NV18 X    NV18 NV18 NV18 NV18 NV18 NV18 0-51,         104-155 0
+GPU2 NV18 NV18 X    NV18 NV18 NV18 NV18 NV18 0-51,         104-155 0
+GPU3 NV18 NV18 NV18 X    NV18 NV18 NV18 NV18 0-51,         104-155 0
+GPU4 NV18 NV18 NV18 NV18 X    NV18 NV18 NV18 52-103,       156-207 1
+GPU5 NV18 NV18 NV18 NV18 NV18 X    NV18 NV18 52-103,       156-207 1
+GPU6 NV18 NV18 NV18 NV18 NV18 NV18 X    NV18 52-103,       156-207 1
+GPU7 NV18 NV18 NV18 NV18 NV18 NV18 NV18 X    52-103,       156-207 1
+```
+
+
+
+
 # 实施 NUMA 绑定
 
-有多种方法可实现进程与相应NUMA节点的CPU核心之间的绑定。
+有多种方法可实现进程与相应 NUMA 节点的 CPU 核心之间的绑定。
 
 # 脚本 + 启动器配置使用
 
@@ -219,7 +285,7 @@ if __name__ == "__main__":
 
 ## srun
 
-若使用 SLURM 且使用srun作为启动器（而非torchrun等工具），该工具将自动完成所有绑定操作。完整启动器版本请点击此处查看。要使其支持NUMA亲和性，您只需添加以下两个头文件：
+若使用 SLURM 且使用 srun 作为启动器（而非 torchrun 等工具），该工具将自动完成所有绑定操作。要使其支持 NUMA 亲和性，只需添加以下两个头文件：
 ```bash
 #SBATCH --gres-flags=enforce-binding
 #SBATCH --ntasks-per-socket=4
