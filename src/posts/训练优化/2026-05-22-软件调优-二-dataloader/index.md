@@ -10,7 +10,7 @@ tags:
 ---
 # DataLoader
 
-在深度学习中，往往处理大数据集时，一次将整个数据加载到内存中是不太现实的，比较好的方法就是将数据分批加载到内存中进行处理，这需要编写额外的代码来执行此操作。对此，pytorch 提供了一个 DataLoader 数据加载类帮我们做了这块工作，这就比较人性化。
+在深度学习中，往往处理大数据集时，一次将整个数据加载到内存中是不太现实的，比较好的方法就是将数据分批加载到内存中进行处理，这需要编写额外的代码来执行此操作。对此，pytorch 提供了一个 DataLoader 数据加载类帮我们做了这块工作:
 
 ```
 from torch.utils.data import DataLoader
@@ -178,6 +178,12 @@ docker run --ipc=host ...
 
 ## `non_blocking` 介绍
 
+`non_blocking` 在 CPU/GPU 数据拷贝时尽量使用异步传输，减少 CPU 阻塞，并可能与 GPU 计算重叠。
+
+常见用法：
+```
+batch = batch.to("cuda", non_blocking=True)
+```
 
 
 ## 选择最佳 `pin_memory` 和 `non_blocking`
