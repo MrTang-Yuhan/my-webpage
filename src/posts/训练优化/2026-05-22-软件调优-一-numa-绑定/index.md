@@ -55,6 +55,8 @@ NUMA node 可以简单理解成：**一组 CPU 核心 + 和它们更近的内存
 
 ![](img/numa.png)
 
+能明显观察到，单个 NUMA 节点只包含 4 个 GPU 节点，这 4 个 GPU 与该 NUMA 节点的 CPU 核心和内存访问会更快，这就是 NUMA 亲和（NUMA Affinity）。
+
 这些拓扑信息的含义是：
 | 项目                   | 信息                              |
 | :------------------- | :------------------------------ |
@@ -94,8 +96,17 @@ lstopy
 
 ## 为什么要绑定 NUMA
 
-如果没有绑定 NUMA，GPU 进程可以使用任意的 CPU 核心和任意 NUMA 节点的内存。
-绑定 NUMA 的核心作用：让 GPU 进程使用与它物理上最近的 CPU 和内存，减少数据传输延迟，提升训练吞吐量。
+深度学习训练虽然主要算力在 GPU 上，但 CPU 仍然负责很多事情, 比如：
+- DataLoader 读取数据
+- 分布式通信的一部分调度
+- batch 拼接
+- CPU 到 GPU 的数据拷贝
+- Python 主进程调度
+- 等等
+
+如果没有绑定 NUMA，GPU 进程可以使用任意的 CPU 核心和任意 NUMA 节点的内存。如果 GPU 进程访问非 NUMA 亲和性的 NUMA 节点，数据传输延迟开销会很大。
+
+**所以绑定 NUMA 的核心作用：让 GPU 进程使用与它物理上最近的 CPU 和内存，减少数据传输延迟，提升训练吞吐量。**
 
 对于 GPU，可使用 `nvidia-smi topo -m` 快速查询当前系统推荐的 NUMA 绑定策略：
 
@@ -195,7 +206,6 @@ def set_numa_affinity(gpu_index, verbose=False):
     ```
 
     """
-
 
     num_elements = math.ceil(os.cpu_count() / 64)
     handle = nvml.nvmlDeviceGetHandleByIndex(gpu_index)
