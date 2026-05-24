@@ -66,3 +66,36 @@ tags:
 
 4. GPU 间通过 `nextGPU` 消息传递该 micro-batch 的输出，驱动下一 stage。
 
+
+# HOP
+在你这份代码里，HOP 规约可以理解为：
+
+1. 选中要规约的层（`aten::_foreach_addcdiv_`）。
+2. 每个 GPU 准备一个“完整更新张量”（不是 Ring 那种分片）。
+3. 进入轮次循环：`send -> recv -> send -> ...`。
+4. `send` 阶段：发给 out-neighbors，并把消息记录到对方 `update_queues_`。
+5. `recv` 阶段：从自己的 `update_queues_` 看当前 `recv_step` 是否收够 `denum` 份；够了就归约。
+6. 归约后推进到下一轮；最后回到 `nextlayer` 处理下一层。
+
+注意：你这版 `ReduceTensor` 用的是 `AvgChunks(...)`，所以这里更像“对收到值做平均”的模型。
+
+---
+
+**4 GPU 例子（简化）**
+
+假设 GPU0 的 in-neighbors 有 3 个（1,2,3）。
+
+- `backup_workers=0`  
+  `denum = 3 - 0 = 3`，GPU0 必须等 3 份都到齐才归约。  
+  行为偏“全量同步”。
+
+- `backup_workers=1`  
+  `denum = 3 - 1 = 2`，GPU0 收到任意 2 份主路径更新就可先归约；第 3 份可视作备份/冗余。  
+  行为偏“更快推进，允许冗余路径”。
+
+---
+
+**和 Ring 的直观区别**
+
+- Ring：分片，`scatter + allgather`，严格 N-1 步传播 chunk。
+- 这里 HOP：整包多邻居发送，按阈值收包后归约，靠 `update_queues_ + token_queues_ + backup_workers_` 控节奏与容错。
