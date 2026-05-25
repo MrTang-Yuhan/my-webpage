@@ -117,7 +117,7 @@ $$
 q \cdot k = X_1 + X_2 + \cdots + X_{d_k}
 $$
 
-在各项近似独立的情况下，和的方差等于方差之和：
+在各项近似独立的情况下，协方差为0，故和的方差等于方差之和：
 
 $$
 \text{Var}(q \cdot k) = \text{Var}\left(\sum_{i=1}^{d_k} X_i\right) = \sum_{i=1}^{d_k} \text{Var}(X_i) = d_k
