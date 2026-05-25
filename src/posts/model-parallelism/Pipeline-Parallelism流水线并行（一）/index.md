@@ -1,15 +1,15 @@
 ---
 layout: post.njk
 post_id: Pipeline-Parallelism流水线并行（一）
-title: "Pipeline-Parallelism流水线并行（一）"
+archive: model-parallelism
+title: Pipeline-Parallelism流水线并行（一）
 date: 2026-05-03
-description: "Model Parallelism 之 Pipeline Parallelism: Naive Pipeline Parallelism, Gpipe, PipeDream"
+description: "Model Parallelism 之 Pipeline Parallelism: Naive Pipeline
+  Parallelism, Gpipe, PipeDream"
 tags:
   - post
   - pipeline parallelism
   - model parallelism
-
-archive: model-parallelism
 ---
 
 [Pipeline-Parallelism: Distributed Training via Model Partitioning](https://siboehm.com/articles/22/pipeline-parallel-training) 的中文翻译版本。
@@ -20,9 +20,6 @@ archive: model-parallelism
 
 流水线并行（Pipeline Parallelism）使得训练那些无法放入单个 GPU 显存的大模型成为可能。[^1] 其实现原理是将模型的不同层分配到不同的 GPU 上，这个过程称为模型划分（Model Partitioning）。如果采用朴素的方式实现，模型划分会导致 GPU 利用率较低。在这篇文章中，我们首先会讨论朴素流水线并行的实现方式及其存在的一些问题。然后，我们会介绍 GPipe 和 PipeDream，这两个较新的算法能够缓解朴素流水线并行中的部分问题。
 
-
-
-本文是我关于大规模深度学习模型分布式训练系列文章的第二部分。第一部分涵盖了数据并行训练，可以在[此处](../data-parallelism-2/)找到。
 
 ## 朴素模型并行
 
@@ -136,8 +133,30 @@ $$1 - \frac{2nm}{2n(m+n-1)} = 1 - \frac{m}{m+n-1}$$
 因此，要使气泡占比变小，必须增大每个小批次的大小，从而增加微批次数量 $m$。[^10]较大的小批次规模需要谨慎地进行学习率缩放，[^11] 并且会增加缓存激活值的内存需求，接下来我们就会讨论这一点。
 
 
+## GPipe：梯度更新时间
+
+GPipe 的梯度更新可以概括成下面这段伪代码：
 
 
+```python
+
+optimizer.zero_grad()
+
+for micro_batch in split(batch_size):
+    output = pipeline_forward(micro_batch)
+    loss = compute_loss(output)
+    loss = scale_loss_to_match_full_batch(loss) # 如果是平均 Loss，此处就应该乘上 (micro_batch/batch_size)
+    loss.backward()   # 梯度累加
+
+optimizer.step()
+```
+即不应该在每个 micro_batch 后更新梯度，而是在单个 batch_size 末尾才进行梯度更新。应用的数学原理是：
+
+| 概念 | 数学本质 |
+| :--- | :--- |
+| **梯度累加** | $ \sum_{i=1}^{N} \nabla L_i $ |
+| **一次性大Batch** | $ \nabla \left( \sum_{i=1}^{N} L_i \right) $ |
+| **等价条件** | 因为 $ \nabla $ 是线性算子，$ \sum \nabla L_i \equiv \nabla (\sum L_i) $ |
 
 
 ## GPipe：内存需求
@@ -381,8 +400,8 @@ def steps_BWD_microbatch(self, microbatch_id):
 
 [^9]: 解释公式中的各项：假设有 $n$ 个流水线阶段和 $m$ 个微批次，并且一次前向或反向传播的单位计算时间为 1。那么总有效计算量为 $2mn$，因为每个流水线阶段都要对 $m$ 个微批次执行一次前向传播和一次反向传播。总设备时间为 $2n(m+n-1)$：每个阶段都需要完成 $m$ 次有效工作，同时还会因为流水线填充和排空产生 $n-1$ 个时间步的气泡。因此利用率为 $ \frac{2mn}{2n(m+n-1)} = \frac{m}{m+n-1} $。
 
-[^10]: <p>下面给出一些具体计算示例，对比单个小批次只包含 1 个微批次和包含 4 个微批次时的情况。</p>
-    <img src="./img/Gpipe_bubble_fractions.png" alt="气泡比例对比">
+[^10]: 下面给出一些具体计算示例，对比单个小批次只包含 1 个微批次和包含 4 个微批次时的情况。<br>
+![](img/Gpipe_bubble_fractions.png)
 
 [^11]: 相关方法还包括一些专门用于大批量训练的学习率调度或优化技术，例如 [LARS](https://arxiv.org/abs/1708.03888v3) 和 [LAMB](https://arxiv.org/abs/1904.00962v5)。
 
