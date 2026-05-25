@@ -166,6 +166,8 @@ $$
 
 * 图中公式的 $\lambda$ 即 Weight Decay，默认取值 $\lambda=0.01$。
 
+**相比 Adam，AdamW 已经内置了权值衰减（weight decay），它等价于 L2 正则化。相比 Adam 实现更加方便。**
+
 ![](img/adamw.png)
 
 # Adam 与 AdamW 的显存占用
