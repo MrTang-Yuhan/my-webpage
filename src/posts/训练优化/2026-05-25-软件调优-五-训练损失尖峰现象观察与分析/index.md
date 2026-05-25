@@ -395,7 +395,7 @@ lr = 1e-5
 
 下面是 **[130 亿参数 pre-BLOOM 训练实验](https://github.com/bigscience-workshop/bigscience/tree/master/train/tr1-13B-base)** 的一个例子：
 
-![](tr1-13b-glitch-1-2.png)
+![](img/tr1-13b-glitch-1-2.png)
 
 如你所见，有很多尖峰，有些幅度很大，但它们都迅速恢复了。
 
