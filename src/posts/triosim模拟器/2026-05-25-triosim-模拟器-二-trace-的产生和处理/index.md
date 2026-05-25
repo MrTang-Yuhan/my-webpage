@@ -107,7 +107,7 @@ Index,TensorID,TensorShape,TensorNumElement,TensorEachByte,TensorType,TensorStor
 - `TensorEachByte`：每个张量元素占用的字节数。
 - `TensorType`：张量类型。
 - `TensorStorgeid`：暂未使用。
-- `gpuid`：张量所属的 GPU ID。
+- `gpuid`：暂未使用。
 
 ---
 
@@ -146,7 +146,7 @@ OperatorID,OperatorName,Operator_input,Operator_output,Operator_cudatime,Operato
 - `Operator_cudatimenooverlap`：当前层的实际执行时间，单位为微秒，即 us。
 - `InputSize`：输入张量的元素总数。
 - `OutputSize`：输出张量的元素总数。
-- `gpuid`：当前层所属的 GPU ID。
+- `gpuid`：暂未使用。
 - `stage`：当前层所属的传播阶段，例如 `"forward"` 或 `"backward"`。
 - `tpflag`：当前层是否可以参与张量并行。`1` 表示可以，`0` 表示不可以。
 
