@@ -47,7 +47,7 @@ int main(int argc, char* argv[])
 
 以 case 0 为例，进入函数 `PlayTrace(trace, engine, &timeEstimator)` 后，首先看到:
 
-```
+```c++
 void PlayTrace(triosim::Trace& trace,
                akita::sim::SerialEngine* engine,
                triosim::TimeEstimator* timeEstimator) {
