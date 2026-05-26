@@ -58,3 +58,23 @@ tags:
 
 把更新后的 FP32 master weights 转回 FP16，用于下一轮前向/反向。
 
+
+# ml_dtypes 库
+
+[ml_dtypes 库](https://github.com/jax-ml/ml_dtypes?tab=readme-ov-file#specifications-of-implemented-floating-point-formats) **介绍并实现了机器学习中常用的多种低精度数据类型**。其整体实现可以概括为：
+
+1. 在底层使用 C++ 实现相关数值类型及其运算逻辑，其中部分功能依赖高性能 C++ 数学库 Eigen。
+
+2. 通过 C++ 扩展将这些类型注册为 NumPy 可识别的 `dtype`，并支持相应的 `ufunc` 与类型转换规则。
+
+3. 在 Python 层对外导出这些数据类型，使用户可以像使用普通 NumPy dtype 一样直接使用它们。
+
+---
+
+# 不同浮点精度的可视比较
+
+![](img/fp8_formats.png)
+![](img/ai_training_tf32_tensor_cores_f2-625x371.png)
+
+
+
