@@ -131,7 +131,7 @@ void ScheduleEvent(akita::sim::Event* evt) {
 
 其中：
 - `MakePlayNextEvent()` 的作用是创建一个 `PlayNextEvent` 类型的事件并返回；
-- `ScheduleEvent()` 的作用是通过事件调度器 `event_scheduler_` 将事件放入调度队列。`event_scheduler_` 的类型是 `class IEventScheduler`。<br>
+- `ScheduleEvent()` 的作用是通过事件调度器 `event_scheduler_` 将事件放入调度队列。`event_scheduler_` 的类型是 `class IEventScheduler`，但是通过多态传入 `class SerialEngine` 的实例。<br>
 **注意，代码中所有用到的事件调度器 `event_scheduler_` 实际上都是 `class SerialEngine` 的实例。**
 
 后续流程中，调度器会不断从队列中取出最早的事件，并调用其 `Handle()` 函数进行处理，例如：
@@ -201,7 +201,7 @@ public:
         auto* evt = static_cast<<akita::sim::Event*>(ctx.item);
         if (evt == nullptr) return;
 
-        std::cout << "[Hook] sim_time=" << evt->GetTime() << std::endl;
+        std::cout << "[Hook] event_sim_time=" << evt->GetTime() << std::endl;
     }
 };
 ```
