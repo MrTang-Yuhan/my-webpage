@@ -22,7 +22,7 @@ tags:
 
 
 - **吞吐量**：指单位时间内 GPU 能够完成的计算操作、指令或任务的数量。  
-  在 NVIDIA 白皮书中，吞吐量常用于描述 P16 / BF16 / FP8 Tensor Core 吞吐量等，最常见单位为 TFLOP/s、PFLOP/s。对于整数运算，则经常使用 TOPS（tera operations per second）。
+  在 NVIDIA 白皮书中，吞吐量常用于描述 FP16 / BF16 / FP8 Tensor Core 吞吐量等，最常见单位为 TFLOP/s、PFLOP/s。对于整数运算，则经常使用 TOPS（tera operations per second）。
 
 
 
@@ -100,7 +100,7 @@ asm volatile(
 
 - `Read`: Read-only
 - `Write`: Write-only
-- `copy`: Copy 1R1W
+- `Copy`: Copy 1R1W
 - `Mixed`: Mixed 5R1W
 
 
