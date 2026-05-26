@@ -103,7 +103,8 @@ tags:
 ![](img/ai_training_tf32_tensor_cores_f2-625x371.png)
 ![](img/fp8_formats.png)
 
-
-
+注：
+- **TF32 实际有效位数只有 19 位。TF32 是 NVIDIA Tensor Core 的内部计算格式，用户代码中的张量仍然是 FP32**。
+- **FP32 $\to$ BF16**：FP32 直接丢弃后 16 位得到 BF16，为无损转换。
 
 
