@@ -43,10 +43,10 @@ tags:
 
 把梯度缩放还原。**这一步会除以 loss scale**，同时可能进行：
 
-- **检查 Inf / NaN**：如果 scale 太大，梯度可能被放大到超过 FP16 最大范围，导致 Inf / NaN。此时该梯度就不能执行 optimizer step，否则参数会被污染。
+- **检查 Inf / NaN**：如果 scale 太大，梯度可能被放大到超过 FP16 最大范围，导致 Inf / NaN。此时该梯度就不能执行 optimizer step，否则参数会被污染
 - **决定是否跳过 optimizer step**：如果使用了梯度累积（GAS），必须等当前梯度累积周期内所有 micro-batch 的反向传播都完成后，才能执行一次梯度更新
-- **动态调整 scale**：scale 足够大，避免 underflow；scale 不要太大，避免 overflow；
-- **在 unscale 后做 gradient clipping**：梯度裁剪通过限制梯度的最大范数，防止反向传播中梯度指数爆炸导致训练崩溃
+- **动态调整 scale**：动态调整 scale，本质上就是自动寻找一个“尽量大但又不溢出”的缩放因子。目标是，scale 足够大，避免下溢；如果检测到上溢，则立即减少 scale
+- **在 remove scale 后做 gradient clipping**：梯度裁剪通过限制梯度的最大范数，防止反向传播中梯度指数爆炸导致训练崩溃
 
 注意，必须**首先进行 Remove Scale**，否则处理的都是放大 scale 倍的梯度，结果会严重错误。
 
@@ -56,7 +56,7 @@ tags:
 
 ## Step 7：Copy
 
-把更新后的 FP32 master weights 转回 FP16，用于下一轮前向/反向。
+把更新后的 FP32 master weights **转回 FP16，用于下一轮前向/反向传播**。
 
 ---
 
@@ -100,8 +100,9 @@ tags:
 
 # 不同浮点精度的可视比较
 
-![](img/fp8_formats.png)
 ![](img/ai_training_tf32_tensor_cores_f2-625x371.png)
+![](img/fp8_formats.png)
+
 
 
 
