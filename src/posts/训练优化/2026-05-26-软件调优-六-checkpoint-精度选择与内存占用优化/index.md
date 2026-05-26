@@ -2,7 +2,7 @@
 layout: post.njk
 post_id: 2026-05-26-软件调优-六-checkpoint-精度选择与内存占用优化
 archive: 训练优化
-title: 软件调优（六）：Checkpoint 精度选择与内存占用优化
+title: 软件调优（六）：Checkpoint 文件优化
 date: 2026-05-26
 tags:
   - post
