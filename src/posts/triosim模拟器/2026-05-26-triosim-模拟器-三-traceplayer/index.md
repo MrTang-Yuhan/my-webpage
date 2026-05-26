@@ -94,10 +94,10 @@ InferenceTracePlayer::InferenceTracePlayer(
 }
 ```
 
-实际传入的参数中：
-- `engine` 的类型为 `class SerialEngine : public Engine`，负责实现串行模拟。它分别被传递给形参 `akita::sim::ITimeTeller* tt` 和 `akita::sim::IEventScheduler* es`。<br>
+其中，
+- 实参 `engine` 的类型为 `class SerialEngine`，负责实现串行模拟。它分别被传递给形参 `akita::sim::ITimeTeller* tt` 和 `akita::sim::IEventScheduler* es`。<br>
 由于 `class SerialEngine : public Engine`， `class Engine : public Hookable, public TimeTeller, public EventScheduler, public ITimeTeller, public IEventScheduler`，因此 `class SerialEngine` 实际上是 `class ITimeTeller` 和 `class IEventScheduler` 的派生类。
-- `timeEstimator` 的类型为 `class RecordedTimeEstimator : public TimeEstimator`，被传递给形参 `TimeEstimator* time_estimator`。其作用是记录 trace 中每一层的执行时间，并在需要时直接读取该时间。
+- 实参 `timeEstimator` 的类型为 `class RecordedTimeEstimator `。它被传递给形参 `TimeEstimator* time_estimator`，其作用是记录 trace 中每一层的执行时间，并在需要时直接读取该时间。其中，`class RecordedTimeEstimator : public TimeEstimator`。
 
 关键点在于实参 `engine`：
 
