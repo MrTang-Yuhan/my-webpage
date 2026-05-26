@@ -89,6 +89,8 @@ InferenceTracePlayer::InferenceTracePlayer(
 - **`class ITimeTeller` 的功能在 `class SerialEngine` 中被重载为直接报告当前的模拟器全局时间（注意：此处为模拟时间，而非墙钟时间）。**
 - **`class IEventScheduler` 的功能在 `class SerialEngine` 中被重载为将事件放入调度队列。**
 
+---
+
 # 如何实现事件的调度和执行
 
 接上文，**`class IEventScheduler` 的功能在 `class SerialEngine` 中被重载为将事件放入调度队列。**
