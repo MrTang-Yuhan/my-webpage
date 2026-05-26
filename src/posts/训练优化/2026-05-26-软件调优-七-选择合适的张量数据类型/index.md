@@ -8,3 +8,9 @@ tags:
   - post
 ---
 最初，神经网络训练使用的张量类型都是 fp32，但速度慢、占用显存大。此后，NVIDIA 提出了[混合精度训练](https://developer.nvidia.com/blog/video-mixed-precision-techniques-tensor-cores-deep-learning/)，研究人员结合使用 fp16 和 fp32 两种浮点精度格式，这一创新极大地提升了模型训练速度。
+
+---
+
+# 混合精度训练（Mixed Precision Training)
+
+![](img/mixed_precision_training.png)
