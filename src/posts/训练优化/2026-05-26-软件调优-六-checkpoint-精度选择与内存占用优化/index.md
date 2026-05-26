@@ -9,11 +9,11 @@ tags:
 ---
 # 对 Checkpoint 进行脚本处理
 
-- [torch-checkpoint-convert-to-bf16](#torch-checkpoint-convert-to-bf16)：这个脚本会将两类 checkpoint 文件： torch 的 *.bin 文件和 safetensor 的 *.safetensor 文件中的权重转换为 bf16，并在名为 bf16 的子目录下创建一个新的 checkpoint。
+- [torch-checkpoint-convert-to-bf16](#torch-checkpoint-convert-to-bf16)：这个脚本会将两类 checkpoint 文件： **torch 的 ".bin" 文件和 safetensor 的 ".safetensor" 文件中的权重转换为 bf16** ，并在名为 bf16 的子目录下创建一个新的 checkpoint。
 
   注意事项：该脚本假设所有权重均为浮点张量，因此仅适用于标准的 fp32/fp16 浮点 checkpoint
 
-- [torch-checkpoint-shrink.py](#torch-checkpoint-shrink):这个脚本用于修复某些 ".pt" 文件后缀的 checkpoint：由于某些原因，这些 checkpoint 在保存时，张量对应的底层 storage 比当时实际使用的 view 更大。它会克隆当前 view，并重新保存张量，使其只保留当前 view 所需的 storage。
+- [torch-checkpoint-shrink.py](#torch-checkpoint-shrink):这个脚本用于修复某些 ".pt" 文件后缀的 checkpoint：由于某些原因，这些 checkpoint 在保存时，张量对应的底层 storage 比当时实际使用的 view 更大。**它会克隆当前 view，并重新保存张量，使其只保留当前 view 所需的 storage**。
 
   注意事项：这个脚本会直接覆盖原 checkpoint 文件，因此使用前最好先备份
 
@@ -64,7 +64,7 @@ fi
 echo "the dir $target_dir now contains a copy of the original checkpoint with bf16 weights"
 ```
 
-## torch-checkpoint-shrink.py
+## torch-checkpoint-shrink
 
 <a id="torch-checkpoint-shrink"></a>
 
