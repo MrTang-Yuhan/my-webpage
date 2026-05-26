@@ -43,7 +43,22 @@ int main(int argc, char* argv[])
 }
 ```
 
-以 case 0 为例，进入函数 `void PlayTrace(triosim::Trace& trace, akila::sim::SerialEngine* engine, triosim::TimeEstimator* timeEstimator)` 后，首先会看到 `auto* tracePlayer = new traceplayer::InferenceTracePlayer("Player", engine, engine, timeEstimator)`，即创建一个 TracePlayer 对象。
+有多个以 **`PlayTrace`** 开头的函数。
+
+以 case 0 为例，进入函数 `PlayTrace(trace, engine, &timeEstimator)` 后，首先看到:
+
+```
+void PlayTrace(triosim::Trace& trace,
+               akita::sim::SerialEngine* engine,
+               triosim::TimeEstimator* timeEstimator) {
+
+    auto* tracePlayer = new traceplayer::InferenceTracePlayer(
+        "Player", engine, engine, timeEstimator); 
+...   
+}
+```
+
+- **`auto* tracePlayer = new traceplayer::InferenceTracePlayer("Player", engine, engine, timeEstimator)` 的功能是创建一个 TracePlayer 对象**。
 
 可以将 TracePlayer 理解为 **trace 的执行器或解释器**。
 
@@ -58,7 +73,7 @@ int main(int argc, char* argv[])
 
 # 详解 TracePlayer
 
-仍以 case 0 为例，函数 `auto* tracePlayer = new traceplayer::InferenceTracePlayer("Player", engine, engine, timeEstimator)` 的定义如下：
+仍以 case 0 为例，上文的函数 `auto* tracePlayer = new traceplayer::InferenceTracePlayer("Player", engine, engine, timeEstimator)` 的定义如下：
 
 ```c++
 InferenceTracePlayer::InferenceTracePlayer(
@@ -93,7 +108,6 @@ InferenceTracePlayer::InferenceTracePlayer(
 
 # 如何实现事件的调度和执行
 
-接上文，**`class IEventScheduler` 的功能在 `class SerialEngine` 中被重载为将事件放入调度队列。**
 
 在代码中，经常能看到类似下面的写法：
 
@@ -117,7 +131,8 @@ void ScheduleEvent(akita::sim::Event* evt) {
 
 其中：
 - `MakePlayNextEvent()` 的作用是创建一个 `PlayNextEvent` 类型的事件并返回；
-- `ScheduleEvent()` 的作用是通过事件调度器将事件放入调度队列。代码中所有用到的事件调度器实际上都是 `class SerialEngine` 的实例。
+- `ScheduleEvent()` 的作用是通过事件调度器 `event_scheduler_` 将事件放入调度队列。`event_scheduler_` 的类型是 `class IEventScheduler`。<br>
+**注意，代码中所有用到的事件调度器 `event_scheduler_` 实际上都是 `class SerialEngine` 的实例。**
 
 后续流程中，调度器会不断从队列中取出最早的事件，并调用其 `Handle()` 函数进行处理，例如：
 
