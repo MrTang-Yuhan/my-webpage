@@ -156,6 +156,7 @@ cd triosim-cpp
 mkdir -p build && cd build
 # 启用调试模式
 cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS_DEBUG="-O0 -g3"
+# 如果 cmake 失败，请先删除 build/ 目录
 ```
 
 3. 编译生成可执行文件
