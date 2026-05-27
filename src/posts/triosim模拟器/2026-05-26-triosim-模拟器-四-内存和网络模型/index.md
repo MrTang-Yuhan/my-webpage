@@ -262,9 +262,7 @@ evt_time = now + latency + transfer_time;
 当前光学 `Send()` 没有像电气网络那样做“链路并发均分带宽”。它更像端到端估算。
 
 
-
-xiao
-[测试](attach/precision.zip)
+[测试](attach/datacollect.py)
 
 
 
