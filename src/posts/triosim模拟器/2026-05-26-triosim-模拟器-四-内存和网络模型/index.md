@@ -30,8 +30,6 @@ void PlayTrace(triosim::Trace& trace,
 
 这段代码同时完成了内存模型的建模。
 
-以下是润色后的版本，表述更加自然流畅：
-
 ---
 
 ## 内存建模细节
@@ -57,6 +55,8 @@ void PlayTrace(triosim::Trace& trace,
 - 初始张量数据（trace）全部存放于此
 
 ---
+
+# 网络模型
 
 
 
