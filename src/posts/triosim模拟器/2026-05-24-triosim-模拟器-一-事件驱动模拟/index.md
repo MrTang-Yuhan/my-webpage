@@ -170,5 +170,5 @@ make -j
 LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu \
 ./triosim/triosim \
 --trace-dir=/home/tang/triosim-cpp/sample_trace/trace2-h100-bs128/vgg13/  \
---batch-size=128 --batch-size-sim=-1 --GPUnumber=16 --case=5 --interconnects=0 --numRows=4 --numCols=4
+--batch-size=128 --batch-size-sim=-1 --GPUnumber=16 --numRows=4 --numCols=4 --case=5 --interconnects=0
 ```
