@@ -41,8 +41,8 @@ tags:
 ```bash
 usermod -aG <特权组名称> <用户名>
 ```
-- `a`：追加到组（避免覆盖原有组）。
-- `G`：指定附加组。
+- `-a`：追加到组（避免覆盖原有组）。
+- `-G`：指定附加组。
 
 假设创建了用户 bob，需将其设为管理员：
 
@@ -57,7 +57,7 @@ usermod -aG sudo bob
 groups bob  # 输出：bob : bob sudo
 ```
 
-无需额外配置，bob 现在已拥有 sudo 权限（注销并重新登录后生效）。
+无需额外配置，bob 现在已拥有 sudo 权限（**注销并重新登录后生效**）。
 
 ## 配置 SSH 运行远程连接
 
@@ -180,7 +180,7 @@ sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.ta
 
 如果服务器不设置静态 IP 地址，每次重启服务器，它都会通过 DHCP 获取动态 IP 地址，从而造成无法访问。
 
-#### 先查服务器的 IP 地址：
+#### 先查服务器的 IP 地址
 
 ```bash
 hostname -I
@@ -192,7 +192,7 @@ hostname -I
 ```
 一般局域网内用那个 `192.168.x.x` 或者 `10.x.x.x` 格式的。
 
-#### 再通过路由表查服务器的网关：
+#### 再通过路由表查服务器的网关
 
 ```bash
 route -n
