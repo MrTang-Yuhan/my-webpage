@@ -180,7 +180,7 @@ sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.ta
 
 如果服务器不设置静态 IP 地址，每次重启服务器，它都会通过 DHCP 获取动态 IP 地址，从而造成无法访问。
 
-#### 先查服务器的 IP 地址：
+#### 先查服务器的 IP 地址
 
 ```bash
 hostname -I
@@ -192,7 +192,7 @@ hostname -I
 ```
 一般局域网内用那个 `192.168.x.x` 或者 `10.x.x.x` 格式的。
 
-#### 再通过路由表查服务器的网关：
+#### 再通过路由表查服务器的网关
 
 ```bash
 route -n
