@@ -2,7 +2,7 @@
 layout: post.njk
 post_id: 2026-05-20-gpu-内存子系统分析-带宽分析（一）
 archive: gpu逆向工程
-title: GPU 内存子系统分析--带宽分析（一）
+title: GPU 内存子系统分析（二）：带宽分析
 date: 2026-05-21
 description: DRAM 带宽分析
 tags:
