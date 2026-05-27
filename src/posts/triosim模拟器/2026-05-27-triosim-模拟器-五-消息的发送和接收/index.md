@@ -21,9 +21,13 @@ TracePlayer 创建 TensorMsg
 -> TracePlayer 把 tensor 落到目标 MemoryRegion
 ```
 
-**1. 发送消息**
+> **本文重点讨论电气网络的消息发送和接收机制。在光学网络中，消息的传输过程与此类似。**
 
-发送入口是 [inference.cpp](/home/tang/triosim-cpp/traceplayer/inference.cpp:332)：
+---
+
+# 发送消息
+
+发送入口是 inference.cpp：
 
 ```cpp
 bool InferenceTracePlayer::MsgPkgToSend(...)
@@ -60,7 +64,7 @@ msg->meta.send_time = CurrentTime();
 msg->meta.traffic_bytes = totalBytes;
 ```
 
-`TensorMsg` 定义在 [trace.hpp](/home/tang/triosim-cpp/triosim/trace.hpp:103)。
+`TensorMsg` 定义在 trace.hpp。
 
 它里面最重要的是：
 
@@ -80,9 +84,11 @@ auto* sendError = src->Send(msg);
 
 这里的 `src` 是 `LimitNumMsgPort`。
 
-**2. Port::Send 做了什么**
+---
 
-代码在 [port.cpp](/home/tang/triosim-cpp/akita/sim/port.cpp:70)：
+# Port::Send 做了什么
+
+代码在 port.cpp：
 
 ```cpp
 SendError* LimitNumMsgPort::Send(Msg* msg) {
@@ -114,9 +120,11 @@ conn_ = PacketSwitchingNetworkModel
 conn_ = OpticalNetworkModel
 ```
 
-**3. 网络模型负责“传输”**
+---
 
-以电气网络为例，进入 [packetswitching.cpp](/home/tang/triosim-cpp/networkmodel/packetswitching.cpp:123)：
+# 网络模型负责消息传输
+
+以电气网络为例，进入 packetswitching.cpp：
 
 ```cpp
 PacketSwitchingNetworkModel::Send(Msg* msg)
@@ -140,7 +148,7 @@ scheduleNextHappenEvent();
 
 也就是说发送是异步的。消息发出后，并不会马上到达，而是等模拟时间推进到传输完成事件。
 
-光学网络类似，在 [optical.cpp](/home/tang/triosim-cpp/networkmodel/optical.cpp:202)：
+光学网络类似，在 optical.cpp：
 
 ```cpp
 OpticalNetworkModel::Send(Msg* msg)
@@ -159,11 +167,13 @@ transferUpdateEvent* evt = new transferUpdateEvent(evt_time, this, msg);
 event_scheduler_->Schedule(evt);
 ```
 
-**4. 传输完成事件如何触发接收**
+---
+
+# 传输完成事件如何触发接收
 
 当模拟时间到达 `transferUpdateEvent`，`SerialEngine` 会调用网络模型的 `Handle()`。
 
-电气网络的处理在 [packetswitching.cpp](/home/tang/triosim-cpp/networkmodel/packetswitching.cpp:141)：
+电气网络的处理在 packetswitching.cpp：
 
 ```cpp
 int PacketSwitchingNetworkModel::handleTransferUpdateEvent(...)
@@ -185,9 +195,11 @@ NetworkModel::Send() 只是发起传输
 NetworkModel::handleTransferUpdateEvent() 才把消息投递到 dst Port
 ```
 
-**5. Port::Recv 做了什么**
+---
 
-代码在 [port.cpp](/home/tang/triosim-cpp/akita/sim/port.cpp:85)：
+# Port::Recv 做了什么
+
+代码在 port.cpp：
 
 ```cpp
 SendError* LimitNumMsgPort::Recv(Msg* msg)
@@ -224,9 +236,11 @@ comp_->NotifyRecv(msg->Meta()->recv_time, this);
 InferenceTracePlayer::NotifyRecv()
 ```
 
-**6. TracePlayer 接收消息**
+---
 
-代码在 [inference.cpp](/home/tang/triosim-cpp/traceplayer/inference.cpp:506)：
+# TracePlayer 接收消息
+
+代码在 inference.cpp：
 
 ```cpp
 void InferenceTracePlayer::NotifyRecv(...)
@@ -250,7 +264,7 @@ auto* tensorMsg = dynamic_cast<TensorMsg*>(msg);
 RecvTensorPkg(tensorMsg);
 ```
 
-`RecvTensorPkg()` 在 [inference.cpp](/home/tang/triosim-cpp/traceplayer/inference.cpp:533)：
+`RecvTensorPkg()` 在 inference.cpp：
 
 ```cpp
 RemoveInflightTransfer(msg);
@@ -282,45 +296,3 @@ if (purpose == "scatter" || purpose == "gather" || purpose == "hop") {
 }
 ```
 
-**7. 总流程图**
-
-```text
-MsgPkgToSend()
-  创建 TensorMsg
-  设置 src / dst / traffic_bytes / purpose
-  调用 src->Send(msg)
-
-LimitNumMsgPort::Send()
-  调用 conn_->Send(msg)
-
-PacketSwitchingNetworkModel::Send()
-  找路由
-  计算传输完成时间
-  Schedule transferUpdateEvent
-
-SerialEngine::Run()
-  时间推进到 transferUpdateEvent
-  调用 NetworkModel::Handle()
-
-PacketSwitchingNetworkModel::handleTransferUpdateEvent()
-  调用 dst->Recv(msg)
-
-LimitNumMsgPort::Recv()
-  放入 dst port buffer
-  调用 comp_->NotifyRecv()
-
-InferenceTracePlayer::NotifyRecv()
-  port->Retrieve()
-  RecvTensorPkg()
-  AddTensorsToMemRegion()
-  调度下一步 PlayNext / PlayNextReduce
-```
-
-所以一句话总结：
-
-```text
-发送是 TracePlayer 主动创建 TensorMsg 并交给 Port；
-传输是 NetworkModel 通过事件模拟延迟；
-接收是目标 Port 在传输完成后回调 TracePlayer::NotifyRecv()；
-张量真正进入 GPU MemoryRegion 发生在 RecvTensorPkg()。
-```
