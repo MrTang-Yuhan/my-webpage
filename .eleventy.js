@@ -37,6 +37,7 @@ module.exports = async function(eleventyConfig) {
   eleventyConfig.addPassthroughCopy("src/admin/config.yml");
   eleventyConfig.addPassthroughCopy("src/posts/**/img");
   eleventyConfig.addPassthroughCopy("src/posts/**/video");
+  eleventyConfig.addPassthroughCopy("src/posts/**/attach");
 
   // Add filter for formatting dates
   eleventyConfig.addFilter("formatDate", function(date) {
