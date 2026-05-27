@@ -250,19 +250,15 @@ transfer_time = traffic_bytes / byte_per_second;
 evt_time = now + latency + transfer_time;
 ```
 
-
 也就是：
-
 
 ```text
 完成时间 = 当前时间 + 每跳延迟 * hop 数 + 数据大小 / 带宽
 ```
 
-
 当前光学 `Send()` 没有像电气网络那样做“链路并发均分带宽”。它更像端到端估算。
 
 
-[测试](attach/datacollect.py)
 
 
 
