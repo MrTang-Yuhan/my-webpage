@@ -73,3 +73,11 @@ collections:
         modes:
           - raw
         hint: Markdown 源码是权威格式；Rich Text 已禁用，避免自动改写源码格式。
+      - label: 附件上传入口
+        name: attachment_upload
+        widget: file
+        required: false
+        media_folder: attach
+        public_folder: ./attach
+        choose_url: false
+        hint: 用于工具栏“上传附件”按钮；文件会上传到当前文章 attach/ 目录。

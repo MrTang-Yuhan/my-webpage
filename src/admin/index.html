@@ -46,7 +46,7 @@
         color: #334155;
         font-size: 13px;
       }
-      #upload-image-only-btn {
+      #upload-image-only-panel button {
         border: 0;
         border-radius: 6px;
         background: #0f6c73;
@@ -55,6 +55,9 @@
         font: inherit;
         font-weight: 600;
         padding: 7px 10px;
+      }
+      #upload-attachment-only-btn {
+        background: #334155;
       }
       #upload-image-only-status {
         color: #475569;
@@ -598,7 +601,8 @@
             panel.id = 'upload-image-only-panel';
             panel.innerHTML =
               '<button id="upload-image-only-btn" type="button">上传图片</button>' +
-              '<span id="upload-image-only-status">仅上传到当前文章 img/，不修改正文。</span>';
+              '<button id="upload-attachment-only-btn" type="button">上传附件</button>' +
+              '<span id="upload-image-only-status">图片到 img/，附件到 attach/，不修改正文。</span>';
           }
           const anchor = findAddComponentToolbarAnchor();
           const fallbackAnchor = findEditorToolbarFallbackAnchor();
@@ -642,25 +646,73 @@
             return;
           }
           panel.style.display = 'inline-flex';
-          const button = panel.querySelector('#upload-image-only-btn');
+          const imageButton = panel.querySelector('#upload-image-only-btn');
+          const attachmentButton = panel.querySelector('#upload-attachment-only-btn');
           const statusEl = panel.querySelector('#upload-image-only-status');
-          if (button.dataset.bound === '1') return;
-          button.dataset.bound = '1';
-          button.addEventListener('click', function() {
+          if (imageButton.dataset.bound !== '1') {
+            imageButton.dataset.bound = '1';
+            imageButton.addEventListener('click', function() {
+              const textarea = findBodyTextarea();
+              const snapshot = textarea ? String(textarea.value || '') : '';
+              const mediaButton = findGlobalMediaButton();
+              if (!mediaButton) {
+                statusEl.style.color = '#b91c1c';
+                statusEl.textContent = '未找到 Decap 原生 Media 上传入口。';
+                return;
+              }
+
+              statusEl.style.color = '#475569';
+              statusEl.textContent = '已打开 Decap 媒体库；上传后正文会保持不变。';
+              startUploadOnlyMarkdownGuard(snapshot);
+              mediaButton.click();
+            });
+          }
+          if (attachmentButton.dataset.bound === '1') return;
+          attachmentButton.dataset.bound = '1';
+          attachmentButton.addEventListener('click', function() {
             const textarea = findBodyTextarea();
             const snapshot = textarea ? String(textarea.value || '') : '';
-            const mediaButton = findGlobalMediaButton();
-            if (!mediaButton) {
+            const fileControl = findAttachmentUploadControl();
+            if (!fileControl) {
               statusEl.style.color = '#b91c1c';
-              statusEl.textContent = '未找到 Decap 原生 Media 上传入口。';
+              statusEl.textContent = '未找到 Decap 附件上传入口。请确认 attachment_upload 字段已加载。';
               return;
             }
 
             statusEl.style.color = '#475569';
-            statusEl.textContent = '已打开 Decap 媒体库；上传后正文会保持不变。';
+            statusEl.textContent = '已打开 Decap 附件上传；文件会进入当前文章 attach/。';
             startUploadOnlyMarkdownGuard(snapshot);
-            mediaButton.click();
+            fileControl.click();
           });
+        }
+
+        function findAttachmentUploadControl() {
+          const fieldNode = findFieldContainerByText(/附件上传入口|attachment_upload|上传附件|attach\//);
+          if (!fieldNode) return null;
+          const controls = Array.from(fieldNode.querySelectorAll('button, [role="button"], input[type="file"]'));
+          return controls.find(function(control) {
+            const label = [
+              control.textContent || '',
+              control.getAttribute('aria-label') || '',
+              control.getAttribute('title') || '',
+              control.getAttribute('name') || ''
+            ].join(' ').trim().toLowerCase();
+            return control.tagName === 'INPUT' || /choose|upload|select|browse|media|file|上传|选择|浏览|媒体|文件|附件/.test(label);
+          }) || null;
+        }
+
+        function findFieldContainerByText(pattern) {
+          const candidates = Array.from(document.querySelectorAll('label, [data-testid], [class*="Field"], [class*="field"]'));
+          const match = candidates.find(function(node) {
+            if (node.closest('#cms-editor-tools-host')) return false;
+            return pattern.test(String(node.textContent || ''));
+          });
+          if (!match) return null;
+          let node = match;
+          for (let i = 0; node && i < 6; i += 1, node = node.parentElement) {
+            if (node.querySelector('button, [role="button"], input[type="file"]')) return node;
+          }
+          return match;
         }
 
         function findGlobalMediaButton() {
@@ -937,11 +989,15 @@
             const entry = args && args.entry;
             const data = entry && typeof entry.get === 'function' ? entry.get('data') : null;
             if (!data || typeof data.get !== 'function' || typeof data.set !== 'function') return data;
-            const existingPostId = String(data.get('post_id') || '').trim();
-            if (existingPostId) return data;
+            let nextData = data;
+            if (typeof nextData.delete === 'function') {
+              nextData = nextData.delete('attachment_upload');
+            }
+            const existingPostId = String(nextData.get('post_id') || '').trim();
+            if (existingPostId) return nextData;
 
-            const title = String(data.get('title') || 'untitled').trim();
-            const date = String(data.get('date') || '').slice(0, 10);
+            const title = String(nextData.get('title') || 'untitled').trim();
+            const date = String(nextData.get('date') || '').slice(0, 10);
             const source = [date, title].filter(Boolean).join('-') || 'untitled';
             const generatedPostId = source
               .toLocaleLowerCase('zh-Hans-CN')
@@ -950,7 +1006,7 @@
               .replace(/[^\w\u4e00-\u9fff-]+/g, '-')
               .replace(/-+/g, '-')
               .replace(/^-|-$/g, '') || 'untitled';
-            return data.set('post_id', generatedPostId);
+            return nextData.set('post_id', generatedPostId);
           }
         });
 
