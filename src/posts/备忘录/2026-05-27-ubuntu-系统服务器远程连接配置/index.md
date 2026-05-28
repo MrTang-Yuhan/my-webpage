@@ -230,4 +230,123 @@ Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
 
 连接方法参考 [VSCode SSH 免密远程连接配置](https://my-webpage-adu.pages.dev/posts/%E5%A4%87%E5%BF%98%E5%BD%95/2026-05-17-vscode-ssh-%E5%85%8D%E5%AF%86%E8%BF%9C%E7%A8%8B%E8%BF%9E%E6%8E%A5%E9%85%8D%E7%BD%AE/)。
 
+---
 
+# 故障排除
+
+## 网络突然断开
+
+配置静态 IP 地址后，服务器第一天正常联网，但是第二天就无法联网了。
+
+**临时解决方法：在 UI 图形界面关闭网络，然后重新打开网络，网络就恢复了。**
+
+### 排查过程
+查看日志:
+
+```bash
+sudo journalctl -u NetworkManager --since "24 hours ago"
+```
+显示：
+![](img/net-1.png)
+
+其中：
+- `CONNECTED_SITE`: 连接到了本地网络/内网，但 NetworkManager 认为还没有确认能访问互联网
+- `CONNECTED_GLOBAL`: NetworkManager 认为已经可以访问互联网
+
+即：
+```bash
+5月 27 22:45:09 cmodel-agent-01 NetworkManager[748]: <info>  [1779893109.8182] manager: NetworkManager state is now CONNECTED_SITE
+```
+后，网络一直无法访问互联网了。
+
+### 解决方法 1（未验证）：
+
+重新设置 NetworkManager：
+
+```bash
+sudo vim /etc/netplan/01-network-manager-all.yaml
+```
+
+配置如下：
+
+```bash
+network:
+  version: 2
+  renderer: NetworkManager
+  ethernets:
+    eno1:
+      dhcp4: no
+      addresses:
+        - 10.7.104.195/24
+      routes:
+        - to: default
+          via: 10.7.104.1
+      nameservers:
+        addresses:
+          - 114.114.115.115
+          - 8.8.8.8
+      wakeonlan: false
+```
+
+其中：
+- `10.7.104.195/24`: 静态 IP 地址 / 子网掩码（固定为 24）
+- `10.7.104.1`: 网关
+- `114.114.115.115` 和 `8.8.8.8`: DNS
+- `wakeonlan: false`: 关闭网卡的“网络唤醒”功能。看看这个能不能避免网卡进入某些等待唤醒的省电模式。
+
+保存后，应用网络配置，使修改后的网络设置生效：
+```bash
+sudo netplan try
+sudo netplan apply
+```
+查看：
+```bash
+nmcli connection show --active
+```
+
+### 解决方法 2（未验证）：
+
+写一个简单脚本检测外网，如果监测到外网不通就重连：
+例如：
+```bash
+sudo vim check-network.sh
+```
+写入：
+```bash
+#!/bin/bash
+
+IFACE="eno1"
+CONN=$(nmcli -t -f NAME,DEVICE connection show --active | awk -F: -v dev="$IFACE" '$2==dev {print $1; exit}')
+
+ping -c 2 -W 2 10.7.104.1 >/dev/null 2>&1
+GW_OK=$?
+
+ping -c 2 -W 2 8.8.8.8 >/dev/null 2>&1
+NET_OK=$?
+
+if [ "$GW_OK" -ne 0 ] || [ "$NET_OK" -ne 0 ]; then
+  logger "network-check: network seems down, reconnecting $CONN on $IFACE"
+  if [ -n "$CONN" ]; then
+    nmcli connection down "$CONN"
+    sleep 3
+    nmcli connection up "$CONN"
+  else
+    nmcli networking off
+    sleep 3
+    nmcli networking on
+  fi
+fi
+```
+授权这个脚本，然后加到 cron:
+
+```bash
+sudo crontab -e
+```
+
+即每 5 分钟自动执行一次这个脚本。
+
+查看是否成功加入 cron：
+
+```bash
+crontab -l
+```
