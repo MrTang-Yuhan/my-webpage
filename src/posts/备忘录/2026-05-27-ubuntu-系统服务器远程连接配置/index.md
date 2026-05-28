@@ -342,8 +342,30 @@ fi
 ```bash
 sudo crontab -e
 ```
+会打开 cron，编辑为：
 
-即每 5 分钟自动执行一次这个脚本。
+```bash
+# 每分钟执行一次
+* * * * * /path/to/your/script.sh
+
+# 每5分钟执行一次
+*/5 * * * * /path/to/your/script.sh
+
+# 每小时执行一次
+0 * * * * /path/to/your/script.sh
+
+# 每天凌晨2点执行
+0 2 * * * /path/to/your/script.sh
+
+# 每周一早上8点执行
+0 8 * * 1 /path/to/your/script.sh
+```
+
+crontab 格式：
+
+```plaintext
+分 时 日 月 星期 命令
+```
 
 查看是否成功加入 cron：
 
