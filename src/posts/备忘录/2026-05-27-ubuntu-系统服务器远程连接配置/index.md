@@ -158,20 +158,16 @@ To                         Action      From
 查看自动休眠状态：
 
 ```bash
-systemctl status sleep.target
+# 检查休眠目标是否被屏蔽
+systemctl status sleep.target suspend.target hibernate.target hybrid-sleep.target
 ```
 
-如显示下面的内容则表示已关闭自动休眠:
-
-```bash
-● sleep.target
-     Loaded: masked (Reason: Unit sleep.target is masked.)
-     Active: inactive (dead)
-```
+如果显示 `Loaded: masked`，说明已成功禁用。
 
 如果没有关闭则执行以下命令关闭自动休眠，执行后再查询自动休眠状态看一下是否成功:
 
 ```bash
+# 禁用休眠（hibernate）、挂起到内存（sleep/suspend）、混合休眠（hybrid-sleep）
 sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
 ```
 
