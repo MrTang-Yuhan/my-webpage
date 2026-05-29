@@ -25,6 +25,51 @@ tags:
   在 NVIDIA 白皮书中，吞吐量常用于描述 FP16 / BF16 / FP8 Tensor Core 吞吐量等，最常见单位为 TFLOP/s、PFLOP/s。对于整数运算，则经常使用 TOPS（tera operations per second）。
 
 
+---
+
+# 不同的缓存操作符
+
+源自 [Parallel Thread Execution ISA Version 9.3](https://www.bing.com/ck/a?!&&p=1524ddf20b550101c85cfc3db394a92418faf4e07175d24257b64a395cc75a7dJmltdHM9MTc3OTkyNjQwMA&ptn=3&ver=2&hsh=4&fclid=3afa8528-2d53-6d4e-051b-92132c356cb8&u=a1aHR0cHM6Ly9kb2NzLm52aWRpYS5jb20vY3VkYS9wYXJhbGxlbC10aHJlYWQtZXhlY3V0aW9uL2luZGV4Lmh0bWw&ntb=1)
+
+
+
+## 表 30：内存加载指令的缓存操作符
+
+| 操作符 | 含义 |
+|--------|------|
+| `.ca` | **各级缓存**，很可能再次被访问。<br>默认的加载指令缓存操作是 `ld.ca`，它在所有级别（L1 和 L2）分配缓存行，使用正常的驱逐策略。全局数据在 L2 级别是一致的，但多个 L1 缓存对于全局数据并不一致。如果一个线程通过一个 L1 缓存写入全局内存，而第二个线程通过另一个 L1 缓存使用 `ld.ca` 加载该地址，第二个线程可能会获取到陈旧的 L1 缓存数据，而不是第一个线程写入的数据。驱动程序必须在并行线程的依赖网格之间使全局 L1 缓存行失效。然后，第一个网格程序的存储将被第二个网格程序发出的默认 `ld.ca` 加载正确地获取到 L1 中。 |
+| `.cg` | **全局级别缓存**（缓存在 L2 及以下，不在 L1）。<br>使用 `ld.cg` 仅在全局缓存加载，绕过 L1 缓存，仅在 L2 缓存中缓存。 |
+| `.cs` | **流式缓存**，很可能只访问一次。<br>`ld.cs` 加载缓存流式操作在 L1 和 L2 中分配具有驱逐优先策略的全局行，以限制可能被访问一次或两次的临时流式数据的缓存污染。当 `ld.cs` 应用于本地窗口地址时，它执行 `ld.lu` 操作。 |
+| `.lu` | **最后一次使用**。<br>编译器/程序员可以在恢复溢出寄存器和弹出函数栈帧时使用 `ld.lu`，以避免对不再使用的行进行不必要的写回。`ld.lu` 指令在全局地址上执行加载缓存流式操作（`ld.cs`）。 |
+| `.cv` | **不缓存并重新获取**（认为缓存的系统内存行已过时，重新获取）。<br>应用于全局系统内存地址的 `ld.cv` 加载操作会使匹配的 L2 行失效（丢弃），并在每次新加载时重新获取该行。 |
+
+---
+
+## 表 31：内存存储指令的缓存操作符
+
+| 操作符 | 含义 |
+|--------|------|
+| `.wb` | **缓存写回所有一致级别**。<br>默认的存储指令缓存操作是 `st.wb`，它将一致缓存级别的缓存行写回，使用正常的驱逐策略。<br>如果一个线程绕过其 L1 缓存存储到全局内存，而稍后另一个 SM 中的第二个线程通过另一个 L1 缓存使用 `ld.ca` 从该地址加载，第二个线程可能会在陈旧的 L1 缓存数据上命中，而不是获取第一个线程存储的来自 L2 或内存的数据。<br>驱动程序必须在线程数组的依赖网格之间使全局 L1 缓存行失效。然后，第一个网格程序的存储将在 L1 中正确地未命中，并被第二个网格程序发出的默认 `ld.ca` 加载所获取。 |
+| `.cg` | **全局级别缓存**（缓存在 L2 及以下，不在 L1）。<br>使用 `st.cg` 仅在全局缓存全局存储数据，绕过 L1 缓存，仅在 L2 缓存中缓存。 |
+| `.cs` | **流式缓存**，很可能只访问一次。<br>`st.cs` 存储缓存流式操作分配具有驱逐优先策略的缓存行，以限制流式输出数据的缓存污染。 |
+| `.wt` | **缓存直写**（到系统内存）。<br>应用于全局系统内存地址的 `st.wt` 存储直写操作通过 L2 缓存直写。 |
+
+> [Parallel Thread Execution ISA Version 9.3](https://www.bing.com/ck/a?!&&p=1524ddf20b550101c85cfc3db394a92418faf4e07175d24257b64a395cc75a7dJmltdHM9MTc3OTkyNjQwMA&ptn=3&ver=2&hsh=4&fclid=3afa8528-2d53-6d4e-051b-92132c356cb8&u=a1aHR0cHM6Ly9kb2NzLm52aWRpYS5jb20vY3VkYS9wYXJhbGxlbC10aHJlYWQtZXhlY3V0aW9uL2luZGV4Lmh0bWw&ntb=1) 在 "9.7.9.1 Cache Operators" 提到 **"Cache operators on load or store instructions are treated as performance hints only. The use of a cache operator on an ld or st instruction does not change the memory consistency behavior of the program." 这意味着 GPU 硬件可以不完全遵守这些操作符的语义，它们只是给编译器/硬件的建议。**
+
+## `.cv` 操作符进一步分析
+
+这篇 2014 年的帖子，[Understanding the functioning of nvprof and .cv data load option](https://forums.developer.nvidia.com/t/understanding-the-functioning-of-nvprof-and-cv-data-load-option/35902) ，提到 `.cv` 只对系统内存（System Memory）有效。
+
+这里的 system memory 指的是 CPU DRAM。**所以你不能通过 `.cv` 让对 GPU device memory 的 global load 直接绕过 L2 去访问 DRAM。**
+
+如果 global memory address 实际上映射到 system memory，那么 .cv 的行为是：
+
+- 如果该地址对应的数据已经在 L2 中：
+  - 如果 dirty，则 flush 回 CPU system memory
+  - 然后 invalidate
+- 之后从 system memory 通过 PCIe 重新读取
+
+综上，`.cv` 的设计目的主要是为了让 GPU、CPU 或其他 client 对 system memory 有一致视图，而不是为了让 device memory 绕过 L2。
 
 
 # 代码和脚本
@@ -56,18 +101,18 @@ tags:
 
 
 ```cuda
-// vector float4 .cg load 代码
+// vector float4 .cv load 代码
 asm volatile(
-    "ld.global.cg.v4.f32 {%0, %1, %2, %3}, [%4];"
+    "ld.global.cv.v4.f32 {%0, %1, %2, %3}, [%4];"
     : "=f"(v.x), "=f"(v.y), "=f"(v.z), "=f"(v.w)
     : "l"(ptr)
     : "memory"
 );
 
 
-// scalar float .cg load 代码
+// scalar float .cv load 代码
 asm volatile(
-    "ld.global.cg.f32 %0, [%1];"
+    "ld.global.cv.f32 %0, [%1];"
     : "=f"(v)
     : "l"(ptr)
     : "memory"
@@ -83,16 +128,12 @@ asm volatile(
 代码均有两个不同的配置参数；
 
 
-- `kernel` 和 `launch`
+- `kernel` 或 `launch`
 
 
-- `cg` 和 `cs`[^1]
+- `cg` 或 `cs` 或 `cv`
 
 
-[^1]: `ld.cs`: **缓存流式访问（可能仅被访问一次）。**<br>
-`ld.cs` 加载缓存流式操作在 L1 和 L2 缓存中使用“优先逐出”（evict-first）策略来分配全局缓存行，从而限制那些可能仅被访问一次或两次的临时流式数据所造成的缓存污染。当对局部窗口地址应用 `ld.cs` 时，它将执行 `ld.lu` 操作。<br>
-`ld.lu`: **最后一次使用。**<br>
-编译器或程序员在恢复溢出寄存器（spilled registers）和弹出函数栈帧（popping function stack frames）时，可以使用 `ld.lu` 指令，以避免对不再使用的缓存行进行不必要的写回。对于全局地址，`ld.lu` 指令执行的是缓存流式加载操作（`ld.cs`）。
 
 
 四种不同的测试基准：
