@@ -2,7 +2,7 @@
 layout: post.njk
 post_id: 2026-05-20-gpu-内存子系统分析-带宽分析（一）
 archive: gpu逆向工程
-title: GPU 内存子系统分析（二）：带宽分析
+title: GPU 内存子系统分析（二）：DRAM 带宽分析
 date: 2026-05-21
 description: DRAM 带宽分析
 tags:
@@ -408,7 +408,7 @@ lts__t_sector_hit_rate.pct \
 ./bench_l1_cache
 ```
 
-发现在 `kernel` 模式下，存在显著的 L2 缓存命中，但仍未能解决该问题。
+发现在 `kernel` 模式下，存在显著的 L2 缓存命中，但暂时仍然未能解决该问题。
 
 ![](img/cv_ncu.png)
 
@@ -430,6 +430,7 @@ lts__t_sector_hit_rate.pct \
 `GridBlk/SM: 16;  Threads: 96` 结果：
 ![](img/cv_launch_float4_ncu.png)
 
+可见，`launch` 模式下几乎没有了缓存命中。所以选用 `launch` 模式测量 DRAM 带宽是正确的。
 
 # 代码和脚本
 
