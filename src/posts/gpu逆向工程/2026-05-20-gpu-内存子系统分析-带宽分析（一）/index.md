@@ -375,7 +375,7 @@ $$
 
 ![](img/scalar-test.png)
 
-另一个现象是：单独 READ 和单独 WRITE 的实测带宽最高，Mixed（5R1W）次之，而 Copy（1R1W）相比前三者显著下降。这表明底层读写资源存在共享，读写操作会相互竞争，并引入读写切换等调度开销。
+另一个现象是：**单独 READ 和单独 WRITE 的实测带宽最高，Mixed（5R1W）次之，而 Copy（1R1W）相比前三者显著下降。这表明底层读写资源存在共享，读写操作会相互竞争，并引入读写切换等调度开销。**
 
 
 ## 推论
@@ -435,7 +435,7 @@ lts__t_sector_hit_rate.pct \
 
 <a name="all-code"></a>
 
-
+[代码和脚本](attach/dram.zip)
 
 
 
