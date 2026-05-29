@@ -224,3 +224,153 @@ DeepSeekMoE 性能提升最高。
 这张图展示了 GShard（传统 MoE）与 DeepSeekMoE 在相同总专家参数量、但 DeepSeekMoE 仅使用一半激活参数量条件下的性能对比。
 
 # DeepSeekMoE 代码
+
+![](img/deepseekmoe.png)
+
+
+
+## 1. 初始化 `__init__`：三大核心组件
+
+```python
+class DeepseekMoE(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+        self.num_experts_per_tok = config.num_experts_per_tok  # K：每个token激活几个路由专家
+        
+        # 组件一：路由专家列表（Routed Experts）
+        self.experts = nn.ModuleList([
+            DeepseekMLP(config, intermediate_size=config.moe_intermediate_size) 
+            for i in range(config.n_routed_experts)  # 如 63 个
+        ])
+        
+        # 组件二：门控网络（Gate / Router）
+        self.gate = MoEGate(config)
+        
+        # 组件三：共享专家（Shared Expert）—— DeepSeekMoE 的核心创新
+        if config.n_shared_experts is not None:
+            # 共享专家的中间层维度 = 单个路由专家的中间维度 × 共享专家数量
+            intermediate_size = config.moe_intermediate_size * config.n_shared_experts
+            self.shared_experts = DeepseekMLP(config, intermediate_size=intermediate_size)
+```
+
+**关键点解析**：
+
+| 组件 | 作用 | 特殊设计 |
+|------|------|---------|
+| `self.experts` | 存放所有**路由专家**（蓝色块），仅部分被激活 | 共 `n_routed_experts` 个（如63个），每个都是标准 FFN |
+| `self.gate` | 路由决策网络 | 输出每个 token 的 Top-K 专家索引、权重、以及**辅助损失 aux_loss** |
+| `self.shared_experts` | **共享专家**（绿色块），**所有 token 强制通过** | 其 `intermediate_size` 是单个专家的整数倍，容量更大，用于吸收通用知识 |
+
+---
+
+## 2. 前向传播 `forward`：六步数据流
+
+```python
+def forward(self, hidden_states):
+    identity = hidden_states                    # 保留原始输入，用于共享专家和残差
+    orig_shape = hidden_states.shape          # 如 (batch, seq_len, hidden_dim)
+    
+    # --- 步骤1：路由决策 ---
+    topk_idx, topk_weight, aux_loss = self.gate(hidden_states)
+    
+    # 展平：将 (batch, seq_len, hidden) → (token_num, hidden)
+    hidden_states = hidden_states.view(-1, hidden_states.shape[-1])
+    flat_topk_idx = topk_idx.view(-1)         # 展平为 (token_num × K,)
+```
+
+**`gate` 输出解读**：
+- `topk_idx`：形状 `(token_num, K)`，每个 token 选中的 K 个专家索引（如 K=3）。
+- `topk_weight`：形状 `(token_num, K)`，对应的 K 个归一化权重（和为1）。
+- `aux_loss`：**负载均衡辅助损失**，后续会挂载到计算图上，用于训练 Router。
+
+---
+
+## 3. 训练路径（`if self.training`）：稀疏激活的精妙实现
+
+训练时不能使用高效的 CUDA fused kernel（因为需要保留计算图求梯度），所以用 **Python 循环 + 掩码索引** 模拟稀疏计算：
+
+```python
+if self.training:
+    # 核心操作：将每个 token 复制 K 份
+    # 假设有 T 个 token，复制后从 (T, H) → (T×K, H)
+    hidden_states = hidden_states.repeat_interleave(self.num_experts_per_tok, dim=0)
+    
+    y = torch.empty_like(hidden_states)  # 初始化输出缓冲区 (T×K, H)
+    
+    # 遍历所有路由专家
+    for i, expert in enumerate(self.experts):
+        # flat_topk_idx == i：找出所有被分配给当前专家 i 的 token 副本
+        y[flat_topk_idx == i] = expert(hidden_states[flat_topk_idx == i])
+```
+
+**`repeat_interleave` 的作用**（极易混淆，重点解释）：
+
+假设有 3 个 token，`num_experts_per_tok = K = 2`：
+- 原始 `hidden_states`：`[t0, t1, t2]`，形状 `(3, H)`
+- `repeat_interleave(2)` 后：`[t0, t0, t1, t1, t2, t2]`，形状 `(6, H)`
+- `flat_topk_idx` 可能是：`[3, 7, 1, 5, 2, 4]`（表示：t0→专家3, t0→专家7, t1→专家1...）
+
+这样，每个 token 的 K 个副本可以分别送入不同的专家。`flat_topk_idx == i` 这个布尔掩码能精确筛选出属于专家 `i` 的那部分 token 副本，实现**批量稀疏计算**且兼容 PyTorch autograd。
+
+---
+
+## 4. 加权聚合：维度变换的"魔术"
+
+```python
+    # 将 (T×K, H) 恢复为 (T, K, H)，然后乘以权重并沿 K 维度求和
+    y = (y.view(*topk_weight.shape, -1) * topk_weight.unsqueeze(-1)).sum(dim=1)
+    y = y.view(*orig_shape)  # 恢复 (batch, seq_len, hidden)
+```
+
+**维度拆解**（假设 `topk_weight.shape = (T, K)`）：
+
+| 操作 | 输入形状 | 输出形状 | 作用 |
+|------|---------|---------|------|
+| `y.view(*topk_weight.shape, -1)` | `(T×K, H)` | `(T, K, H)` | 将每个 token 的 K 个专家输出分开 |
+| `topk_weight.unsqueeze(-1)` | `(T, K)` | `(T, K, 1)` | 权重增加维度，便于广播到 hidden 维度 |
+| `*` | `(T, K, H) × (T, K, 1)` | `(T, K, H)` | 每个专家的输出乘以其对应权重 |
+| `.sum(dim=1)` | `(T, K, H)` | `(T, H)` | 沿 K 维度求和，聚合 K 个专家的加权输出 |
+
+这一步等价于教学版代码中的双重 `for` 循环累加，但完全**向量化**，效率更高。
+
+---
+
+## 5. 辅助损失挂载
+
+```python
+    y = AddAuxiliaryLoss.apply(y, aux_loss)
+```
+
+`AddAuxiliaryLoss` 是一个自定义的 `torch.autograd.Function`。它在前向传播时将 `aux_loss` 以极小系数加到 `y` 上（不影响输出数值），但在反向传播时**将 aux_loss 的梯度回传到 Gate 网络**，使得负载均衡损失可以通过梯度下降优化 Router 的参数。
+
+---
+
+## 6. 推理路径（`else`）：高效 CUDA Kernel
+
+```python
+else:
+    y = self.moe_infer(hidden_states, flat_topk_idx, topk_weight.view(-1, 1)).view(*orig_shape)
+```
+
+推理时不需要梯度，因此调用 `moe_infer`——这通常是**高度优化的 CUDA 内核**（如 grouped GEMM、fused scatter-gather 等）。它将稀疏路由计算密集化，避免 Python 循环开销，是 MoE 模型高效推理的关键。
+
+---
+
+## 7. 共享专家融合：残差式相加
+
+```python
+if self.config.n_shared_experts is not None:
+    y = y + self.shared_experts(identity)
+```
+
+**这是 DeepSeekMoE 的灵魂**：
+- `identity` 是原始输入 `(batch, seq, hidden)`，**所有 token** 都会送入 `shared_experts`。
+- 共享专家的输出直接与路由专家的加权输出 **相加**（类似残差连接）。
+- 这意味着：
+  - **通用知识**（语法、基础语义、停用词等）由共享专家统一处理。
+  - **专业知识**（特定领域、稀有模式）由路由专家动态选择处理。
+  - 两者是**并行 + 相加**的关系，而非串联。
+
+---
+
