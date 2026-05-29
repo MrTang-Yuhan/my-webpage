@@ -259,7 +259,9 @@ sudo journalctl -u NetworkManager --since "24 hours ago"
 ```
 后，网络一直无法访问互联网了。
 
-### 解决方法 1（未验证）：
+### 解决方法 1（失败）：
+
+> 下面的设置是一种正确的设置，但是无法解决这个问题。
 
 重新设置 NetworkManager：
 
@@ -304,40 +306,121 @@ sudo netplan apply
 nmcli connection show --active
 ```
 
-### 解决方法 2（未验证）：
+### 解决方法 2（成功）：
+
+查看以太网：
+
+```bash
+sudo nmcli device status | grep ethernet
+```
+
+假如所用网卡名为 eno1, 则断开该网卡连接和开启连接：
+```bash
+sudo nmcli device disconnect eno1
+sudo nmcli device connect eno1
+```
 
 写一个简单脚本检测外网，如果监测到外网不通就重连：
 例如：
 ```bash
-sudo vim check-network.sh
+sudo vim check_eno1.sh
 ```
 写入：
 ```bash
-#!/bin/bash
+#!/usr/bin/env bash
 
 IFACE="eno1"
-CONN=$(nmcli -t -f NAME,DEVICE connection show --active | awk -F: -v dev="$IFACE" '$2==dev {print $1; exit}')
 
-ping -c 2 -W 2 10.7.104.1 >/dev/null 2>&1
-GW_OK=$?
+# 用于测试外网连通性的地址
+# 这里用 1.1.1.1，避免 DNS 问题影响判断
+PING_TARGET="1.1.1.1"
 
-ping -c 2 -W 2 8.8.8.8 >/dev/null 2>&1
-NET_OK=$?
+# ping 超时时间，单位秒
+PING_TIMEOUT=3
 
-if [ "$GW_OK" -ne 0 ] || [ "$NET_OK" -ne 0 ]; then
-  logger "network-check: network seems down, reconnecting $CONN on $IFACE"
-  if [ -n "$CONN" ]; then
-    nmcli connection down "$CONN"
-    sleep 3
-    nmcli connection up "$CONN"
-  else
-    nmcli networking off
-    sleep 3
-    nmcli networking on
-  fi
-fi
+log() {
+    echo "[$(date '+%F %T')] $*"
+}
+
+get_device_state() {
+    nmcli -t -f DEVICE,STATE device status | awk -F: -v dev="$IFACE" '$1 == dev {print $2}'
+}
+
+connect_iface() {
+    log "Trying to connect $IFACE ..."
+    nmcli device connect "$IFACE"
+}
+
+disconnect_iface() {
+    log "Trying to disconnect $IFACE ..."
+    nmcli device disconnect "$IFACE"
+}
+
+internet_ok() {
+    ping -I "$IFACE" -c 2 -W "$PING_TIMEOUT" "$PING_TARGET" >/dev/null 2>&1
+}
+
+restart_iface() {
+    log "Restarting $IFACE ..."
+    disconnect_iface
+    sleep 2
+    connect_iface
+}
+
+main() {
+    state="$(get_device_state)"
+
+    if [ -z "$state" ]; then
+        log "ERROR: device $IFACE not found."
+        exit 1
+    fi
+
+    log "$IFACE state: $state"
+
+    case "$state" in
+        connected)
+            log "$IFACE is connected. Checking internet connectivity..."
+
+            if internet_ok; then
+                log "Internet is reachable through $IFACE. Nothing to do."
+            else
+                log "Internet is NOT reachable through $IFACE. Reconnecting..."
+                restart_iface
+            fi
+            ;;
+
+        disconnected)
+            log "$IFACE is disconnected. Connecting..."
+            connect_iface
+            ;;
+
+        connecting)
+            log "$IFACE is already connecting. Nothing to do."
+            ;;
+
+        unavailable)
+            log "ERROR: $IFACE is unavailable. Please check cable or device status."
+            exit 2
+            ;;
+
+        unmanaged)
+            log "ERROR: $IFACE is unmanaged by NetworkManager."
+            exit 3
+            ;;
+
+        *)
+            log "$IFACE is in state '$state'. Trying to reconnect..."
+            restart_iface
+            ;;
+    esac
+}
+
+main "$@"
 ```
-授权这个脚本，然后加到 cron:
+`chmod +x` 授权这个脚本，然后加到 cron:
+
+> 特别注意：一定是 `sudo crontab`，一定要加 `sudo`。<br>
+`sudo crontab` 是有 `sudo` 权限的 cron； `crontab` 是没有 `sudo` 权限的 cron，它们两个是不同的两个进程。
 
 ```bash
 sudo crontab -e
@@ -370,5 +453,21 @@ crontab 格式：
 查看是否成功加入 cron：
 
 ```bash
-crontab -l
+sudo  crontab -l
 ```
+
+```bash
+sudo systemctl status cron
+# 如果没运行
+sudo systemctl start cron
+sudo systemctl enable cron  # 开机自启
+```
+
+```bash
+# Ubuntu 20.04 默认日志
+sudo grep CRON /var/log/syslog
+
+# 实时查看
+sudo tail -f /var/log/syslog | grep CRON
+```
+
