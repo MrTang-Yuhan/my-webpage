@@ -240,6 +240,9 @@ static float time_benchmark(
 - `cg`:
   ![](img/cg.png)
 
+- `cv`:
+  ![](img/cv.png)
+
 观察发现：
   - 在 READ 测试中，无论采用 `cs` 还是 `cg`，测得的 DRAM 实际带宽均超出其物理带宽上限，这不合常理，表明存在缓存干扰。
   - 此外，`cg` 测得的带宽显著高于 `cs`，证明 `cs` 的“优先逐出”（evict-first）缓存策略确实在生效。
