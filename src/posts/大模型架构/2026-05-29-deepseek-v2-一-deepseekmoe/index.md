@@ -272,6 +272,7 @@ def forward(self, hidden_states):
     orig_shape = hidden_states.shape          # 如 (batch, seq_len, hidden_dim)
     
     # --- 步骤1：路由决策 ---
+    # topk_idx 和 topk_weight 维度都是 (T, K)
     topk_idx, topk_weight, aux_loss = self.gate(hidden_states)
     
     # 展平：将 (batch, seq_len, hidden) → (token_num, hidden)
@@ -301,7 +302,7 @@ if self.training:
     # 遍历所有路由专家
     for i, expert in enumerate(self.experts):
         # flat_topk_idx == i：找出所有被分配给当前专家 i 的 token 副本
-        y[flat_topk_idx == i] = expert(hidden_states[flat_topk_idx == i])
+        y[flat_topk_idx == i] = expert(hidden_states[flat_topk_idx == i]) # 类似嵌入层的索引操作
 ```
 
 **`repeat_interleave` 的作用**（极易混淆，重点解释）：
