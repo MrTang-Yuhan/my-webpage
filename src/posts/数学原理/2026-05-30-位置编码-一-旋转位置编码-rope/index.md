@@ -9,7 +9,9 @@ tags:
 ---
 # RoPE 旋转位置编码：从旋转矩阵到 LLaMA 源码实现
 
-RoPE 还具备远程衰减和外推性，后面有需要再推导。
+> RoPE 还具备远程衰减和外推性，后面有需要再推导。
+
+> 本文的推导过程与 [RoFormer: Enhanced Transformer with Rotary Position Embedding](http://arxiv.org/abs/2104.09864) 中的推导方式有所不同。原论文采用的是复平面展开的分析方法，而本文的推导思路更为直观易懂，主要参考了视频讲解 [你还不懂旋转位置编码吗？](https://www.bilibili.com/video/BV1F1421B7iv/?spm_id_from=333.1387.search.video_card.click&vd_source=e98b669ccbafff4b5aa59dd6303b722f)。
 
 
 ---
