@@ -10,6 +10,8 @@ tags:
 ---
 **MoE（混合专家）的核心目标是：在显著降低训练和推理计算代价的同时，保持甚至提升模型的整体能力。**
 
+参考[DeepSeek-MOE 原理讲解](https://www.bilibili.com/video/BV1uUPieDEK1?spm_id_from=333.788.videopod.sections&vd_source=e98b669ccbafff4b5aa59dd6303b722f)
+
 ---
 
 # 从 Dense 模型到 MoE 架构
@@ -302,7 +304,16 @@ if self.training:
     # 遍历所有路由专家
     for i, expert in enumerate(self.experts):
         # flat_topk_idx == i：找出所有被分配给当前专家 i 的 token 副本
-        y[flat_topk_idx == i] = expert(hidden_states[flat_topk_idx == i]) # 类似嵌入层的索引操作
+        y[flat_topk_idx == i] = expert(hidden_states[flat_topk_idx == i]) 
+
+    # 原生 Python 列表不支持这种语法
+    # lst = [1, 2, 3, 4]
+    # mask = [True, False, True, False]
+    # lst[mask]  # TypeError: list indices must be integers or slices, not list
+    # PyTorch Tensor 支持这种语法
+    # t = torch.tensor([1, 2, 3, 4])
+    # mask = torch.tensor([True, False, True, False])
+    # t[mask]  # tensor([1, 3])
 ```
 
 **`repeat_interleave` 的作用**（极易混淆，重点解释）：
