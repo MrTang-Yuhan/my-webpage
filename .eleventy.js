@@ -1,6 +1,55 @@
 const markdownIt = require("markdown-it");
 const markdownItFootnote = require("markdown-it-footnote");
 
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function protectBlockMath(content) {
+  const lines = String(content || "").split(/\r?\n/);
+  const out = [];
+  let inFence = false;
+  let fenceMarker = "";
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    const fenceMatch = line.match(/^[ \t]{0,3}(```+|~~~+)/);
+    if (fenceMatch) {
+      const marker = fenceMatch[1][0];
+      if (!inFence) {
+        inFence = true;
+        fenceMarker = marker;
+      } else if (marker === fenceMarker) {
+        inFence = false;
+        fenceMarker = "";
+      }
+      out.push(line);
+      continue;
+    }
+
+    if (!inFence && line.trim() === "$$") {
+      const mathLines = [];
+      let end = i + 1;
+      while (end < lines.length && lines[end].trim() !== "$$") {
+        mathLines.push(lines[end]);
+        end += 1;
+      }
+      if (end < lines.length) {
+        out.push('<div class="math-block">$$\n' + escapeHtml(mathLines.join("\n")) + '\n$$</div>');
+        i = end;
+        continue;
+      }
+    }
+
+    out.push(line);
+  }
+
+  return out.join("\n");
+}
+
 module.exports = async function(eleventyConfig) {
   const { default: markdownItShiki } = await import("@shikijs/markdown-it");
 
@@ -27,6 +76,10 @@ module.exports = async function(eleventyConfig) {
       /(^[ \t]{0,3}```[^\r\n]*(?:\r?\n)[\s\S]*?^[ \t]{0,3}```[ \t]*$)/gm,
       "{% raw %}\n$1\n{% endraw %}"
     );
+  });
+
+  eleventyConfig.addPreprocessor("protectBlockMath", "md", function(data, content) {
+    return protectBlockMath(content);
   });
 
   // Pass through static files

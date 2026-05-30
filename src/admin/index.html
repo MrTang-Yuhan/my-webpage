@@ -137,15 +137,67 @@
 
         const md = window.markdownit({ html: true, breaks: false, linkify: true });
         if (window.markdownitFootnote) md.use(window.markdownitFootnote);
-        if (window.markdownitKatex) md.use(window.markdownitKatex);
 
-        function normalizeBlockMath(markdownText) {
-          return String(markdownText || "").replace(
-            /(^|\n)\$\$\s*\n([\s\S]*?)\n\$\$(?=\n|$)/g,
-            function (_, prefix, expr) {
-              return prefix + "$$" + expr.trim() + "$$";
+        function escapeHtml(value) {
+          return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+        }
+
+        function extractBlockMath(markdownText) {
+          const lines = String(markdownText || '').split(/\r?\n/);
+          const out = [];
+          const blocks = [];
+          let inFence = false;
+          let fenceMarker = '';
+
+          for (let i = 0; i < lines.length; i += 1) {
+            const line = lines[i];
+            const fenceMatch = line.match(/^[ \t]{0,3}(```+|~~~+)/);
+            if (fenceMatch) {
+              const marker = fenceMatch[1][0];
+              if (!inFence) {
+                inFence = true;
+                fenceMarker = marker;
+              } else if (marker === fenceMarker) {
+                inFence = false;
+                fenceMarker = '';
+              }
+              out.push(line);
+              continue;
             }
-          );
+
+            if (!inFence && line.trim() === '$$') {
+              const mathLines = [];
+              let end = i + 1;
+              while (end < lines.length && lines[end].trim() !== '$$') {
+                mathLines.push(lines[end]);
+                end += 1;
+              }
+              if (end < lines.length) {
+                const token = '%%CMS_BLOCK_MATH_' + blocks.length + '%%';
+                blocks.push('<div class="math-block">$$\n' + escapeHtml(mathLines.join('\n')) + '\n$$</div>');
+                out.push(token);
+                i = end;
+                continue;
+              }
+            }
+
+            out.push(line);
+          }
+
+          return { markdown: out.join('\n'), blocks: blocks };
+        }
+
+        function renderMarkdownWithProtectedMath(markdownText) {
+          const extracted = extractBlockMath(markdownText);
+          let html = md.render(extracted.markdown);
+          extracted.blocks.forEach(function(block, index) {
+            const token = '%%CMS_BLOCK_MATH_' + index + '%%';
+            html = html.replace('<p>' + token + '</p>', block).replace(token, block);
+          });
+          return html;
         }
 
         function normalizeFootnotes(html) {
@@ -221,14 +273,14 @@
         }
 
         function renderPreviewHtml(entry) {
-          const body = normalizeBlockMath(entry.getIn(['data', 'body']) || '');
+          const body = entry.getIn(['data', 'body']) || '';
           const title = entry.getIn(['data', 'title']) || '';
           const date = entry.getIn(['data', 'date']) || '';
           const description = entry.getIn(['data', 'description']) || '';
           const tags = entry.getIn(['data', 'tags']) || [];
           const tagsArray = tags && typeof tags.toJS === 'function' ? tags.toJS() : (Array.isArray(tags) ? tags : []);
 
-          let bodyHtml = md.render(body);
+          let bodyHtml = renderMarkdownWithProtectedMath(body);
           bodyHtml = normalizeFootnotes(bodyHtml);
 
           const tagsHtml = tagsArray

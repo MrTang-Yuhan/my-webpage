@@ -99,11 +99,20 @@ document.addEventListener('DOMContentLoaded', function() {
         const link = document.createElement('a');
         link.href = '#' + heading.id;
         link.className = 'toc-link toc-level-' + heading.tagName.toLowerCase();
-        link.textContent = heading.textContent;
+        link.innerHTML = heading.innerHTML;
         nav.appendChild(link);
       });
       tocInline.appendChild(title);
       tocInline.appendChild(nav);
+      if (typeof renderMathInElement === 'function') {
+        renderMathInElement(tocInline, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false }
+          ],
+          throwOnError: false
+        });
+      }
     } else {
       tocInline.remove();
     }
