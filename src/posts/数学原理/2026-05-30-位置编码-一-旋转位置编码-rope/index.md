@@ -61,19 +61,19 @@ $$
 a_{m,n} =
 \frac{
 \exp\left(
-\frac{\boldsymbol{q}\_m^T \boldsymbol{k}\_n}{\sqrt{d}}
+\frac{\boldsymbol{q}_m^T \boldsymbol{k}_n}{\sqrt{d}}
 \right)
 }{
 \sum_{j=1}^{N}
 \exp\left(
-\frac{\boldsymbol{q}\_m^T \boldsymbol{k}\_j}{\sqrt{d}}
+\frac{\boldsymbol{q}_m^T \boldsymbol{k}_j}{\sqrt{d}}
 \right)
 }
 $$
 
 
 $$
-\boldsymbol{o}\_m =
+\boldsymbol{o}_m =
 \sum_{n=1}^{N} a_{m,n}\boldsymbol{v}_n
 $$
 
@@ -509,7 +509,6 @@ $$
 =
 (R_m\boldsymbol{q}_m)^T(R_n\boldsymbol{k}_n)
 =
-
 \boldsymbol{q}_m^T R_m^T R_n \boldsymbol{k}_n
 $$
 
