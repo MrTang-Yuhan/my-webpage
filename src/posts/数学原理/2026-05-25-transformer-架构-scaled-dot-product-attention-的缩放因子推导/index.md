@@ -175,7 +175,7 @@ $$
 因此，在原始 Transformer 中：
 
 $$
-\text{norm\\_factor} = \sqrt{d_k}
+\text{norm\_factor} = \sqrt{d_k}
 $$
 
 其作用是控制 $QK^T$ 的数值尺度，使 softmax 不至于过度饱和，从而提升训练稳定性。
