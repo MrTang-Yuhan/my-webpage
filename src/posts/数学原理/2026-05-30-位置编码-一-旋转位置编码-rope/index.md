@@ -560,7 +560,7 @@ $$
 
 但 RoPE 的旋转矩阵是稀疏块对角矩阵，因此可以高效实现。
 
-对于 hidden head 向量：
+对于 head dimension 向量：
 
 $$
 \boldsymbol{x}
