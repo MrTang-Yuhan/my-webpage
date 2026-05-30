@@ -21,7 +21,7 @@ Transformer 的 Self-Attention 机制本质上是对一组 token 做两两相关
 给定一个长度为 $N$ 的输入序列：
 
 $$
-\mathbb{S}\_{N}=\\{w_i\\}_{i=1}^{N}
+\mathbb{S}_{N}=\{w_i\}_{i=1}^{N}
 $$
 
 其中 $w_i$ 表示第 $i$ 个 token。 
@@ -29,7 +29,7 @@ $$
 经过 embedding 层后，得到对应的词向量序列：
 
 $$
-\mathbb{E}\_N = \\{ \boldsymbol{x}\_i \\}_{i=1}^{N}
+\mathbb{E}_N = \{ \boldsymbol{x}_i \}_{i=1}^{N}
 $$
 
 其中 $\boldsymbol{x}_i \in \mathbb{R}^{d}$ 表示第 $i$ 个 token 的 $d$ 维词向量。
@@ -77,13 +77,7 @@ $$
 \sum_{n=1}^{N} a_{m,n}\boldsymbol{v}_n
 $$
 
-也就是说，attention score 主要由：
-
-$$
-\boldsymbol{q}_m^T \boldsymbol{k}_n
-$$
-
-决定。
+也就是说，attention score 主要由 $\boldsymbol{q}_m^T \boldsymbol{k}_n$ 决定。
 
 但是，如果没有位置编码，那么 attention 只知道 token 的内容相似度，不知道 token 的顺序。
 
@@ -148,7 +142,7 @@ $$
 
 - $i$ 是 token 的位置；
 - $d$ 是 embedding 维度;
-- $t$：维度索引的分段参数，取值范围为 $ t = 0, 1, 2, \dots, d/2 - 1 $。
+- $t$：维度索引的分段参数，取值范围为 $ t = 0, 1, 2, \dots, (\frac{d}{2} - 1) $。
 
 
 这种方法直接告诉模型“当前 token 在第几个位置”，所以称为绝对位置编码。
@@ -176,15 +170,11 @@ $$
 
 通常比它们各自的绝对位置 $m$、$n$ 更重要。
 
-因此，相对位置编码希望 attention score 显式或隐式依赖：
-
-$$
-m-n
-$$
+因此，相对位置编码希望 attention score 显式或隐式依赖 $ m-n $
 
 RoPE 的目标就是：
 
-> 让 query 和 key 在计算点积时，自然包含相对位置信息 $$m-n$$。
+> 让 query 和 key 在计算点积时，自然包含相对位置信息 $m-n$。
 
 ---
 
@@ -276,6 +266,12 @@ x_0\sin\theta + x_1\cos\theta
 \end{bmatrix}
 $$
 
+下图展示了旋转矩阵的两个例子：
+
+![](img/matrix_1.png)
+![](img/matrix_2.png)
+
+
 ---
 
 ## 4.2 旋转矩阵的重要性质
@@ -285,38 +281,24 @@ $$
 ### 性质一：连续旋转可以相加
 
 $$
-R(\theta_1)R(\theta_2)
-=
+R(\theta_1)R(\theta_2)=
 R(\theta_1+\theta_2)
 $$
 
-也就是说，先旋转 $$\theta_1$$，再旋转 $$\theta_2$$，等价于一次性旋转：
-
-$$
-\theta_1+\theta_2
-$$
+也就是说，先旋转 $\theta_1$，再旋转 $\theta_2$，等价于一次性旋转 $ \theta_1+\theta_2 $。
 
 ---
 
 ### 性质二：转置等于反向旋转
 
-由于旋转矩阵是正交矩阵：
-
-$$
-R(\theta)^T R(\theta) = I
-$$
-
-所以：
-
-$$
-R(\theta)^T = R(\theta)^{-1}
-$$
-
-而旋转角度 $$-\theta$$ 正好是 $$\theta$$ 的逆旋转，因此：
 
 $$
 R(\theta)^T = R(-\theta)
 $$
+
+证明如下：
+
+![](img/matrix_3.png)
 
 这两个性质是 RoPE 能够引入相对位置的数学基础。
 
@@ -344,15 +326,14 @@ k_n^{(2)}
 \end{bmatrix}
 $$
 
-RoPE 对位置 $$m$$ 的 query 做旋转：
+RoPE 对位置 $m$ 的 query 做旋转：
 
 $$
-f_q(\boldsymbol{x}_m,m)
-=
+f_q(\boldsymbol{x}_m,m) =
 R(m\theta)\boldsymbol{q}_m
 $$
 
-对位置 $$n$$ 的 key 做旋转：
+对位置 $n$ 的 key 做旋转：
 
 $$
 f_k(\boldsymbol{x}_n,n)
@@ -360,13 +341,7 @@ f_k(\boldsymbol{x}_n,n)
 R(n\theta)\boldsymbol{k}_n
 $$
 
-其中：
-
-$$
-\theta
-$$
-
-是旋转频率。
+其中 $ \theta $是旋转频率。
 
 二维旋转后的 query 为：
 
@@ -414,7 +389,7 @@ $$
 
 真实模型中的 query 和 key 通常是高维向量。
 
-假设 head dimension 为 $$d$$，并且 $$d$$ 是偶数：
+假设 head dimension 为 $d$，并且 $d$ 是偶数：
 
 $$
 \boldsymbol{x}
@@ -428,13 +403,11 @@ RoPE 的做法是：
 
 即：
 
-```text
-(x0, x1) 使用频率 θ0
-(x2, x3) 使用频率 θ1
-(x4, x5) 使用频率 θ2
-...
-(xd-2, xd-1) 使用频率 θd/2-1
-```
+- $(x_0, x_1)$ 使用频率 $\theta_0$
+- $(x_2, x_3)$ 使用频率 $\theta_1$
+- $(x_4, x_5)$ 使用频率 $\theta_2$
+- ...
+- $(x_{d-2}, x_{d-1})$ 使用频率 $\theta_{d/2-1}$
 
 ---
 
@@ -443,8 +416,7 @@ RoPE 的做法是：
 多维 RoPE 的旋转矩阵是一个块对角矩阵：
 
 $$
-R_{\Theta,m}^{d}
-=
+R_{\Theta,m}^{d} =
 \begin{bmatrix}
 \cos m\theta_0 & -\sin m\theta_0 & 0 & 0 & \cdots & 0 & 0 \\
 \sin m\theta_0 & \cos m\theta_0 & 0 & 0 & \cdots & 0 & 0 \\
