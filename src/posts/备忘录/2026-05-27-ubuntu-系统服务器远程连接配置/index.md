@@ -325,7 +325,11 @@ sudo vim check_eno1.sh
 ```bash
 #!/usr/bin/env bash
 
-IFACE="eno1"
+IFACE="eno1" # 根据实际以太网名修改
+
+# 要激活的网络连接名称（根据实际配置名修改）
+CONN_AUTO="set_auto"     # auto 配置
+CONN_FIXED="set_fixed"   # 静态 IP 配置
 
 # 用于测试外网连通性的地址
 # 这里用 1.1.1.1，避免 DNS 问题影响判断
@@ -363,6 +367,62 @@ restart_iface() {
     connect_iface
 }
 
+# 外网不通时的修复操作
+fix_connectivity() {
+    log "Internet is NOT reachable through $IFACE. Executing recovery steps..."
+
+    log "Step 1: Restarting NetworkManager..."
+    if sudo systemctl restart NetworkManager; then
+        log "NetworkManager restarted successfully."
+    else
+        log "WARNING: Failed to restart NetworkManager."
+    fi
+
+    sleep 2
+
+    log "Step 2: Disconnecting device $IFACE..."
+    if sudo nmcli device disconnect "$IFACE"; then
+        log "Device $IFACE disconnected."
+    else
+        log "WARNING: Failed to disconnect $IFACE."
+    fi
+
+    sleep 2
+
+    log "Step 3: Connecting device $IFACE..."
+    if sudo nmcli device connect "$IFACE"; then
+        log "Device $IFACE connected."
+    else
+        log "WARNING: Failed to connect $IFACE."
+    fi
+
+    sleep 2
+
+    log "Step 4: Bringing up connection '$CONN_AUTO'..."
+    if sudo nmcli connection up "$CONN_AUTO"; then
+        log "Connection '$CONN_AUTO' activated."
+    else
+        log "WARNING: Failed to bring up '$CONN_AUTO'."
+    fi
+
+    sleep 20
+
+    log "Step 5: Bringing up connection '$CONN_FIXED'..."
+    if sudo nmcli connection up "$CONN_FIXED"; then
+        log "Connection '$CONN_FIXED' activated."
+    else
+        log "WARNING: Failed to bring up '$CONN_FIXED'."
+    fi
+
+    # 最后验证是否恢复
+    sleep 10
+    if internet_ok; then
+        log "Recovery successful! Internet is now reachable."
+    else
+        log "Recovery completed, but internet is still NOT reachable."
+    fi
+}
+
 main() {
     state="$(get_device_state)"
 
@@ -380,8 +440,7 @@ main() {
             if internet_ok; then
                 log "Internet is reachable through $IFACE. Nothing to do."
             else
-                log "Internet is NOT reachable through $IFACE. Reconnecting..."
-                restart_iface
+                fix_connectivity
             fi
             ;;
 
@@ -412,6 +471,7 @@ main() {
 }
 
 main "$@"
+
 ```
 `chmod +x` 授权这个脚本，然后加到 cron:
 
