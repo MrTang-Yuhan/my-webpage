@@ -1,7 +1,7 @@
 ---
 layout: post.njk
 post_id: 2026-05-25-transformer-架构-scaled-dot-product-attention-的缩放因子推导
-archive: 数学原理
+archive: 大模型架构
 title: Transformer 架构：Scaled Dot-Product Attention 的缩放因子推导
 date: 2026-05-25
 description: Transformer 中的数值稳定性：为什么 Attention 需要除以 $\sqrt{d_k}$
