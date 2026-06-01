@@ -330,7 +330,7 @@ $$
 \operatorname{Var}(a^\top X)=a^\top \Sigma a
 $$
 
-其中，$\Sigma=\operatorname{Cov}(X)$。
+其中，**$\Sigma$ 为协方差矩阵**。
 
 更一般地，若 $A$ 是矩阵，且 $Y=AX+b$，则：
 
@@ -469,77 +469,44 @@ $$
 
 设：
 
-$$
-X=[1,2,3],\quad Y=[2,4,6]
-$$
+$$X = [1, 2, 3], \quad Y = [2, 4, 6]$$
 
-均值：
+这里把 $X, Y$ 看作**离散均匀分布**的随机变量，每个值概率都是 $\frac{1}{3}$。则：
 
-$$
-\mathbb{E}[X]=2,\quad \mathbb{E}[Y]=4
-$$
 
-方差：
 
-$$
-\operatorname{Var}(X)
-=
-\frac{(1-2)^2+(2-2)^2+(3-2)^2}{3}
-=
-\frac{2}{3}
-$$
+$$\mathbb{E}[X] = \frac{1+2+3}{3} = \frac{6}{3} = 2$$
 
-$$
-\operatorname{Var}(Y)
-=
-\frac{(2-4)^2+(4-4)^2+(6-4)^2}{3}
-=
-\frac{8}{3}
-$$
+$$\mathbb{E}[Y] = \frac{2+4+6}{3} = \frac{12}{3} = 4$$
 
-协方差：
+计算方差 $\text{Var}(X)$：
 
-$$
-\operatorname{Cov}(X,Y)
-=
-\frac{(1-2)(2-4)+(2-2)(4-4)+(3-2)(6-4)}{3}
-=
-\frac{4}{3}
-$$
+$$\text{Var}(X) = \mathbb{E}[(X - \mathbb{E}[X])^2] = \frac{1}{3}\sum_{i=1}^{3}(x_i - 2)^2$$
 
-协方差矩阵为：
+展开每一项：
+- $(1-2)^2 = (-1)^2 = 1$
+- $(2-2)^2 = 0^2 = 0$  
+- $(3-2)^2 = 1^2 = 1$
+
+$$\text{Var}(X) = \frac{1 + 0 + 1}{3} = \frac{2}{3}$$
+
+计算方差 $\text{Var}(Y)$：
+
+$$\text{Var}(Y) = \frac{1}{3}\sum_{i=1}^{3}(y_i - 4)^2 = \frac{4 + 0 + 4}{3} = \frac{8}{3}$$
+
+
+
+计算协方差 $\text{Cov}(X,Y)$：
+
+$$\text{Cov}(X,Y) = \mathbb{E}[(X-\mathbb{E}[X])(Y-\mathbb{E}[Y])] = \frac{1}{3}\sum_{i=1}^{3}(x_i-2)(y_i-4) = \frac{2 + 0 + 2}{3} = \frac{4}{3}$$
+
+故协方差矩阵为：
 
 $$
-\Sigma=
-\begin{bmatrix}
-\operatorname{Var}(X) & \operatorname{Cov}(X,Y)\\
-\operatorname{Cov}(Y,X) & \operatorname{Var}(Y)
-\end{bmatrix}
-=
-\begin{bmatrix}
-\frac{2}{3} & \frac{4}{3}\\
-\frac{4}{3} & \frac{8}{3}
-\end{bmatrix}
+\Sigma = \begin{bmatrix} \text{Var}(X) & \text{Cov}(X,Y) \\ \text{Cov}(Y,X) & \text{Var}(Y) \end{bmatrix} = \begin{bmatrix} \frac{2}{3} & \frac{4}{3} \\ \frac{4}{3} & \frac{8}{3} \end{bmatrix}
 $$
 
-验证：
 
-$$
-\operatorname{Var}(X+Y)
-=
-\operatorname{Var}([3,6,9])
-=
-6
-$$
-
-右边：
-
-$$
-\operatorname{Var}(X)+\operatorname{Var}(Y)+2\operatorname{Cov}(X,Y)
-=
-\frac{2}{3}+\frac{8}{3}+2\cdot\frac{4}{3}
-=
-6
-$$
 
 -------
+
