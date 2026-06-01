@@ -302,7 +302,7 @@ $$
 
 ###  不独立情形
 
-如果 $X$ 和 $Y$ 不独立，则一般有：
+如果随机变量 $X$ 和 $Y$ 不独立，则一般有：
 
 $$
 \operatorname{Var}(X+Y)
@@ -322,11 +322,15 @@ $$
 
 如果变量正相关，整体方差会变大；如果负相关，整体方差会变小。
 
+
+
 矩阵形式下，若 $a\in\mathbb{R}^d$，则线性组合 $a^\top X$ 的方差为：
 
 $$
 \operatorname{Var}(a^\top X)=a^\top \Sigma a
 $$
+
+其中，$\Sigma=\operatorname{Cov}(X)$。
 
 更一般地，若 $A$ 是矩阵，且 $Y=AX+b$，则：
 
