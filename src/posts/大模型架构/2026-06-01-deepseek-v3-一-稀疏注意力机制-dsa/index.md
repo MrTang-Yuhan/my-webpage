@@ -7,6 +7,10 @@ date: 2026-06-01
 tags:
   - post
 ---
+> ***这是 GPT 生成的内容。超过现有数学基础，只能说大概看懂了，后面基础上来了再细节推导和检查正确性。***
+
+
+
 ![](img/dsa.png)
 
 **DeepSeek Sparse Attention, DSA** 可以理解为一个两阶段稀疏注意力系统：
@@ -653,7 +657,7 @@ $$
 \sum_{j \in \mathcal{R}_i} p_{ij}.
 $$
 
-如果 \(\epsilon_i\) 很小，则 sparse attention 近似 dense attention 较好。
+如果 $\epsilon_i$ 很小，则 sparse attention 近似 dense attention 较好。
 
 换句话说，DSA 成功的关键是：
 
@@ -784,7 +788,7 @@ $$
 
 ---
 
-## 13. 总结一句话
+## 12. 总结
 
 **DeepSeek Sparse Attention = 学习型 token 级检索器 + 精确子集注意力。**
 
