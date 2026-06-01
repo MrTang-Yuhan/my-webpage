@@ -7,4 +7,4 @@ date: 2026-06-01
 tags:
   - post
 ---
-xx
+![](img/dsa.png)
