@@ -788,7 +788,7 @@ $$
 
 ---
 
-## 13. 总结一句话
+## 12. 总结
 
 **DeepSeek Sparse Attention = 学习型 token 级检索器 + 精确子集注意力。**
 
