@@ -9,6 +9,7 @@ tags:
 ---
 推荐先从 [huggingface 强化学习教程](https://huggingface.co/learn/deep-rl-course/unit0/introduction)入门。
 
+[图解大模型RLHF系列之：人人都能看懂的PPO原理与源码解读](https://zhuanlan.zhihu.com/p/677607581)
 
 
 
