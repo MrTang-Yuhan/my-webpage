@@ -2,7 +2,7 @@
 layout: post.njk
 post_id: 2026-06-02-翻译-hybridflow-a-flexible-and-efficient-rlhf-framework
 archive: RLHF
-title: "翻译：HybridFlow: A Flexible and Efficient RLHF Framework"
+title: "翻译：HybridFlow: A Flexible and Efficient RLHF Framework（未完成）"
 date: 2026-06-02
 tags:
   - post
@@ -12,6 +12,7 @@ tags:
 [开源代码](https://github.com/volcengine/verl)
 
 > AI 翻译的内容，还没有仔细看和贴上图片。<br>
+还缺乏足够的背景知识，补充完成后再来看。
 
 ---
 
