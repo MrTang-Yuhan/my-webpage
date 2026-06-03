@@ -73,6 +73,14 @@ collections:
         modes:
           - raw
         hint: Markdown 源码是权威格式；Rich Text 已禁用，避免自动改写源码格式。
+      - label: 图片上传入口
+        name: image_upload
+        widget: image
+        required: false
+        media_folder: img
+        public_folder: ./img
+        choose_url: false
+        hint: 用于工具栏“上传图片”按钮；图片会上传到当前文章 img/ 目录。
       - label: 附件上传入口
         name: attachment_upload
         widget: file

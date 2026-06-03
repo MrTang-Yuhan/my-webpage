@@ -706,17 +706,17 @@
             imageButton.addEventListener('click', function() {
               const textarea = findBodyTextarea();
               const snapshot = textarea ? String(textarea.value || '') : '';
-              const mediaButton = findGlobalMediaButton();
-              if (!mediaButton) {
+              const imageControl = findImageUploadControl();
+              if (!imageControl) {
                 statusEl.style.color = '#b91c1c';
-                statusEl.textContent = '未找到 Decap 原生 Media 上传入口。';
+                statusEl.textContent = '未找到 Decap 图片上传入口。请确认 image_upload 字段已加载。';
                 return;
               }
 
               statusEl.style.color = '#475569';
-              statusEl.textContent = '已打开 Decap 媒体库；上传后正文会保持不变。';
+              statusEl.textContent = '已打开 Decap 图片上传；图片会进入当前文章 img/。';
               startUploadOnlyMarkdownGuard(snapshot);
-              mediaButton.click();
+              imageControl.click();
             });
           }
           if (attachmentButton.dataset.bound === '1') return;
@@ -750,6 +750,21 @@
               control.getAttribute('name') || ''
             ].join(' ').trim().toLowerCase();
             return control.tagName === 'INPUT' || /choose|upload|select|browse|media|file|上传|选择|浏览|媒体|文件|附件/.test(label);
+          }) || null;
+        }
+
+        function findImageUploadControl() {
+          const fieldNode = findFieldContainerByText(/图片上传入口|image_upload|上传图片|img\//);
+          if (!fieldNode) return null;
+          const controls = Array.from(fieldNode.querySelectorAll('button, [role="button"], input[type="file"]'));
+          return controls.find(function(control) {
+            const label = [
+              control.textContent || '',
+              control.getAttribute('aria-label') || '',
+              control.getAttribute('title') || '',
+              control.getAttribute('name') || ''
+            ].join(' ').trim().toLowerCase();
+            return control.tagName === 'INPUT' || /choose|upload|select|browse|media|image|file|上传|选择|浏览|媒体|图片|图像|文件/.test(label);
           }) || null;
         }
 
@@ -1043,6 +1058,7 @@
             if (!data || typeof data.get !== 'function' || typeof data.set !== 'function') return data;
             let nextData = data;
             if (typeof nextData.delete === 'function') {
+              nextData = nextData.delete('image_upload');
               nextData = nextData.delete('attachment_upload');
             }
             const existingPostId = String(nextData.get('post_id') || '').trim();

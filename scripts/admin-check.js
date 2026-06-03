@@ -171,14 +171,20 @@ function main() {
   if (!/upload-image-only-panel/.test(adminIndexText) || !/findGlobalMediaButton/.test(adminIndexText)) {
     throw new Error('admin editor must expose an upload-only image button that opens Decap native media.');
   }
+  if (!/name:\s*image_upload[\s\S]*?widget:\s*image[\s\S]*?media_folder:\s*img\b/.test(configText)) {
+    throw new Error('posts editor must expose a Decap image upload widget scoped to the current post img directory.');
+  }
+  if (!/findImageUploadControl/.test(adminIndexText)) {
+    throw new Error('admin upload-only image button must open the Decap image upload widget.');
+  }
   if (!/name:\s*attachment_upload[\s\S]*?widget:\s*file[\s\S]*?media_folder:\s*attach\b/.test(configText)) {
     throw new Error('posts editor must expose a Decap file upload widget scoped to the current post attach directory.');
   }
   if (!/upload-attachment-only-btn/.test(adminIndexText) || !/findAttachmentUploadControl/.test(adminIndexText)) {
     throw new Error('admin editor must expose an upload-only attachment button that opens the Decap file widget.');
   }
-  if (!/delete\('attachment_upload'\)/.test(adminIndexText)) {
-    throw new Error('admin editor must clear the temporary attachment_upload field before saving.');
+  if (!/delete\('image_upload'\)/.test(adminIndexText) || !/delete\('attachment_upload'\)/.test(adminIndexText)) {
+    throw new Error('admin editor must clear temporary upload fields before saving.');
   }
   if (!/findAddComponentToolbarAnchor/.test(adminIndexText) || !/add\\s\*component/.test(adminIndexText)) {
     throw new Error('admin upload-only image button must mount next to the Add Component toolbar button.');
