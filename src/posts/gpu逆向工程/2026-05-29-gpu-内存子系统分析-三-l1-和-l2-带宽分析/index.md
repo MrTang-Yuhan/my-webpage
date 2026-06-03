@@ -7,6 +7,9 @@ date: 2026-05-29
 tags:
   - post
 ---
+# 测量代码和脚本
+[代码和脚本](attach/cache.zip)
+
 # 与 DRAM 带宽测量区别
 
 L1 和 L2 缓存带宽的测量使用 device 端计时，方便只统计 kernel 内的 measured 阶段，不统计 warmup 阶段，代码如下：
@@ -137,4 +140,16 @@ for (int i = 0; i < blocks; ++i) {
 3. 24 KiB
 4. 32 KiB
 
-xxx
+测量的结果为：
+
+- scalar float
+
+![](img/l2_cache_1fp.png)
+
+![](img/l2_cache_1fp_ncu.png)
+
+- vector float4
+
+![](img/l2_cache_4fp.png)
+![](img/l2_cache_4fp_ncu.png)
+
