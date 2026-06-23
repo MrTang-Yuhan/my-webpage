@@ -39,7 +39,6 @@ tags:
 $$
 \begin{aligned}
 P(y|x) = \sum_{z \in \text{all docs}}P(y,z|x) =
-
 \sum_{z \in \text{all docs}} P_\eta(z|x) \cdot P_\theta(y|x,z)
 \end{aligned}
 $$
