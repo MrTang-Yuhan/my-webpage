@@ -20,7 +20,7 @@ tags:
 - 似然 $p(X \mid Z)$：给定隐变量时生成观测数据的概率
 
 **目标**：计算**证据**（evidence），即观测数据的对数边际似然：
-$$\log p(X) = \log \int p(X \mid Z) \, p(Z) \, dZ$$
+$$\log p(X) = \log \int p(X \mid Z)  p(Z)  dZ$$
 
 **困难**：积分通常涉及高维空间，$p(X \mid Z)$ 和 $p(Z)$ 的乘积对 $Z$ 积分**没有解析解**，直接数值积分也**不可行**（维度灾难）。
 
@@ -38,15 +38,15 @@ $$\log p(X) = \log \int p(X \mid Z) \, p(Z) \, dZ$$
 |------|------|------|
 | **联合概率** | $p(X, Z)$ | 同时发生的概率 |
 | **条件概率** | $p(X \mid Z) = \frac{p(X, Z)}{p(Z)}$ | 贝叶斯定义 |
-| **边缘概率** | $p(X) = \int p(X, Z) \, dZ$ | 消去 $Z$ |
+| **边缘概率** | $p(X) = \int p(X, Z) dZ$ | 消去 $Z$ |
 
 **核心恒等式**（推导中反复使用）：
-$$p(X, Z) = p(X \mid Z) \, p(Z) = p(Z \mid X) \, p(X)$$
+$$p(X, Z) = p(X \mid Z)  p(Z) = p(Z \mid X)p(X)$$
 
 ### 2. 期望（Expectation）
 
 若 $Z \sim q(Z)$，则：
-$$\mathbb{E}_{q(Z)}[f(Z)] = \int q(Z) \, f(Z) \, dZ$$
+$$\mathbb{E}_{q(Z)}[f(Z)] = \int q(Z) f(Z)  dZ$$
 
 **关键性质**：
 - **线性性**：$\mathbb{E}[a f + b g] = a \mathbb{E}[f] + b \mathbb{E}[g]$
@@ -65,7 +65,7 @@ $$\text{KL}(q \parallel p) = \int q(x) \log \frac{q(x)}{p(x)} dx = \mathbb{E}_{q
 **核心性质**：
 $$\text{KL}(q \parallel p) \geq 0, \quad \text{等号成立} \iff q = p$$
 
-> **证明概要**：由 $\log$ 的凹性与 Jensen 不等式，$\mathbb{E}_q[\log(p/q)] \leq \log \mathbb{E}_q[p/q] = \log 1 = 0$，故 $\mathbb{E}_q[\log(q/p)] \geq 0$。
+> **证明概要**：[KL 散度](https://my-webpage-adu.pages.dev/posts/%E6%95%B0%E5%AD%A6%E5%8E%9F%E7%90%86/2026-06-01-kl-%E6%95%A3%E5%BA%A6/)
 
 ---
 
@@ -83,7 +83,7 @@ $$\text{KL}(q \parallel p) \geq 0, \quad \text{等号成立} \iff q = p$$
 
 ---
 
-## 四、核心推导：路线二（恒等变形法）
+## 四、核心推导：恒等变形法
 
 > **目标**：证明 $\log p(X) \geq \mathbb{E}_{q}[\log p(X \mid Z)] - \text{KL}(q(Z \mid X) \parallel p(Z))$
 
@@ -121,7 +121,9 @@ $$\log \frac{p(X, Z)}{p(Z \mid X)} = \log \left( \frac{p(X, Z)}{q(Z \mid X)} \cd
 
 ### Step 4：拆成两个积分（积分的线性性）
 
-$$\log p(X) = \underbrace{\int q(Z \mid X) \log \frac{p(X, Z)}{q(Z \mid X)} dZ}_{\text{第一项}} + \underbrace{\int q(Z \mid X) \log \frac{q(Z \mid X)}{p(Z \mid X)} dZ}_{\text{第二项}}$$
+$$
+\log p(X) = \underbrace{\int q(Z \mid X) \log \frac{p(X, Z)}{q(Z \mid X)} dZ}_{\text{第一项}} + \underbrace{\int q(Z \mid X) \log \frac{q(Z \mid X)}{p(Z \mid X)} dZ}_{\text{第二项}}
+$$
 
 **数学依据**：$\int [f(Z) + g(Z)] dZ = \int f(Z) dZ + \int g(Z) dZ$。
 
@@ -133,7 +135,9 @@ $$\log p(X) = \underbrace{\int q(Z \mid X) \log \frac{p(X, Z)}{q(Z \mid X)} dZ}_
 $$\int q(Z \mid X) \log \frac{q(Z \mid X)}{p(Z \mid X)} dZ = \text{KL}(q(Z \mid X) \parallel p(Z \mid X))$$
 
 **第一项** = **ELBO**（Evidence Lower Bound）：
-$$\text{ELBO} = \int q(Z \mid X) \log \frac{p(X, Z)}{q(Z \mid X)} dZ = \mathbb{E}_{q}[\log p(X, Z)] - \mathbb{E}_{q}[\log q(Z \mid X)]$$
+$$
+\text{ELBO} = \int q(Z \mid X) \log \frac{p(X, Z)}{q(Z \mid X)} dZ = \mathbb{E}_{q}[\log p(X, Z)] - \mathbb{E}_{q}[\log q(Z \mid X)]
+$$
 
 **得到核心恒等式**（精确相等，不是不等式）：
 $$\boxed{\log p(X) = \text{ELBO} + \text{KL}(q(Z \mid X) \parallel p(Z \mid X))}$$
@@ -143,10 +147,14 @@ $$\boxed{\log p(X) = \text{ELBO} + \text{KL}(q(Z \mid X) \parallel p(Z \mid X))}
 ### Step 6：利用 KL 的非负性得到下界
 
 由 KL 散度的基本性质：
-$$\text{KL}(q(Z \mid X) \parallel p(Z \mid X)) \geq 0$$
+$$
+\text{KL}(q(Z \mid X) \parallel p(Z \mid X)) \geq 0
+$$
 
 代入恒等式：
-$$\log p(X) = \text{ELBO} + \underbrace{\text{KL}(q \parallel p(Z \mid X))}_{\geq 0} \geq \text{ELBO}$$
+$$
+\log p(X) = \text{ELBO} + \underbrace{\text{KL}(q \parallel p(Z \mid X))}_{\geq 0} \geq \text{ELBO}
+$$
 
 所以：
 $$\log p(X) \geq \text{ELBO}$$
@@ -155,13 +163,18 @@ $$\log p(X) \geq \text{ELBO}$$
 
 ### Step 7：将 ELBO 展开为最终形式
 
-$$\text{ELBO} = \mathbb{E}_{q}[\log p(X, Z)] - \mathbb{E}_{q}[\log q(Z \mid X)]$$
+$$
+\text{ELBO} = \mathbb{E}_{q}[\log p(X, Z)] - \mathbb{E}_{q}[\log q(Z \mid X)]
+$$
 
-利用 $p(X, Z) = p(X \mid Z) p(Z)$：
-
-$$= \mathbb{E}_{q}[\log p(X \mid Z)] + \mathbb{E}_{q}[\log p(Z)] - \mathbb{E}_{q}[\log q(Z \mid X)]$$
-
-$$= \mathbb{E}_{q}[\log p(X \mid Z)] - \underbrace{\left( \mathbb{E}_{q}[\log q(Z \mid X)] - \mathbb{E}_{q}[\log p(Z)] \right)}_{\text{KL}(q(Z \mid X) \parallel p(Z))}$$
+利用 
+$$
+\begin{aligned}
+p(X, Z) = p(X \mid Z) p(Z) = 
+\mathbb{E}_{q}[\log p(X \mid Z)] + \mathbb{E}_{q}[\log p(Z)] - \mathbb{E}_{q}[\log q(Z \mid X)] \\
+= \mathbb{E}_{q}[\log p(X \mid Z)] - \underbrace{\left( \mathbb{E}_{q}[\log q(Z \mid X)] - \mathbb{E}_{q}[\log p(Z)] \right)}_{\text{KL}(q(Z \mid X) \parallel p(Z))}
+\end{aligned}
+$$
 
 最终得到标准 ELBO 公式：
 
