@@ -270,7 +270,7 @@ $$
 
 键值存储（Key-Value Memory）的形式化定义为：一个映射 $M: \mathcal{K} \to \mathcal{V}$，其中 $\mathcal{K}$ 是键空间（BERT 嵌入向量），$\mathcal{V}$ 是值空间（原始文本片段）。检索操作定义为：
 
-$$\text{Ret}(C) = \arg\min_{N \in \mathcal{D}}^{(k)} \|\text{BERT}(C) - \text{BERT}(N)\|_2^2$$
+$$\text{Ret}(C) = \arg\min_{N \in \mathcal{D}}^{(k)} \||\text{BERT}(C) - \text{BERT}(N)\||_2^2$$
 
 其中 $\arg\min^{(k)}$ 表示取距离最小的 $k$ 个元素。
 
@@ -449,7 +449,10 @@ $$
 - $\text{Ret}(C_1) = \emptyset$：第一个 chunk 不依赖任何检索数据
 - 第 $u$ 个 chunk 的第 $i$ 个 token 的概率依赖于：
   1. 所有之前的 token $(x_j)_{j<(u-1)m+i}$
-  2. 所有之前 chunk 检索到的邻居 $(\text{Ret}_D(C_{u'}))_{u'<u}$
+  2. 所有之前 chunk 检索到的邻居 
+  $$
+  (\operatorname{RET}_{\mathcal D}(C_{u'}))_{u' < u}
+  $$
 
 ###  检索增强的对数似然
 
