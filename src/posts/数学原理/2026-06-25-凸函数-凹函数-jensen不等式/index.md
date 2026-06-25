@@ -117,7 +117,7 @@ Step 9: 严格凸/严格凹的精细定义
 
 ---
 
-![凸函数几何直观：弦位于图像上方](fig_1_convex_function_geometry.png)
+![凸函数几何直观：弦位于图像上方](img/fig_1_convex_function_geometry.png)
 
 **图 1 解读**：图中蓝色曲线为凸函数 $f(x) = x^2$。取两点 $\mathbf{x}_1$ 和 $\mathbf{x}_2$，红色虚线为连接这两点的**弦**（线性插值）。在横坐标 $\lambda \mathbf{x}_1 + (1-\lambda)\mathbf{x}_2$ 处，弦上的值（红点，高度为 $\lambda f(\mathbf{x}_1) + (1-\lambda)f(\mathbf{x}_2)$）始终**大于等于**函数图像上的值（蓝方块，高度为 $f(\lambda \mathbf{x}_1 + (1-\lambda)\mathbf{x}_2)$）。这正是凸函数定义的不等式的几何表达。
 
@@ -143,7 +143,7 @@ Step 9: 严格凸/严格凹的精细定义
 
 ---
 
-![凹函数几何直观：弦位于图像下方](fig_2_concave_function_geometry.png)
+![凹函数几何直观：弦位于图像下方](img/fig_2_concave_function_geometry.png)
 
 **图 2 解读**：图中蓝色曲线为凹函数 $f(x) = -x^2 + 3$。与凸函数完全相反，弦（红色虚线）位于函数图像（蓝色曲线）的**下方**。在加权平均点处，函数值（蓝方块）大于等于弦上的值（红点）。
 
@@ -225,7 +225,7 @@ $$\boxed{f(\mathbf{y}) \geq f(\mathbf{x}) + \nabla f(\mathbf{x})^\top (\mathbf{y
 
 ---
 
-![凸函数的切线性质](fig_6_tangent_property.png)
+![凸函数的切线性质](img/fig_6_tangent_property.png)
 
 **图 6 左侧解读**：对于凸函数 $f(x) = x^2$，绿色虚线为在点 $x_0$ 处的切线 $y = f(x_0) + f'(x_0)(x - x_0)$。可以看到，**整条切线始终位于函数图像的下方**（绿色阴影区域表示函数值与切线值之间的正差距），这正是一阶条件的几何表达。
 
@@ -299,7 +299,7 @@ $$f \text{ 是凸函数} \iff \forall \, x \in \mathcal{C}: \quad f''(x) \geq 0$
 
 ---
 
-![二阶导数判定法则](fig_5_second_derivative_test.png)
+![二阶导数判定法则](img/fig_5_second_derivative_test.png)
 
 **图 5 解读**：三幅图分别展示了 $f''(x) > 0$（严格凸，碗形向上）、$f''(x) < 0$（严格凹，帽形向下）和 $f''(x) = 0$（线性函数，既凸又凹）的典型形状。
 
@@ -449,7 +449,7 @@ $$f\left(\int_{\mathcal{C}} \mathbf{x} \, p(\mathbf{x}) \, d\mathbf{x}\right) \l
 
 ---
 
-![Jensen不等式直观图](fig_3_jensen_inequality.png)
+![Jensen不等式直观图](img/fig_3_jensen_inequality.png)
 
 **图 3 解读**：左图展示凸函数 $f(x) = x^2$ 的 Jensen 不等式。取两点 $\mathbf{x}_1 = -1$（概率 $p_1 = 0.6$）和 $\mathbf{x}_2 = 2$（概率 $p_2 = 0.4$）。期望 $\mathbb{E}[X] = 0.2$，对应蓝方块（函数值 $f(0.2) = 0.04$）；期望的函数值 $\mathbb{E}[f(X)] = 0.6 \times 1 + 0.4 \times 4 = 2.2$，对应红点。显然 $0.04 \leq 2.2$，即 $f(\mathbb{E}[X]) \leq \mathbb{E}[f(X)]$。右图展示凹函数的反向不等式。
 
@@ -494,7 +494,7 @@ $$-f\bigl(\lambda \mathbf{x}_1 + (1-\lambda)\mathbf{x}_2\bigr) \geq \lambda \big
 
 ---
 
-![凸函数与凹函数对比](fig_4_convex_vs_concave.png)
+![凸函数与凹函数对比](img/fig_4_convex_vs_concave.png)
 
 **图 4 解读**：蓝色曲线 $f(x) = x^2$（凸函数）呈碗形向上，有全局最小值；红色曲线 $f(x) = -x^2 + 4$（凹函数）呈帽形向下，有全局最大值。紫色区域为两函数之间的空间。此图直观展示了凸凹函数形状上的对称关系 —— 它们关于某条水平线互为镜像。
 
