@@ -159,11 +159,15 @@ print(outputs.size())  # 输出: torch.Size([2, 11, 4096])
 
 理想情况下，我们希望每个专家被调用的频率大致相等。为此定义专家调用频率：
 
-$$f_i = \frac{\text{专家 } i \text{ 被调用的次数}}{\text{所有专家被调用的总次数}}$$
+$$
+f_i = \frac{\text{专家 } i \text{ 被调用的次数}}{\text{所有专家被调用的总次数}}
+$$
 
 并构造负载均衡损失：
 
-$$ \text{loss}\_{balance} = \sum_{i=1}^{N} (f_i)^2 $$
+$$
+\text{loss}\_{balance} = \sum_{i=1}^{N} (f_i)^2
+$$
 
 该损失衡量了专家调用频率的均衡程度——值越小，说明负载越均匀。以 **2 个专家**为例：
 
@@ -183,7 +187,9 @@ $$ \text{loss}\_{balance} = \sum_{i=1}^{N} (f_i)^2 $$
 
 因此，需要引入一个**可微的辅助负载均衡损失**作为替代：
 
-$$\text{loss}\_{balance} = \sum_{i=1}^{N} f_i \cdot p_i$$
+$$
+\text{loss}\_{balance} = \sum_{i=1}^{N} f_i \cdot p_i
+$$
 
 其中：
 - $f_i$ 仍为专家 $i$ 被调用的频率占比（作为目标分布，越均匀越好）；

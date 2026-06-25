@@ -26,9 +26,14 @@ $$
 [^1]
 
 [^1]: 对于列向量 $y$, $x$, 矩阵 $A$，如果 $y=Ax$，那么 $y$ 对 $x$ 的导数就是矩阵 $A$ 本身。推导如下：<br>
-把 $y = Ax$ 写成各个分量的形式：$$y_i = \sum_{k=1}^n A_{ik} x_k$$
+把 $y = Ax$ 写成各个分量的形式：
+$$
+y_i = \sum_{k=1}^n A_{ik} x_k
+$$
 现在看输出向量的每一个分量 $y_i$ 对输入向量的每一个分量 $x_j$ 的偏导数：
-$$\frac{\partial y_i}{\partial x_j} = A_{ij}$$
+$$
+\frac{\partial y_i}{\partial x_j} = A_{ij}
+$$
 将这个结果填入雅可比矩阵 $\frac{\partial y}{\partial x}$ 中，它的第 $i$ 行、第 $j$ 列恰好就是 $\frac{\partial y_i}{\partial x_j}$。所以矩阵的每个位置都对应矩阵 $A$ 的元素：
 $$
 J(x)=\frac{\partial y}{\partial x} =
@@ -40,7 +45,9 @@ A_{m1} & A_{m2} & \cdots & A_{mn}
 \end{bmatrix} = A
 $$
 因此可以简记为：
-$$\frac{\partial (Ax)}{\partial x} = A$$
+$$
+\frac{\partial (Ax)}{\partial x} = A
+$$
 这正好与反向传播公式 $\nabla x = A^\top \nabla y$ 衔接上了，其中的转置正是来源于这个雅可比矩阵 $A$。
 
 其中 $\nabla y=\frac{\partial L}{\partial y}$, $\nabla x=\frac{\partial L}{\partial x}$
@@ -64,16 +71,26 @@ $$\frac{\partial (Ax)}{\partial x} = A$$
 
 [^2]: 比如在前向传播时，使用 all-reduce-sum 算子，用矩阵乘法表示 $\mathbf{y} = A\mathbf{x}$，矩阵 $A$ 必须是一个 $p \times p$ 的**全 1 矩阵**（此处假设共 $p$ 台设备）。
   反向传播时，上游传来梯度向量：
-  $$\nabla \mathbf{y} = [\nabla y_1, \nabla y_2, \dots, \nabla y_p]^\top$$
+  $$
+  \nabla \mathbf{y} = [\nabla y_1, \nabla y_2, \dots, \nabla y_p]^\top
+  $$
   我们需要计算 $\mathbf{x}$ 的梯度。根据链式法则：
-  $$\nabla \mathbf{x} = A^\top \nabla \mathbf{y}$$
+  $$
+  \nabla \mathbf{x} = A^\top \nabla \mathbf{y}
+  $$
   关键在于**全 1 矩阵是对称的**：
-  $$A^\top = A$$
+  $$
+  A^\top = A
+  $$
   因为矩阵中每个元素都是 1，转置后仍然每个元素都是 1，矩阵不变。
   因此：
-  $$\nabla \mathbf{x} = A \nabla \mathbf{y}$$
+  $$
+  \nabla \mathbf{x} = A \nabla \mathbf{y}
+  $$
   也就是说，反向计算与正向计算的矩阵**完全相同**：
-  $$\nabla x_i = \sum_{j=1}^p \nabla y_j, \quad \text{对所有 } i$$
+  $$
+  \nabla x_i = \sum_{j=1}^p \nabla y_j, \quad \text{对所有 } i
+  $$
   每台设备 $i$ 都收到所有上游梯度 $\nabla y_j$ 的总和。
 
 ## 伴随通信算子的作用

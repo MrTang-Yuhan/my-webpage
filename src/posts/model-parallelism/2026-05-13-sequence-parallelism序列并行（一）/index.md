@@ -172,7 +172,8 @@ W_1 &= Z_1^h B_1^r \quad \text{and} \quad W_2 = Z_2^h B_2^r, \cr
 [W_1^s, W_2^s] &= \bar{g}(W_1, W_2), \cr
 [V_1^s, V_2^s] &= [\text{Dropout}(W_1^s), \text{Dropout}(W_2^s)]
 \end{align*}
-\$$
+\
+$$
 
 此处的一般维度设定如下：
 
@@ -220,7 +221,9 @@ $$
 
 上述的显存占用公式中，其实最后一项:
 
-$$\frac{sbh}{t}(5\frac{as}{h})$$ 
+$$
+\frac{sbh}{t}(5\frac{as}{h})
+$$
 
 占用的显存显著大于前面的常数项。为了量化这一点，让我们考虑一下 GPT-3 和 MT-NLG 模型。对于 GPT-3，$a = 96$，$s = 2048$，$h = 12288$，因此 $\frac{5as}{h} = 80$。对于 MT-NLG，$a = 128$，$s = 2048$，$h = 20480$，所以 $\frac{5as}{h} = 64$。
 

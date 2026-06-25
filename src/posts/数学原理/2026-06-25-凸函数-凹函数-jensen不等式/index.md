@@ -82,7 +82,9 @@ Step 9: 严格凸/严格凹的精细定义
 > - **定义**：一个集合 $\mathcal{C}$ 被称为凸集，如果对于该集合中任意两点，连接这两点的整条线段都完全包含在该集合内。形象地说，凸集没有"凹陷"。
 > - **公式**：集合 $\mathcal{C} \subseteq \mathbb{R}^d$ 是凸集，当且仅当：
 >
-> $$\forall \, \mathbf{x}_1, \mathbf{x}_2 \in \mathcal{C}, \quad \forall \, \lambda \in [0, 1]: \quad \lambda \mathbf{x}_1 + (1 - \lambda) \mathbf{x}_2 \in \mathcal{C}$$
+> $$
+> \forall \, \mathbf{x}_1, \mathbf{x}_2 \in \mathcal{C}, \quad \forall \, \lambda \in [0, 1]: \quad \lambda \mathbf{x}_1 + (1 - \lambda) \mathbf{x}_2 \in \mathcal{C}
+> $$
 > - **本步作用**：凸函数的定义要求定义域必须是凸集，否则"两点之间的函数行为"无法被谈论。
 
 ---
@@ -107,7 +109,9 @@ Step 9: 严格凸/严格凹的精细定义
 > - **定义**：设 $\mathcal{C} \subseteq \mathbb{R}^d$ 是一个凸集，函数 $f: \mathcal{C} \to \mathbb{R}$ 被称为**凸函数**，如果对于 $\mathcal{C}$ 中任意两点 $\mathbf{x}_1, \mathbf{x}_2$ 和任意权重 $\lambda \in [0, 1]$，函数在加权平均点处的值不超过函数值的加权平均。几何上，这意味着**函数图像上任意两点之间的弦（线段）始终位于函数图像的上方或与之重合**。
 > - **公式（凸函数定义）**：
 >
-> $$\boxed{f\bigl(\lambda \mathbf{x}_1 + (1 - \lambda) \mathbf{x}_2\bigr) \leq \lambda f(\mathbf{x}_1) + (1 - \lambda) f(\mathbf{x}_2)}$$
+> $$
+> \boxed{f\bigl(\lambda \mathbf{x}_1 + (1 - \lambda) \mathbf{x}_2\bigr) \leq \lambda f(\mathbf{x}_1) + (1 - \lambda) f(\mathbf{x}_2)}
+> $$
 >
 > 其中：
 > - $\mathcal{C} \subseteq \mathbb{R}^d$ 为凸集（定义域）
@@ -137,7 +141,9 @@ Step 9: 严格凸/严格凹的精细定义
 > - **定义**：设 $\mathcal{C} \subseteq \mathbb{R}^d$ 是一个凸集，函数 $f: \mathcal{C} \to \mathbb{R}$ 被称为**凹函数**，如果对于 $\mathcal{C}$ 中任意两点 $\mathbf{x}_1, \mathbf{x}_2$ 和任意权重 $\lambda \in [0, 1]$，函数在加权平均点处的值**不小于**函数值的加权平均。几何上，这意味着**函数图像上任意两点之间的弦始终位于函数图像的下方或与之重合**。
 > - **公式（凹函数定义）**：
 >
-> $$\boxed{f\bigl(\lambda \mathbf{x}_1 + (1 - \lambda) \mathbf{x}_2\bigr) \geq \lambda f(\mathbf{x}_1) + (1 - \lambda) f(\mathbf{x}_2)}$$
+> $$
+> \boxed{f\bigl(\lambda \mathbf{x}_1 + (1 - \lambda) \mathbf{x}_2\bigr) \geq \lambda f(\mathbf{x}_1) + (1 - \lambda) f(\mathbf{x}_2)}
+> $$
 >
 > 其中符号约定与凸函数定义相同，但不等号方向反转（$\geq$ 而非 $\leq$）。
 
@@ -159,7 +165,9 @@ Step 9: 严格凸/严格凹的精细定义
 > - **定义**：梯度是一个向量，其每个分量是函数对相应自变量的偏导数。梯度指向函数增长最快的方向，其模长表示增长的速率。
 > - **公式**：对于 $f: \mathbb{R}^d \to \mathbb{R}$：
 >
-> $$\nabla f(\mathbf{x}) = \left( \frac{\partial f}{\partial x_1}, \frac{\partial f}{\partial x_2}, \ldots, \frac{\partial f}{\partial x_d} \right)^\top \in \mathbb{R}^d$$
+> $$
+> \nabla f(\mathbf{x}) = \left( \frac{\partial f}{\partial x_1}, \frac{\partial f}{\partial x_2}, \ldots, \frac{\partial f}{\partial x_d} \right)^\top \in \mathbb{R}^d
+> $$
 > - **本步作用**：一阶条件用梯度来刻画凸函数的几何性质（切线判据）。
 
 ---
@@ -175,7 +183,9 @@ Step 9: 严格凸/严格凹的精细定义
 
 设 $\mathcal{C} \subseteq \mathbb{R}^d$ 为开凸集，函数 $f: \mathcal{C} \to \mathbb{R}$ 可微（即梯度 $\nabla f(\mathbf{x})$ 处处存在）。则：
 
-$$f \text{ 是凸函数} \iff \forall \, \mathbf{x}, \mathbf{y} \in \mathcal{C}: \quad f(\mathbf{y}) \geq f(\mathbf{x}) + \nabla f(\mathbf{x})^\top (\mathbf{y} - \mathbf{x})$$
+$$
+f \text{ 是凸函数} \iff \forall \, \mathbf{x}, \mathbf{y} \in \mathcal{C}: \quad f(\mathbf{y}) \geq f(\mathbf{x}) + \nabla f(\mathbf{x})^\top (\mathbf{y} - \mathbf{x})
+$$
 
 **几何意义**：函数图像在任意点 $\mathbf{x}$ 处的**切线（切平面）始终位于函数图像的下方**。这是凸函数"碗状向上"特征的局部表达。
 
@@ -185,43 +195,61 @@ $$f \text{ 是凸函数} \iff \forall \, \mathbf{x}, \mathbf{y} \in \mathcal{C}:
 
 **Step 5.1**: 取任意 $\mathbf{x}, \mathbf{y} \in \mathcal{C}$，对任意 $t \in (0, 1]$，定义凸组合：
 
-$$\mathbf{z}_t = \mathbf{x} + t(\mathbf{y} - \mathbf{x}) = (1-t)\mathbf{x} + t\mathbf{y}$$
+$$
+\mathbf{z}_t = \mathbf{x} + t(\mathbf{y} - \mathbf{x}) = (1-t)\mathbf{x} + t\mathbf{y}
+$$
 
 （依据：这是 $\mathbf{x}$ 和 $\mathbf{y}$ 的加权平均，权重为 $\lambda = 1-t$，由凸集定义知 $\mathbf{z}_t \in \mathcal{C}$。）
 
 **Step 5.2**: 由凸函数原始定义（取 $\lambda = 1-t$）：
 
-$$f\bigl((1-t)\mathbf{x} + t\mathbf{y}\bigr) \leq (1-t)f(\mathbf{x}) + t f(\mathbf{y})$$
+$$
+f\bigl((1-t)\mathbf{x} + t\mathbf{y}\bigr) \leq (1-t)f(\mathbf{x}) + t f(\mathbf{y})
+$$
 
 即：
 
-$$f(\mathbf{z}_t) \leq (1-t)f(\mathbf{x}) + t f(\mathbf{y})$$
+$$
+f(\mathbf{z}_t) \leq (1-t)f(\mathbf{x}) + t f(\mathbf{y})
+$$
 
 **Step 5.3**: 整理不等式：
 
-$$f(\mathbf{z}_t) - f(\mathbf{x}) \leq t\bigl[f(\mathbf{y}) - f(\mathbf{x})\bigr]$$
+$$
+f(\mathbf{z}_t) - f(\mathbf{x}) \leq t\bigl[f(\mathbf{y}) - f(\mathbf{x})\bigr]
+$$
 
 **Step 5.4**: 两边同除以 $t > 0$：
 
-$$\frac{f(\mathbf{z}_t) - f(\mathbf{x})}{t} \leq f(\mathbf{y}) - f(\mathbf{x})$$
+$$
+\frac{f(\mathbf{z}_t) - f(\mathbf{x})}{t} \leq f(\mathbf{y}) - f(\mathbf{x})
+$$
 
 **Step 5.5**: 利用 $\mathbf{z}_t - \mathbf{x} = t(\mathbf{y} - \mathbf{x})$，改写左边：
 
-$$\frac{f(\mathbf{x} + t(\mathbf{y} - \mathbf{x})) - f(\mathbf{x})}{t} \leq f(\mathbf{y}) - f(\mathbf{x})$$
+$$
+\frac{f(\mathbf{x} + t(\mathbf{y} - \mathbf{x})) - f(\mathbf{x})}{t} \leq f(\mathbf{y}) - f(\mathbf{x})
+$$
 
 **Step 5.6**: 令 $t \to 0^+$（即 $t$ 从正方向趋近于零）。左边恰好是**方向导数**的定义：
 
-$$\lim_{t \to 0^+} \frac{f(\mathbf{x} + t(\mathbf{y} - \mathbf{x})) - f(\mathbf{x})}{t} = \nabla f(\mathbf{x})^\top (\mathbf{y} - \mathbf{x})$$
+$$
+\lim_{t \to 0^+} \frac{f(\mathbf{x} + t(\mathbf{y} - \mathbf{x})) - f(\mathbf{x})}{t} = \nabla f(\mathbf{x})^\top (\mathbf{y} - \mathbf{x})
+$$
 
 （依据：方向导数的定义。由于 $f$ 可微，方向导数等于梯度与方向的点积。）
 
 **Step 5.7**: 取极限后得到：
 
-$$\nabla f(\mathbf{x})^\top (\mathbf{y} - \mathbf{x}) \leq f(\mathbf{y}) - f(\mathbf{x})$$
+$$
+\nabla f(\mathbf{x})^\top (\mathbf{y} - \mathbf{x}) \leq f(\mathbf{y}) - f(\mathbf{x})
+$$
 
 **Step 5.8**: 整理即得**一阶条件**：
 
-$$\boxed{f(\mathbf{y}) \geq f(\mathbf{x}) + \nabla f(\mathbf{x})^\top (\mathbf{y} - \mathbf{x})} \quad \forall \, \mathbf{x}, \mathbf{y} \in \mathcal{C}$$
+$$
+\boxed{f(\mathbf{y}) \geq f(\mathbf{x}) + \nabla f(\mathbf{x})^\top (\mathbf{y} - \mathbf{x})} \quad \forall \, \mathbf{x}, \mathbf{y} \in \mathcal{C}
+$$
 
 ---
 
@@ -237,27 +265,39 @@ $$\boxed{f(\mathbf{y}) \geq f(\mathbf{x}) + \nabla f(\mathbf{x})^\top (\mathbf{y
 
 **Step 5.10**: 定义加权平均点：
 
-$$\mathbf{z} = \lambda \mathbf{x}_1 + (1 - \lambda) \mathbf{x}_2$$
+$$
+\mathbf{z} = \lambda \mathbf{x}_1 + (1 - \lambda) \mathbf{x}_2
+$$
 
 **Step 5.11**: 对 $\mathbf{x}_1$ 和 $\mathbf{x}_2$ 分别应用一阶条件（以 $\mathbf{z}$ 为基准点）：
 
-$$f(\mathbf{x}_1) \geq f(\mathbf{z}) + \nabla f(\mathbf{z})^\top (\mathbf{x}_1 - \mathbf{z})$$
+$$
+f(\mathbf{x}_1) \geq f(\mathbf{z}) + \nabla f(\mathbf{z})^\top (\mathbf{x}_1 - \mathbf{z})
+$$
 
-$$f(\mathbf{x}_2) \geq f(\mathbf{z}) + \nabla f(\mathbf{z})^\top (\mathbf{x}_2 - \mathbf{z})$$
+$$
+f(\mathbf{x}_2) \geq f(\mathbf{z}) + \nabla f(\mathbf{z})^\top (\mathbf{x}_2 - \mathbf{z})
+$$
 
 **Step 5.12**: 第一式乘以 $\lambda$，第二式乘以 $(1-\lambda)$，相加：
 
-$$\lambda f(\mathbf{x}_1) + (1-\lambda) f(\mathbf{x}_2) \geq f(\mathbf{z}) + \nabla f(\mathbf{z})^\top \bigl[\lambda(\mathbf{x}_1 - \mathbf{z}) + (1-\lambda)(\mathbf{x}_2 - \mathbf{z})\bigr]$$
+$$
+\lambda f(\mathbf{x}_1) + (1-\lambda) f(\mathbf{x}_2) \geq f(\mathbf{z}) + \nabla f(\mathbf{z})^\top \bigl[\lambda(\mathbf{x}_1 - \mathbf{z}) + (1-\lambda)(\mathbf{x}_2 - \mathbf{z})\bigr]
+$$
 
 **Step 5.13**: 化简括号中的表达式：
 
-$$\lambda(\mathbf{x}_1 - \mathbf{z}) + (1-\lambda)(\mathbf{x}_2 - \mathbf{z}) = \lambda\mathbf{x}_1 + (1-\lambda)\mathbf{x}_2 - \mathbf{z} = \mathbf{z} - \mathbf{z} = \mathbf{0}$$
+$$
+\lambda(\mathbf{x}_1 - \mathbf{z}) + (1-\lambda)(\mathbf{x}_2 - \mathbf{z}) = \lambda\mathbf{x}_1 + (1-\lambda)\mathbf{x}_2 - \mathbf{z} = \mathbf{z} - \mathbf{z} = \mathbf{0}
+$$
 
 （依据：$\mathbf{z} = \lambda \mathbf{x}_1 + (1-\lambda)\mathbf{x}_2$ 的定义，这是代数恒等式。）
 
 **Step 5.14**: 代入得：
 
-$$\lambda f(\mathbf{x}_1) + (1-\lambda) f(\mathbf{x}_2) \geq f(\mathbf{z}) = f\bigl(\lambda \mathbf{x}_1 + (1-\lambda)\mathbf{x}_2\bigr)$$
+$$
+\lambda f(\mathbf{x}_1) + (1-\lambda) f(\mathbf{x}_2) \geq f(\mathbf{z}) = f\bigl(\lambda \mathbf{x}_1 + (1-\lambda)\mathbf{x}_2\bigr)
+$$
 
 这正是凸函数的**原始定义**。证毕 $\blacksquare$。
 
@@ -290,11 +330,15 @@ $$
 
 设 $\mathcal{C} \subseteq \mathbb{R}^d$ 为开凸集，函数 $f: \mathcal{C} \to \mathbb{R}$ 二阶连续可微（即海森矩阵 $\nabla^2 f(\mathbf{x})$ 存在且连续）。则：
 
-$$f \text{ 是凸函数} \iff \forall \, \mathbf{x} \in \mathcal{C}: \quad \nabla^2 f(\mathbf{x}) \succeq \mathbf{0} \text{（海森矩阵半正定）}$$
+$$
+f \text{ 是凸函数} \iff \forall \, \mathbf{x} \in \mathcal{C}: \quad \nabla^2 f(\mathbf{x}) \succeq \mathbf{0} \text{（海森矩阵半正定）}
+$$
 
 **对于一元函数**（$d = 1$），此条件简化为：
 
-$$f \text{ 是凸函数} \iff \forall \, x \in \mathcal{C}: \quad f''(x) \geq 0$$
+$$
+f \text{ 是凸函数} \iff \forall \, x \in \mathcal{C}: \quad f''(x) \geq 0
+$$
 
 **几何意义**：二阶导数非负意味着函数的斜率（一阶导数）单调不减，即函数"向上弯曲"。
 
@@ -310,15 +354,21 @@ $$f \text{ 是凸函数} \iff \forall \, x \in \mathcal{C}: \quad f''(x) \geq 0$
 
 **Step 6.1**: 取任意 $x_1, x_2 \in \mathcal{C}$（设 $x_1 < x_2$）和 $\lambda \in [0, 1]$，定义：
 
-$$x_\lambda = \lambda x_1 + (1-\lambda) x_2$$
+$$
+x_\lambda = \lambda x_1 + (1-\lambda) x_2
+$$
 
 **Step 6.2**: 由 **泰勒定理**（带拉格朗日余项的一阶展开），在点 $x_\lambda$ 处展开 $f(x_1)$ 和 $f(x_2)$：
 
-$$f(x_1) = f(x_\lambda) + f'(x_\lambda)(x_1 - x_\lambda) + \frac{1}{2} f''(\xi_1)(x_1 - x_\lambda)^2$$
+$$
+f(x_1) = f(x_\lambda) + f'(x_\lambda)(x_1 - x_\lambda) + \frac{1}{2} f''(\xi_1)(x_1 - x_\lambda)^2
+$$
 
 其中 $\xi_1$ 位于 $x_1$ 和 $x_\lambda$ 之间。
 
-$$f(x_2) = f(x_\lambda) + f'(x_\lambda)(x_2 - x_\lambda) + \frac{1}{2} f''(\xi_2)(x_2 - x_\lambda)^2$$
+$$
+f(x_2) = f(x_\lambda) + f'(x_\lambda)(x_2 - x_\lambda) + \frac{1}{2} f''(\xi_2)(x_2 - x_\lambda)^2
+$$
 
 其中 $\xi_2$ 位于 $x_\lambda$ 和 $x_2$ 之间。
 
@@ -333,23 +383,33 @@ $$f(x_2) = f(x_\lambda) + f'(x_\lambda)(x_2 - x_\lambda) + \frac{1}{2} f''(\xi_2
 
 **Step 6.3**: 利用条件 $f''(\xi) \geq 0$（对所有 $\xi$ 成立），舍弃非负的余项，得到不等式：
 
-$$f(x_1) \geq f(x_\lambda) + f'(x_\lambda)(x_1 - x_\lambda)$$
+$$
+f(x_1) \geq f(x_\lambda) + f'(x_\lambda)(x_1 - x_\lambda)
+$$
 
-$$f(x_2) \geq f(x_\lambda) + f'(x_\lambda)(x_2 - x_\lambda)$$
+$$
+f(x_2) \geq f(x_\lambda) + f'(x_\lambda)(x_2 - x_\lambda)
+$$
 
 **Step 6.4**: 第一式乘以 $\lambda$，第二式乘以 $(1-\lambda)$，相加：
 
-$$\lambda f(x_1) + (1-\lambda) f(x_2) \geq f(x_\lambda) + f'(x_\lambda)\bigl[\lambda(x_1 - x_\lambda) + (1-\lambda)(x_2 - x_\lambda)\bigr]$$
+$$
+\lambda f(x_1) + (1-\lambda) f(x_2) \geq f(x_\lambda) + f'(x_\lambda)\bigl[\lambda(x_1 - x_\lambda) + (1-\lambda)(x_2 - x_\lambda)\bigr]
+$$
 
 **Step 6.5**: 化简方括号中的表达式：
 
-$$\lambda(x_1 - x_\lambda) + (1-\lambda)(x_2 - x_\lambda) = \lambda x_1 + (1-\lambda) x_2 - x_\lambda = x_\lambda - x_\lambda = 0$$
+$$
+\lambda(x_1 - x_\lambda) + (1-\lambda)(x_2 - x_\lambda) = \lambda x_1 + (1-\lambda) x_2 - x_\lambda = x_\lambda - x_\lambda = 0
+$$
 
 （依据：$x_\lambda = \lambda x_1 + (1-\lambda) x_2$ 的定义。）
 
 **Step 6.6**: 因此：
 
-$$\lambda f(x_1) + (1-\lambda) f(x_2) \geq f(x_\lambda) = f\bigl(\lambda x_1 + (1-\lambda) x_2\bigr)$$
+$$
+\lambda f(x_1) + (1-\lambda) f(x_2) \geq f(x_\lambda) = f\bigl(\lambda x_1 + (1-\lambda) x_2\bigr)
+$$
 
 这正是凸函数的原始定义。证毕 $\blacksquare$。
 
@@ -388,7 +448,9 @@ $$
 
 或写成期望形式：
 
-$$f\bigl(\mathbb{E}[X]\bigr) \leq \mathbb{E}\bigl[f(X)\bigr]$$
+$$
+f\bigl(\mathbb{E}[X]\bigr) \leq \mathbb{E}\bigl[f(X)\bigr]
+$$
 
 **记忆口诀**：对于凸函数，"函数值的期望 $\geq$ 期望的函数值"（即 $f(\mathbb{E}[X]) \leq \mathbb{E}[f(X)]$）。
 
@@ -398,7 +460,9 @@ $$f\bigl(\mathbb{E}[X]\bigr) \leq \mathbb{E}\bigl[f(X)\bigr]$$
 
 **Step 7.1**（归纳基础，$n=2$）：当 $n=2$ 时，Jensen 不等式退化为凸函数的**原始定义**（取 $\lambda = p_1$，$1-\lambda = p_2$）：
 
-$$f(p_1 \mathbf{x}_1 + p_2 \mathbf{x}_2) \leq p_1 f(\mathbf{x}_1) + p_2 f(\mathbf{x}_2)$$
+$$
+f(p_1 \mathbf{x}_1 + p_2 \mathbf{x}_2) \leq p_1 f(\mathbf{x}_1) + p_2 f(\mathbf{x}_2)
+$$
 
 这是已知成立的（由凸函数定义）。基础情况得证。
 
@@ -489,7 +553,9 @@ $$
 
 设 $\mathcal{C} \subseteq \mathbb{R}^d$ 为凸集，$f: \mathcal{C} \to \mathbb{R}$。则：
 
-$$f \text{ 是凸函数} \iff (-f) \text{ 是凹函数}$$
+$$
+f \text{ 是凸函数} \iff (-f) \text{ 是凹函数}
+$$
 
 #### 证明
 

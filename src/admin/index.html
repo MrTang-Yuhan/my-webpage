@@ -84,7 +84,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/markdown-it-footnote@4.0.0/dist/markdown-it-footnote.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/markdown-it-katex@2.0.3/dist/markdown-it-katex.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
     <script>window.CMS_MANUAL_INIT = true;</script>
     <script src="https://unpkg.com/decap-cms@^3.5.0/dist/decap-cms.js"></script>
@@ -130,13 +129,243 @@
 .cms-post-preview .post-content img, .cms-post-preview .post-content video { max-width: 100%; height: auto; border-radius: 8px; display: block; margin: 1rem auto; }
 .cms-post-preview .post-content blockquote { border-left: 4px solid var(--brand); background: var(--brand-soft); margin-left: 0; padding: 0.75rem 0.9rem; }
 .cms-post-preview .post-content aside.footnote { border: 1px solid var(--line); border-left: 3px solid var(--brand); background: var(--panel); border-radius: 8px; margin: 0.5rem 0 1rem; padding: 0.55rem 0.7rem; color: var(--muted); }
+.cms-post-preview .post-content .katex-block { overflow-x: auto; overflow-y: hidden; padding: 0.35rem 0; text-align: center; }
 .cms-post-preview .post-tags { display: flex; gap: 0.45rem; flex-wrap: wrap; margin-top: 1rem; }
 .cms-post-preview .tag { background: var(--brand-soft); color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 0.2rem 0.6rem; font-size: 0.8rem; }
 `;
 
+        function registerVsCodeMarkdownItKatex(md, options) {
+          const katex = window.katex;
+          if (!md || !katex) return;
+          const opts = options || {};
+
+          function isWhitespace(char) {
+            return /^\s$/u.test(char);
+          }
+
+          function isWordCharacterOrNumber(char) {
+            return /^[\w\d]$/u.test(char);
+          }
+
+          function isValidInlineDelim(state, pos) {
+            const prevChar = state.src[pos - 1];
+            const char = state.src[pos];
+            const nextChar = state.src[pos + 1];
+            if (char !== '$') return { can_open: false, can_close: false };
+            let canOpen = false;
+            let canClose = false;
+            if (prevChar !== '$' && prevChar !== '\\' && (prevChar === undefined || isWhitespace(prevChar) || !isWordCharacterOrNumber(prevChar))) {
+              canOpen = true;
+            }
+            if (nextChar !== '$' && (nextChar === undefined || isWhitespace(nextChar) || !isWordCharacterOrNumber(nextChar))) {
+              canClose = true;
+            }
+            return { can_open: canOpen, can_close: canClose };
+          }
+
+          function isValidBlockDelim(state, pos) {
+            const prevChar = state.src[pos - 1];
+            const char = state.src[pos];
+            const nextChar = state.src[pos + 1];
+            const nextCharPlus1 = state.src[pos + 2];
+            if (char === '$' && prevChar !== '$' && prevChar !== '\\' && nextChar === '$' && nextCharPlus1 !== '$') {
+              return { can_open: true, can_close: true };
+            }
+            return { can_open: false, can_close: false };
+          }
+
+          function inlineMath(state, silent) {
+            if (state.src[state.pos] !== '$') return false;
+            const lastToken = state.tokens[state.tokens.length - 1];
+            if (lastToken && lastToken.type === 'html_inline' && /^<\w+.+[^/]>$/.test(lastToken.content)) {
+              return false;
+            }
+
+            let res = isValidInlineDelim(state, state.pos);
+            if (!res.can_open) {
+              if (!silent) state.pending += '$';
+              state.pos += 1;
+              return true;
+            }
+
+            const start = state.pos + 1;
+            let match = start;
+            let pos;
+            while ((match = state.src.indexOf('$', match)) !== -1) {
+              pos = match - 1;
+              while (state.src[pos] === '\\') pos -= 1;
+              if (((match - pos) % 2) === 1) break;
+              match += 1;
+            }
+
+            if (match === -1) {
+              if (!silent) state.pending += '$';
+              state.pos = start;
+              return true;
+            }
+            if (match - start === 0) {
+              if (!silent) state.pending += '$$';
+              state.pos = start + 1;
+              return true;
+            }
+
+            res = isValidInlineDelim(state, match);
+            if (!res.can_close) {
+              if (!silent) state.pending += '$';
+              state.pos = start;
+              return true;
+            }
+
+            if (!silent) {
+              const token = state.push('math_inline', 'math', 0);
+              token.markup = '$';
+              token.content = state.src.slice(start, match);
+            }
+            state.pos = match + 1;
+            return true;
+          }
+
+          function blockMath(state, start, end, silent) {
+            let found = false;
+            let pos = state.bMarks[start] + state.tShift[start];
+            let max = state.eMarks[start];
+            if (pos + 2 > max) return false;
+            if (state.src.slice(pos, pos + 2) !== '$$') return false;
+            pos += 2;
+            let firstLine = state.src.slice(pos, max);
+            const endIndexes = Array.from(firstLine.matchAll(/\$\$/g));
+            if (endIndexes.length === 1 && endIndexes[0].index === firstLine.length - 2) {
+              firstLine = firstLine.trim().slice(0, -2);
+              found = true;
+            } else if (endIndexes.length > 1) {
+              return false;
+            }
+            if (silent) return true;
+
+            let lastLine;
+            let next;
+            let lastPos;
+            for (next = start; !found;) {
+              next += 1;
+              if (next >= end) break;
+              pos = state.bMarks[next] + state.tShift[next];
+              max = state.eMarks[next];
+              if (pos < max && state.tShift[next] < state.blkIndent) break;
+              if (state.src.slice(pos, max).trim().slice(-2) === '$$') {
+                lastPos = state.src.slice(0, max).lastIndexOf('$$');
+                lastLine = state.src.slice(pos, lastPos);
+                found = true;
+              } else if (state.src.slice(pos, max).trim().includes('$$')) {
+                lastPos = state.src.slice(0, max).trim().indexOf('$$');
+                lastLine = state.src.slice(pos, lastPos);
+                found = true;
+              }
+            }
+
+            state.line = next + 1;
+            const token = state.push('math_block', 'math', 0);
+            token.block = true;
+            token.content = (firstLine && firstLine.trim() ? firstLine + '\n' : '') +
+              state.getLines(start + 1, next, state.tShift[start], true) +
+              (lastLine && lastLine.trim() ? lastLine : '');
+            token.map = [start, state.line];
+            token.markup = '$$';
+            return true;
+          }
+
+          function inlineMathBlock(state, silent) {
+            if (state.src.slice(state.pos, state.pos + 2) !== '$$') return false;
+            let res = isValidBlockDelim(state, state.pos);
+            if (!res.can_open) {
+              if (!silent) state.pending += '$$';
+              state.pos += 2;
+              return true;
+            }
+
+            const start = state.pos + 2;
+            let match = start;
+            let pos;
+            while ((match = state.src.indexOf('$$', match)) !== -1) {
+              pos = match - 1;
+              while (state.src[pos] === '\\') pos -= 1;
+              if (((match - pos) % 2) === 1) break;
+              match += 2;
+            }
+
+            if (match === -1) {
+              if (!silent) state.pending += '$$';
+              state.pos = start;
+              return true;
+            }
+            if (match - start === 0) {
+              if (!silent) state.pending += '$$$$';
+              state.pos = start + 2;
+              return true;
+            }
+
+            res = isValidBlockDelim(state, match);
+            if (!res.can_close) {
+              if (!silent) state.pending += '$$';
+              state.pos = start;
+              return true;
+            }
+
+            if (!silent) {
+              const token = state.push('math_block', 'math', 0);
+              token.block = true;
+              token.markup = '$$';
+              token.content = state.src.slice(start, match);
+            }
+            state.pos = match + 2;
+            return true;
+          }
+
+          function escapeHtml(unsafe) {
+            return String(unsafe)
+              .replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;')
+              .replace(/'/g, '&#039;');
+          }
+
+          function renderInline(latex) {
+            const displayMode = /\\begin\{(align|equation|gather|cd|alignat)\}/ig.test(latex);
+            try {
+              return katex.renderToString(latex, Object.assign({}, opts, { displayMode: displayMode }));
+            } catch (error) {
+              if (opts.throwOnError) console.log(error);
+              return '<span class="katex-error" title="' + escapeHtml(latex) + '">' + escapeHtml(String(error)) + '</span>';
+            }
+          }
+
+          function renderBlock(latex) {
+            try {
+              return '<p class="katex-block">' + katex.renderToString(latex, Object.assign({}, opts, { displayMode: true })) + '</p>';
+            } catch (error) {
+              if (opts.throwOnError) console.log(error);
+              return '<p class="katex-block katex-error" title="' + escapeHtml(latex) + '">' + escapeHtml(String(error)) + '</p>';
+            }
+          }
+
+          md.inline.ruler.after('escape', 'math_inline', inlineMath);
+          md.inline.ruler.after('escape', 'math_inline_block', inlineMathBlock);
+          md.block.ruler.after('blockquote', 'math_block', blockMath, {
+            alt: ['paragraph', 'reference', 'blockquote', 'list']
+          });
+          md.renderer.rules.math_inline = function(tokens, idx) {
+            const content = tokens[idx].content;
+            const hasBacktick = content.length > 2 && content[0] === '`' && content[content.length - 1] === '`';
+            return renderInline(hasBacktick ? content.slice(1, -1) : content);
+          };
+          md.renderer.rules.math_block = function(tokens, idx) {
+            return renderBlock(tokens[idx].content) + '\n';
+          };
+        }
+
         const md = window.markdownit({ html: true, breaks: false, linkify: true });
         if (window.markdownitFootnote) md.use(window.markdownitFootnote);
-        if (window.markdownitKatex) md.use(window.markdownitKatex, { throwOnError: false, strict: 'ignore' });
+        registerVsCodeMarkdownItKatex(md, { throwOnError: false, strict: 'ignore' });
 
         function normalizeFootnotes(html) {
           return html

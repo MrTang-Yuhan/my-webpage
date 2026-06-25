@@ -17,7 +17,9 @@ tags:
 
 训练一个 Transformer 模型的基本成本方程如下：
 
-$$C \approx \tau T = 6PD$$
+$$
+C \approx \tau T = 6PD
+$$
 
 其中：
 
@@ -194,7 +196,8 @@ $$
 
 **流水线并行或张量/模型并行：** 这些并行方案将模型的参数拆分到多个 GPU 上。这类方案需要大量的通信开销，但它们减少内存的效果近似为：
 
-$$\text{memory}_{\text{w/ parallelism model}} \approx \frac{\text{Model Memory}}{\text{Pipe-Parallel-Size} \times \text{Tensor-Parallel-Size}} 
+$$
+\text{memory}_{\text{w/ parallelism model}} \approx \frac{\text{Model Memory}}{\text{Pipe-Parallel-Size} \times \text{Tensor-Parallel-Size}}
 $$
 
 $$

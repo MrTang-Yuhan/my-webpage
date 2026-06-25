@@ -209,7 +209,8 @@ $$
 
 $$
 \frac{\partial L}{\partial z} = y \odot \left( \frac{\partial L}{\partial y} - \langle \frac{\partial L}{\partial y}, y \rangle \right)
-$$[^4]
+$$
+[^4]
 
 [^4]: 其中 $\odot$ 是逐元素乘，$\langle \cdot, \cdot \rangle$ 表示点积（标量）。
 

@@ -20,7 +20,9 @@ tags:
 - 似然 $p(X \mid Z)$：给定隐变量时生成观测数据的概率
 
 **目标**：计算**证据**（evidence），即观测数据的对数边际似然：
-$$\log p(X) = \log \int p(X \mid Z)  p(Z)  dZ$$
+$$
+\log p(X) = \log \int p(X \mid Z)  p(Z)  dZ
+$$
 
 **困难**：积分通常涉及高维空间，$p(X \mid Z)$ 和 $p(Z)$ 的乘积对 $Z$ 积分**没有解析解**，直接数值积分也**不可行**（维度灾难）。
 
@@ -32,7 +34,9 @@ $$\log p(X) = \log \int p(X \mid Z)  p(Z)  dZ$$
 >
 >这就是整个变分推断存在的意义：
 >
-> $$\int p(X \mid Z) p(Z) dZ$$
+> $$
+> \int p(X \mid Z) p(Z) dZ
+> $$
 >
 > - **高维积分**：$Z$ 通常是几百维甚至几千维的向量，数值积分（如网格采样）维度灾难；
 > - **$p(X \mid Z)$ 复杂**：如果是神经网络（如 VAE 的 decoder），没有解析形式；
@@ -58,12 +62,16 @@ $$\log p(X) = \log \int p(X \mid Z)  p(Z)  dZ$$
 | **边缘概率** | $p(X) = \int p(X, Z) dZ$ | 消去 $Z$ |
 
 **核心恒等式**（推导中反复使用）：
-$$p(X, Z) = p(X \mid Z)  p(Z) = p(Z \mid X)p(X)$$
+$$
+p(X, Z) = p(X \mid Z)  p(Z) = p(Z \mid X)p(X)
+$$
 
 ### 2. 期望（Expectation）
 
 若 $Z \sim q(Z)$，则：
-$$\mathbb{E}_{q(Z)}[f(Z)] = \int q(Z) f(Z)  dZ$$
+$$
+\mathbb{E}_{q(Z)}[f(Z)] = \int q(Z) f(Z)  dZ
+$$
 
 **关键性质**：
 - **线性性**：$\mathbb{E}[a f + b g] = a \mathbb{E}[f] + b \mathbb{E}[g]$
@@ -71,16 +79,22 @@ $$\mathbb{E}_{q(Z)}[f(Z)] = \int q(Z) f(Z)  dZ$$
 
 ### 3. 对数运算
 
-$$\log \frac{a}{b} = \log a - \log b, \qquad \log(ab) = \log a + \log b$$
+$$
+\log \frac{a}{b} = \log a - \log b, \qquad \log(ab) = \log a + \log b
+$$
 
 ### 4. KL 散度（Kullback-Leibler Divergence）
 
 衡量分布 $q$ 相对于 $p$ 的差异：
 
-$$\text{KL}(q \parallel p) = \int q(x) \log \frac{q(x)}{p(x)} dx = \mathbb{E}_{q}\left[\log \frac{q}{p}\right]$$
+$$
+\text{KL}(q \parallel p) = \int q(x) \log \frac{q(x)}{p(x)} dx = \mathbb{E}_{q}\left[\log \frac{q}{p}\right]
+$$
 
 **核心性质**：
-$$\text{KL}(q \parallel p) \geq 0, \quad \text{等号成立} \iff q = p$$
+$$
+\text{KL}(q \parallel p) \geq 0, \quad \text{等号成立} \iff q = p
+$$
 
 > **证明概要**：[KL 散度](https://my-webpage-adu.pages.dev/posts/%E6%95%B0%E5%AD%A6%E5%8E%9F%E7%90%86/2026-06-01-kl-%E6%95%A3%E5%BA%A6/)
 
@@ -108,21 +122,29 @@ $$\text{KL}(q \parallel p) \geq 0, \quad \text{等号成立} \iff q = p$$
 
 ### Step 1：将 $\log p(X)$ 写成关于 $q$ 的期望
 
-$$\log p(X) = \int q(Z \mid X)  \log p(X)  dZ$$
+$$
+\log p(X) = \int q(Z \mid X)  \log p(X)  dZ
+$$
 
 **数学依据**：常数提取性质。因为 $\int q(Z \mid X) dZ = 1$（概率密度积分为1），且 $\log p(X)$ 与 $Z$ 无关，所以：
-$$\log p(X) = \log p(X) \cdot 1 = \log p(X) \cdot \int q(Z \mid X) dZ = \int q(Z \mid X) \log p(X) dZ$$
+$$
+\log p(X) = \log p(X) \cdot 1 = \log p(X) \cdot \int q(Z \mid X) dZ = \int q(Z \mid X) \log p(X) dZ
+$$
 
 ---
 
 ### Step 2：用条件概率替换 $p(X)$
 
 由联合概率与条件概率的关系 $p(X, Z) = p(Z \mid X) p(X)$，得：
-$$p(X) = \frac{p(X, Z)}{p(Z \mid X)}$$
+$$
+p(X) = \frac{p(X, Z)}{p(Z \mid X)}
+$$
 
 代入 Step 1：
 
-$$\log p(X) = \int q(Z \mid X)  \log \frac{p(X, Z)}{p(Z \mid X)}  dZ$$
+$$
+\log p(X) = \int q(Z \mid X)  \log \frac{p(X, Z)}{p(Z \mid X)}  dZ
+$$
 
 **数学依据**：概率恒等式 $p(X) = \frac{p(X,Z)}{p(Z|X)}$。
 
@@ -130,7 +152,9 @@ $$\log p(X) = \int q(Z \mid X)  \log \frac{p(X, Z)}{p(Z \mid X)}  dZ$$
 
 ### Step 3：强行插入 $q/q$（凑出 KL 散度的形式）
 
-$$\log \frac{p(X, Z)}{p(Z \mid X)} = \log \left( \frac{p(X, Z)}{q(Z \mid X)} \cdot \frac{q(Z \mid X)}{p(Z \mid X)} \right) = \log \frac{p(X, Z)}{q(Z \mid X)} + \log \frac{q(Z \mid X)}{p(Z \mid X)}$$
+$$
+\log \frac{p(X, Z)}{p(Z \mid X)} = \log \left( \frac{p(X, Z)}{q(Z \mid X)} \cdot \frac{q(Z \mid X)}{p(Z \mid X)} \right) = \log \frac{p(X, Z)}{q(Z \mid X)} + \log \frac{q(Z \mid X)}{p(Z \mid X)}
+$$
 
 **数学依据**：对数乘法性质 $\log(ab) = \log a + \log b$。
 
@@ -149,7 +173,9 @@ $$
 ### Step 5：识别两项的身份
 
 **第二项** = **KL 散度**（直接对照定义）：
-$$\int q(Z \mid X) \log \frac{q(Z \mid X)}{p(Z \mid X)} dZ = \text{KL}(q(Z \mid X) \parallel p(Z \mid X))$$
+$$
+\int q(Z \mid X) \log \frac{q(Z \mid X)}{p(Z \mid X)} dZ = \text{KL}(q(Z \mid X) \parallel p(Z \mid X))
+$$
 
 **第一项** = **ELBO**（Evidence Lower Bound）：
 $$
@@ -157,7 +183,9 @@ $$
 $$
 
 **得到核心恒等式**（精确相等，不是不等式）：
-$$\boxed{\log p(X) = \text{ELBO} + \text{KL}(q(Z \mid X) \parallel p(Z \mid X))}$$
+$$
+\boxed{\log p(X) = \text{ELBO} + \text{KL}(q(Z \mid X) \parallel p(Z \mid X))}
+$$
 
 ---
 
@@ -174,7 +202,9 @@ $$
 $$
 
 所以：
-$$\log p(X) \geq \text{ELBO}$$
+$$
+\log p(X) \geq \text{ELBO}
+$$
 
 ---
 
@@ -194,7 +224,9 @@ $$
 
 最终得到标准 ELBO 公式：
 
-$$\boxed{\log p(X) \geq \mathbb{E}_{q(Z \mid X)}[\log p(X \mid Z)] - \text{KL}(q(Z \mid X) \parallel p(Z))}$$
+$$
+\boxed{\log p(X) \geq \mathbb{E}_{q(Z \mid X)}[\log p(X \mid Z)] - \text{KL}(q(Z \mid X) \parallel p(Z))}
+$$
 
 
 
@@ -207,7 +239,9 @@ $$\boxed{\log p(X) \geq \mathbb{E}_{q(Z \mid X)}[\log p(X \mid Z)] - \text{KL}(q
 
 ### 2. 近似质量由谁决定？
 从恒等式：
-$$\log p(X) = \text{ELBO} + \text{KL}(q \parallel p(Z \mid X))$$
+$$
+\log p(X) = \text{ELBO} + \text{KL}(q \parallel p(Z \mid X))
+$$
 
 - $\log p(X)$ 是**与 $q$ 无关的常数**（它就是真实数据似然）；
 - 因此 $\max_q \text{ELBO} \iff \min_q \text{KL}(q(Z \mid X) \parallel p(Z \mid X))$；

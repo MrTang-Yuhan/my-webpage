@@ -469,36 +469,50 @@ $$
 
 设：
 
-$$X = [1, 2, 3], \quad Y = [2, 4, 6]$$
+$$
+X = [1, 2, 3], \quad Y = [2, 4, 6]
+$$
 
 这里把 $X, Y$ 看作**离散均匀分布**的随机变量，每个值概率都是 $\frac{1}{3}$。则：
 
 
 
-$$\mathbb{E}[X] = \frac{1+2+3}{3} = \frac{6}{3} = 2$$
+$$
+\mathbb{E}[X] = \frac{1+2+3}{3} = \frac{6}{3} = 2
+$$
 
-$$\mathbb{E}[Y] = \frac{2+4+6}{3} = \frac{12}{3} = 4$$
+$$
+\mathbb{E}[Y] = \frac{2+4+6}{3} = \frac{12}{3} = 4
+$$
 
 计算方差 $\text{Var}(X)$：
 
-$$\text{Var}(X) = \mathbb{E}[(X - \mathbb{E}[X])^2] = \frac{1}{3}\sum_{i=1}^{3}(x_i - 2)^2$$
+$$
+\text{Var}(X) = \mathbb{E}[(X - \mathbb{E}[X])^2] = \frac{1}{3}\sum_{i=1}^{3}(x_i - 2)^2
+$$
 
 展开每一项：
 - $(1-2)^2 = (-1)^2 = 1$
 - $(2-2)^2 = 0^2 = 0$  
 - $(3-2)^2 = 1^2 = 1$
 
-$$\text{Var}(X) = \frac{1 + 0 + 1}{3} = \frac{2}{3}$$
+$$
+\text{Var}(X) = \frac{1 + 0 + 1}{3} = \frac{2}{3}
+$$
 
 计算方差 $\text{Var}(Y)$：
 
-$$\text{Var}(Y) = \frac{1}{3}\sum_{i=1}^{3}(y_i - 4)^2 = \frac{4 + 0 + 4}{3} = \frac{8}{3}$$
+$$
+\text{Var}(Y) = \frac{1}{3}\sum_{i=1}^{3}(y_i - 4)^2 = \frac{4 + 0 + 4}{3} = \frac{8}{3}
+$$
 
 
 
 计算协方差 $\text{Cov}(X,Y)$：
 
-$$\text{Cov}(X,Y) = \mathbb{E}[(X-\mathbb{E}[X])(Y-\mathbb{E}[Y])] = \frac{1}{3}\sum_{i=1}^{3}(x_i-2)(y_i-4) = \frac{2 + 0 + 2}{3} = \frac{4}{3}$$
+$$
+\text{Cov}(X,Y) = \mathbb{E}[(X-\mathbb{E}[X])(Y-\mathbb{E}[Y])] = \frac{1}{3}\sum_{i=1}^{3}(x_i-2)(y_i-4) = \frac{2 + 0 + 2}{3} = \frac{4}{3}
+$$
 
 故协方差矩阵为：
 
