@@ -1,5 +1,6 @@
 const markdownIt = require("markdown-it");
 const markdownItFootnote = require("markdown-it-footnote");
+const markdownItKatex = require("@vscode/markdown-it-katex").default;
 
 function escapeHtml(value) {
   return String(value)
@@ -59,6 +60,7 @@ module.exports = async function(eleventyConfig) {
     linkify: true
   })
     .use(markdownItFootnote)
+    .use(markdownItKatex, { throwOnError: false, strict: "ignore" })
     .use(await markdownItShiki({
       theme: "github-light",
       langs: ["cpp", "python", "bash", "makefile", "markdown"],

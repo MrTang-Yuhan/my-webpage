@@ -86,7 +86,6 @@
     <script src="https://cdn.jsdelivr.net/npm/markdown-it-footnote@4.0.0/dist/markdown-it-footnote.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/markdown-it-katex@2.0.3/dist/markdown-it-katex.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
     <script>window.CMS_MANUAL_INIT = true;</script>
     <script src="https://unpkg.com/decap-cms@^3.5.0/dist/decap-cms.js"></script>
     <script>
@@ -137,68 +136,7 @@
 
         const md = window.markdownit({ html: true, breaks: false, linkify: true });
         if (window.markdownitFootnote) md.use(window.markdownitFootnote);
-
-        function escapeHtml(value) {
-          return String(value)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-        }
-
-        function extractBlockMath(markdownText) {
-          const lines = String(markdownText || '').split(/\r?\n/);
-          const out = [];
-          const blocks = [];
-          let inFence = false;
-          let fenceMarker = '';
-
-          for (let i = 0; i < lines.length; i += 1) {
-            const line = lines[i];
-            const fenceMatch = line.match(/^[ \t]{0,3}(```+|~~~+)/);
-            if (fenceMatch) {
-              const marker = fenceMatch[1][0];
-              if (!inFence) {
-                inFence = true;
-                fenceMarker = marker;
-              } else if (marker === fenceMarker) {
-                inFence = false;
-                fenceMarker = '';
-              }
-              out.push(line);
-              continue;
-            }
-
-            if (!inFence && line.trim() === '$$') {
-              const mathLines = [];
-              let end = i + 1;
-              while (end < lines.length && lines[end].trim() !== '$$') {
-                mathLines.push(lines[end]);
-                end += 1;
-              }
-              if (end < lines.length) {
-                const token = '%%CMS_BLOCK_MATH_' + blocks.length + '%%';
-                blocks.push('<div class="math-block">$$\n' + escapeHtml(mathLines.join('\n')) + '\n$$</div>');
-                out.push(token);
-                i = end;
-                continue;
-              }
-            }
-
-            out.push(line);
-          }
-
-          return { markdown: out.join('\n'), blocks: blocks };
-        }
-
-        function renderMarkdownWithProtectedMath(markdownText) {
-          const extracted = extractBlockMath(markdownText);
-          let html = md.render(extracted.markdown);
-          extracted.blocks.forEach(function(block, index) {
-            const token = '%%CMS_BLOCK_MATH_' + index + '%%';
-            html = html.replace('<p>' + token + '</p>', block).replace(token, block);
-          });
-          return html;
-        }
+        if (window.markdownitKatex) md.use(window.markdownitKatex, { throwOnError: false, strict: 'ignore' });
 
         function normalizeFootnotes(html) {
           return html
@@ -280,7 +218,7 @@
           const tags = entry.getIn(['data', 'tags']) || [];
           const tagsArray = tags && typeof tags.toJS === 'function' ? tags.toJS() : (Array.isArray(tags) ? tags : []);
 
-          let bodyHtml = renderMarkdownWithProtectedMath(body);
+          let bodyHtml = md.render(String(body || ''));
           bodyHtml = normalizeFootnotes(bodyHtml);
 
           const tagsHtml = tagsArray
@@ -314,15 +252,6 @@
             if (!this._root) return;
             moveFootnotesNearRefs(this._root);
             fixPreviewImagePaths(this._root, this.props.entry);
-            if (typeof renderMathInElement === 'function') {
-              renderMathInElement(this._root, {
-                delimiters: [
-                  { left: '$$', right: '$$', display: true },
-                  { left: '$', right: '$', display: false }
-                ],
-                throwOnError: false
-              });
-            }
           },
           render: function () {
             const html = renderPreviewHtml(this.props.entry);

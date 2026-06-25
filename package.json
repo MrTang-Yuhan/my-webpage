@@ -6,7 +6,8 @@
     "start": "npx @11ty/eleventy --serve",
     "build": "npx @11ty/eleventy",
     "dev": "npx @11ty/eleventy --serve --watch",
-    "check:admin": "node scripts/admin-check.js"
+    "check:admin": "node scripts/admin-check.js",
+    "check:markdown": "node scripts/markdown-render-check.js"
   },
   "keywords": [
     "blog",
@@ -19,6 +20,7 @@
   "dependencies": {
     "@11ty/eleventy": "^3.1.5",
     "@shikijs/markdown-it": "^4.1.0",
+    "@vscode/markdown-it-katex": "^1.1.2",
     "katex": "^0.16.45",
     "markdown-it": "^14.1.1",
     "markdown-it-footnote": "^4.0.0",
