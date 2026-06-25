@@ -52,7 +52,7 @@ ReAct [30]、SayCan [1]、Toolformer [22]、HuggingGPT [23]、生成式智能体
 
 ### 2.2 Reflexion 的核心洞察
 
-本文提出了一种替代方案 Reflexion，它使用**语言强化（verbal reinforcement）** 来帮助智能体从先前的失败中学习。其核心机制可概括为：
+本文提出了一种替代方案 Reflexion，它使用 **语言强化（verbal reinforcement）** 来帮助智能体从先前的失败中学习。其核心机制可概括为：
 
 > **将环境的二元或标量反馈转换为文本摘要形式的语言反馈，然后将该反馈作为 LLM 智能体下一次试验的额外上下文。**
 
