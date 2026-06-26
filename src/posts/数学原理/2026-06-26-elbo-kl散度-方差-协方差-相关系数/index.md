@@ -130,7 +130,7 @@ $$\mathrm{Var}(X) = \mathbb{E}[X^2] - (\mathbb{E}[X])^2$$
 - **方差大** → 数据点分散，远离均值 → 不确定性高
 - **方差小** → 数据点聚集，靠近均值 → 确定性高
 
-![方差的几何直观：各数据点到均值的偏离程度](./fig_1_variance_geometry.png)
+![方差的几何直观：各数据点到均值的偏离程度](img/fig_1_variance_geometry.png)
 
 上图中，蓝色点是数据点 $x_i$，红色虚线是均值 $\mu$，紫色竖线表示每个点到均值的偏离 $(x_i - \mu)$，方差就是这些偏离的**平方的平均值**。浅蓝色区域表示 $\pm\sigma$（一个标准差）的范围，大约包含 68% 的数据（对于正态分布而言）。
 
@@ -271,7 +271,7 @@ $$\mathrm{Cov}(X, X) = \mathbb{E}[X^2] - (\mathbb{E}[X])^2 = \mathrm{Var}(X) = \
 | $\mathrm{Cov}(X, Y) < 0$ | 负相关：$X$ 增大时 $Y$ 倾向于减小 | 散点图呈左上到右下的趋势 |
 | $\mathrm{Cov}(X, Y) \approx 0$ | 无线性相关 | 散点图呈圆形或无明显趋势 |
 
-![协方差的三种典型情况](./fig_2_covariance_scenarios.png)
+![协方差的三种典型情况](img/fig_2_covariance_scenarios.png)
 
 上图中，左侧显示**正协方差**：当 $X$ 偏离均值的方向与 $Y$ 偏离均值的方向**相同**时（同为正或同为负），乘积 $(x_i - \mu_X)(y_i - \mu_Y)$ 为正，累加后协方差为正。中间显示**负协方差**：偏离方向**相反**。右侧显示**近似零协方差**：偏离无系统性关联。
 
@@ -451,7 +451,7 @@ $$\left|\frac{\mathrm{Cov}(X, Y)}{\sigma_X \sigma_Y}\right| \leq 1 \quad \Righta
 | $-1 < \rho \leq -0.7$ | 强负相关 |
 | $\rho = -1$ | 完全负线性相关（$Y = aX + b, a < 0$）|
 
-![相关系数：消除量纲后的相关性度量（范围 $[-1, 1]$）](./fig_3_correlation_coefficient.png)
+![相关系数：消除量纲后的相关性度量（范围 $[-1, 1]$）](img/fig_3_correlation_coefficient.png)
 
 上图展示了三种典型情况：强正相关（左，点紧密沿左上到右下对角线排列）、中等负相关（中，点呈反向趋势）、零相关（右，点无明确方向）。注意相关系数**只度量线性关系**，即使 $\rho = 0$，两个变量仍可能存在非线性关系（如抛物线关系）。
 
@@ -644,7 +644,7 @@ $$D_{KL}(Q \| P) = \log\frac{\sigma_P}{\sigma_Q} + \frac{\sigma_Q^2 + (\mu_Q - \
 
 KL散度的核心含义是**"用 $Q$ 近似 $P$ 时的信息损失"**。
 
-![KL散度的几何意义](./fig_4_kl_divergence_intuition.png)
+![KL散度的几何意义](img/fig_4_kl_divergence_intuition.png)
 
 左图中，蓝色曲线 $P(x)$ 是真实分布，红色曲线 $Q(x)$ 是近似分布。KL散度在 $P(x)$ 较大的区域（蓝色曲线的峰值附近）赋予更高权重。如果 $Q$ 在这些区域显著低于 $P$（即 $Q$ 未能覆盖 $P$ 的重要区域），KL散度会受到很大惩罚。右图展示了对数比率函数 $\log\frac{P(x)}{Q(x)}$ 的形状，当 $P > Q$ 时为正（蓝色区域），当 $P < Q$ 时为负（红色区域）。
 
@@ -786,7 +786,7 @@ $$\log P(x) = \log \mathbb{E}_{Q(z)}\left[\frac{P(x, z)}{Q(z)}\right] \geq \math
 
 **关键理解**：Jensen不等式将外部的对数"推入"了期望内部，这个操作产生了一个**下界**——因为凹函数的图像在弦的上方，函数值的期望不大于期望的函数值。
 
-![Jensen不等式与对数凹性：ELBO推导的核心数学工具](./fig_5_jensen_inequality.png)
+![Jensen不等式与对数凹性：ELBO推导的核心数学工具](img/fig_5_jensen_inequality.png)
 
 **左图**（凸函数 $f(x) = x^2$）：展示了Jensen不等式的几何意义——函数在割线下方，即 $f(\mathbb{E}[X]) \leq \mathbb{E}[f(X)]$。红色星号标记了 $\mathbb{E}[f(X)]$（函数值的期望），蓝色星号标记了 $f(\mathbb{E}[X])$（期望的函数值），前者恒大于等于后者。**右图**（对数函数）：展示了 $\log(x)$ 的凹性——凹函数位于其切线下方，即 $\log(x) \leq$ 切线。正是这一性质使得 $\log(\mathbb{E}[X]) \geq \mathbb{E}[\log X]$ 成立，从而构造出ELBO的下界。
 
@@ -870,7 +870,7 @@ $$\phi^* = \arg\max_{\phi} \mathcal{L}_{\phi}(x) = \arg\max_{\phi} \left\{ \math
 | $\mathbb{E}_{Q(z)}[\log P(x \mid z)]$ | **重构项** | 鼓励从 $z$ 重构 $x$ 的准确性 | "解码质量要好" |
 | $-D_{KL}(Q(z) \| P(z))$ | **正则化项** | 约束 $Q(z)$ 不偏离先验 $P(z)$ 太远 | "不要离先验太远" |
 
-![ELBO推导流程图（变分推断框架）](./fig_6_elbo_flowchart.png)
+![ELBO推导流程图（变分推断框架）](img/fig_6_elbo_flowchart.png)
 
 上图展示了ELBO推导的完整流程（Variatonal Inference Framework）：从目标 $\log P(x)$（对数边际似然）出发，经过四个步骤——(1) 引入隐变量 $z$ 将边际似然写为积分形式；(2) 引入变分分布 $Q(z)$ 作为后验的近似；(3) 应用Jensen不等式（利用 $\log$ 的凹性）构造下界；(4) 得到ELBO表达式并将其分解为**重构项**（Reconstruction Term，衡量解码质量）和**KL正则化项**（Regularization Term，约束 $Q$ 不偏离先验 $P(z)$ 太远）。
 
