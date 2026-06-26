@@ -274,7 +274,7 @@ $$E(\cdot) = \mathop{\arg\max}_{E'} \mathbb{E}_{(q, m^+, m^-) \sim \mathcal{D}} 
 
 **工程变形**：
 - 理论上是端到端训练的度量学习，工程上是**使用预训练编码器**（MiniLM/Text2vec）的零样本检索
-- 完整库遍历的复杂度为 $O(|\mathcal{M}| \cdot d)$，通过FAISS的**近似最近邻（ANN）**搜索降低到 $O(\log |\mathcal{M}|)$ 或更低
+- 完整库遍历的复杂度为 $O(|\mathcal{M}| \cdot d)$，通过FAISS的 **近似最近邻（ANN）**搜索降低到 $O(\log |\mathcal{M}|)$ 或更低
 - 编码器在初始化时加载，查询编码为 $O(|c| \cdot d^2)$，其中 $|c|$ 为上下文长度
 
 **代码库检索结论**：已检索到公开代码实现。双塔检索的完整实现位于 `memory_bank/memory_retrieval/local_doc_qa.py` 中：
