@@ -500,7 +500,7 @@ self.embeddings = HuggingFaceEmbeddings(
 
 ![图2 SiliconFriend心理咨询对话示例](img/fig2_psychological.png)
 
-**图2** SiliconFriend$_{\text{ChatGLM}}$在心理咨询场景中的对话示例。上图为SiliconFriend的回应，下图为基线ChatGLM的回应。
+**图2** SiliconFriend $_{\text{ChatGLM}}$ 在心理咨询场景中的对话示例。上图为SiliconFriend的回应，下图为基线ChatGLM的回应。
 
 如图2所示，当用户Zephyr表达失恋困扰时：
 - **基线ChatGLM**提供了通用性建议（"认识新朋友的方式有…"），缺乏情感共鸣
@@ -512,7 +512,7 @@ self.embeddings = HuggingFaceEmbeddings(
 
 ![图3 SiliconFriend记忆召回示例](img/fig3_memory_recall.png)
 
-**图3** SiliconFriend$_{\text{BELLE}}$的记忆召回示例。左侧为历史对话，右侧为当前对话中的记忆探针问题及回应。
+**图3** SiliconFriend $_{\text{BELLE}}$的记忆召回示例。左侧为历史对话，右侧为当前对话中的记忆探针问题及回应。
 
 如图3所示，用户在数天前讨论了编程学习建议（SiliconFriend推荐了《Automate the Boring Stuff with Python》并要求写quicksort代码）。数天后，用户提出三个探针问题：
 1. "You once recommend a book to me, what's its name?" → **正确召回**：书名准确
@@ -525,7 +525,7 @@ self.embeddings = HuggingFaceEmbeddings(
 
 ![图4 不同性格用户的个性化回应](img/fig4_personality.png)
 
-**图4** SiliconFriend$_{\text{ChatGPT}}$针对不同性格用户的个性化回应示例。左图为Linda（内向、坚定、有野心），右图为Emily（开放、好奇、有时自我怀疑）。
+**图4** SiliconFriend $_{\text{ChatGPT}}$ 针对不同性格用户的个性化回应示例。左图为Linda（内向、坚定、有野心），右图为Emily（开放、好奇、有时自我怀疑）。
 
 如图4所示，当两位用户都询问周末活动建议时：
 - **Linda**（内向、喜欢探索新文化和爱好）→ SiliconFriend推荐烹饪课（学习不同菜系）和博物馆/艺术展览（探索新文化）
@@ -573,25 +573,25 @@ self.embeddings = HuggingFaceEmbeddings(
 
 **结果分析**（原文§4.2 "Result Analysis"）：
 
-**发现1：SiliconFriend$_{\text{ChatGPT}}$综合表现最优**
+**发现1：SiliconFriend $_{\text{ChatGPT}}$综合表现最优**
 - 英文：检索准确率0.763，正确性0.716，连贯性0.912，排名0.818
 - 中文：检索准确率0.711，正确性0.655，连贯性0.675，排名0.758
 - 这一变体在所有指标上均领先，验证了MemoryBank框架配合强backbone模型的整体有效性
 
 **发现2：开源模型变体检索准确率较高，其他指标较弱**
-- SiliconFriend$_{\text{BELLE}}$和SiliconFriend$_{\text{ChatGLM}}$在检索准确率上表现突出（英文0.814/0.809，中文0.856/0.84）
+- SiliconFriend $_{\text{BELLE}}$和SiliconFriend $_{\text{ChatGLM}}$在检索准确率上表现突出（英文0.814/0.809，中文0.856/0.84）
 - 这表明MemoryBank的检索机制**本身具有良好的通用性**，不依赖于特定backbone
 - 但在正确性和连贯性上落后，这可能归因于BELLE和ChatGLM作为base model的整体能力弱于ChatGPT
 
 **发现3：语言差异**
-- SiliconFriend$_{\text{ChatGLM}}$和SiliconFriend$_{\text{ChatGPT}}$在英文上表现更好
-- SiliconFriend$_{\text{BELLE}}$在中文上表现更好
+- SiliconFriend $_{\text{ChatGLM}}$和SiliconFriend $_{\text{ChatGPT}}$在英文上表现更好
+- SiliconFriend $_{\text{BELLE}}$在中文上表现更好
 - 这与各模型的训练数据分布一致：ChatGLM和ChatGPT的中英文能力较均衡但整体更强于英文；BELLE专门针对中文进行了优化
 
 > **【我的思考】**
 > 
 > **系统可行性分析**：
-> 定量实验揭示了一个重要的系统工程权衡：检索准确率（Retrieval Acc.）与回应正确性（Correctness）之间存在**显著差距**。以SiliconFriend$_{\text{ChatGLM}}$（英文）为例，检索准确率高达0.809，但正确性仅0.438。这说明即使检索到了相关记忆，**LLM也不一定能从中提取出正确答案**。这一现象在工程实践中被称为"检索-生成鸿沟"（Retrieval-Generation Gap），其根本原因在于：
+> 定量实验揭示了一个重要的系统工程权衡：检索准确率（Retrieval Acc.）与回应正确性（Correctness）之间存在**显著差距**。以SiliconFriend $_{\text{ChatGLM}}$（英文）为例，检索准确率高达0.809，但正确性仅0.438。这说明即使检索到了相关记忆，**LLM也不一定能从中提取出正确答案**。这一现象在工程实践中被称为"检索-生成鸿沟"（Retrieval-Generation Gap），其根本原因在于：
 > - 检索返回的是原始对话片段，而非结构化知识
 > - LLM需要在生成过程中"理解"这些片段并回答特定问题
 > - 弱backbone的上下文理解和推理能力有限
