@@ -42,7 +42,7 @@ tags:
 
 MemoryBank是一个**三层架构**的统一记忆机制（如图1所示）：
 
-![图1 MemoryBank整体架构概览](images/fig1_overview.png)
+![图1 MemoryBank整体架构概览](img/fig1_overview.png)
 
 **图1** MemoryBank整体架构。左侧MemoryBank包含记忆存储（Memory Storage）和记忆更新（Memory Updating），右侧SiliconFriend利用检索到的记忆生成增强提示。
 
@@ -498,7 +498,7 @@ self.embeddings = HuggingFaceEmbeddings(
 
 #### 4.1.1 心理咨询陪伴能力
 
-![图2 SiliconFriend心理咨询对话示例](images/fig2_psychological.png)
+![图2 SiliconFriend心理咨询对话示例](img/fig2_psychological.png)
 
 **图2** SiliconFriend$_{\text{ChatGLM}}$在心理咨询场景中的对话示例。上图为SiliconFriend的回应，下图为基线ChatGLM的回应。
 
@@ -510,7 +510,7 @@ self.embeddings = HuggingFaceEmbeddings(
 
 #### 4.1.2 记忆召回能力
 
-![图3 SiliconFriend记忆召回示例](images/fig3_memory_recall.png)
+![图3 SiliconFriend记忆召回示例](img/fig3_memory_recall.png)
 
 **图3** SiliconFriend$_{\text{BELLE}}$的记忆召回示例。左侧为历史对话，右侧为当前对话中的记忆探针问题及回应。
 
@@ -523,7 +523,7 @@ self.embeddings = HuggingFaceEmbeddings(
 
 #### 4.1.3 性格交互与个性化
 
-![图4 不同性格用户的个性化回应](images/fig4_personality.png)
+![图4 不同性格用户的个性化回应](img/fig4_personality.png)
 
 **图4** SiliconFriend$_{\text{ChatGPT}}$针对不同性格用户的个性化回应示例。左图为Linda（内向、坚定、有野心），右图为Emily（开放、好奇、有时自我怀疑）。
 
@@ -545,7 +545,7 @@ self.embeddings = HuggingFaceEmbeddings(
 - **语言覆盖**：同时构建英文和中文版本
 - **探针问题**：人工编写194个问题（97英文 + 97中文），用于测试模型是否能准确回忆相关记忆
 
-![表1 记忆片段与探针问题示例](images/table1_example.png)
+![表1 记忆片段与探针问题示例](img/table1_example.png)
 
 **表1** 记忆库中一条记忆片段（5月3日）及其对应的探针问题（5月10日）示例，以及三种SiliconFriend变体的输出对比。
 
@@ -567,7 +567,7 @@ self.embeddings = HuggingFaceEmbeddings(
 
 #### 4.2.3 实验结果
 
-![表2 定量分析结果](images/table2_results.png)
+![表2 定量分析结果](img/table2_results.png)
 
 **表2** 定量分析结果。对比了三种SiliconFriend变体在英文和中文测试集上的表现。
 
