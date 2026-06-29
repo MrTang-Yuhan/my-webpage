@@ -36,6 +36,8 @@ set tags=./tags;,tags;    "自动在当前目录及上级目录递归查找 tags
 set ignorecase            "搜索时忽略大小写（间接改善 ctag 查找体验）
 
 
+nnoremap <F4> :echo expand('%:p')<CR>  "按 F4 显示当前查看文件的完整路径
+
 ```
 
 # tmux 配置
