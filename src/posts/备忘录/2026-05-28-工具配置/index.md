@@ -30,6 +30,12 @@ set noundofile
 
 syntax on        "启用语法高亮
 set showmatch    "匹配括号高亮
+
+
+set tags=./tags;,tags;    "自动在当前目录及上级目录递归查找 tags 文件
+set ignorecase            "搜索时忽略大小写（间接改善 ctag 查找体验）
+
+
 ```
 
 # tmux 配置
