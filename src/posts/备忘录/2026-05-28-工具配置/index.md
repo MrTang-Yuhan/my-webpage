@@ -28,6 +28,8 @@ set noswapfile
 set nowritebackup
 set noundofile
 
+syntax on        "启用语法高亮
+set showmatch    "匹配括号高亮
 ```
 
 # tmux 配置
