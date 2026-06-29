@@ -17,6 +17,7 @@ set number
 set relativenumber
 set smartindent
 set autoindent
+set backspace=indent,eol,start "删除自动缩进产生的空白，换行符，删除本次插入开始之前已有的内容
 set smarttab
 set tabstop=4
 set shiftwidth=4
@@ -31,12 +32,11 @@ set noundofile
 syntax on        "启用语法高亮
 set showmatch    "匹配括号高亮
 
+set tags=./tags;,tags; "自动在当前目录及上级目录递归查找 tags 文件
+set ignorecase         "搜索时忽略大小写（间接改善 ctag 查找体验）
+set previewheight=20   "设置预览窗口默认高度为 15 行
 
-set tags=./tags;,tags;    "自动在当前目录及上级目录递归查找 tags 文件
-set ignorecase            "搜索时忽略大小写（间接改善 ctag 查找体验）
-
-
-nnoremap <F4> :echo expand('%:p')<CR>  "按 F4 显示当前查看文件的完整路径
+nnoremap <F4> :echo expand('%:p')<CR> 按 F4 显示完整路径
 
 ```
 
