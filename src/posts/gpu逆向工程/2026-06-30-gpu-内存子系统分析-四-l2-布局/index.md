@@ -11,6 +11,7 @@ tags:
 
 在 [Blackwell GPU Architecture](https://www.emergentmind.com/topics/blackwell-gpu-architecture) 和 [Dissecting the NVIDIA Blackwell Architecture with Microbenchmarks](https://arxiv.org/html/2507.10789v2) 中都提到 GB203，也就是 RTX 5080 GPU 的芯片型号下，L2 缓存是一个 monilithic cache。
 
+---
 
 # Non-Uniform L2 Cache Latency Across the Streaming Multiprocessors of an NVIDIA L40
 
@@ -25,3 +26,4 @@ tags:
 
 ---
 
+> 我知道 SM 的位置，又能做什么呢？
