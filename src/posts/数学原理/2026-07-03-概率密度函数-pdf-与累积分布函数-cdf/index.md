@@ -160,7 +160,7 @@ $$
 
 整理即得 $P(a < X \leq b) = F_X(b) - F_X(a)$。
 
-![CDF的几何意义：左图展示PDF下从负无穷到a的面积即为F(a)；中图展示CDF曲线本身；右图展示CDF的四大关键性质](./fig_2_cdf_geometric_meaning.png)
+![CDF的几何意义：左图展示PDF下从负无穷到a的面积即为F(a)；中图展示CDF曲线本身；右图展示CDF的四大关键性质](img/fig_2_cdf_geometric_meaning.png)
 
 > **【小例子：CDF 计算区间概率】**
 > 标准正态分布中，$F_X(0) = 0.5$，$F_X(1) \approx 0.841$。则 $P(0 < X \leq 1) = F_X(1) - F_X(0) = 0.841 - 0.5 = 0.341$。即 $X$ 落在 $(0, 1]$ 区间内的概率约为 $34.1\%$。
@@ -253,7 +253,7 @@ $$
 > **【小例子：密度 vs 概率】**
 > 设 $X \sim \mathcal{N}(0, 1)$，则 $f_X(0) = \frac{1}{\sqrt{2\pi}} \approx 0.399$。这**不是** $P(X = 0)$（实际上 $P(X = 0) = 0$），而是说在 $0$ 附近一个极窄区间 $[-0.001, 0.001]$ 内，概率约为 $f_X(0) \times 0.002 \approx 0.399 \times 0.002 \approx 0.0008$。
 
-![从离散PMF到连续PDF的过渡：左图为离散PMF柱状图，中图为更密集的离散点，右图为连续PDF曲线。注意在连续情况下，曲线高度不等于概率，曲线下方面积才是概率](./fig_1_pmf_to_pdf_transition.png)
+![从离散PMF到连续PDF的过渡：左图为离散PMF柱状图，中图为更密集的离散点，右图为连续PDF曲线。注意在连续情况下，曲线高度不等于概率，曲线下方面积才是概率](img/fig_1_pmf_to_pdf_transition.png)
 
 ---
 
@@ -299,7 +299,7 @@ $$
 \int_{a}^{b} f_X(x) \, dx = \int_{-\infty}^{b} f_X(x) \, dx - \int_{-\infty}^{a} f_X(x) \, dx = F_X(b) - F_X(a)
 $$
 
-![PDF与CDF的微积分关系：左上展示PDF和CDF同轴对比；右上展示PDF等于CDF的导数（数值验证）；左下展示CDF等于PDF的积分（数值验证）；右下展示区间概率P(a<=X<=b)=F(b)-F(a)的几何解释](./fig_3_pdf_cdf_calculus_relation.png)
+![PDF与CDF的微积分关系：左上展示PDF和CDF同轴对比；右上展示PDF等于CDF的导数（数值验证）；左下展示CDF等于PDF的积分（数值验证）；右下展示区间概率P(a<=X<=b)=F(b)-F(a)的几何解释](img/fig_3_pdf_cdf_calculus_relation.png)
 
 > **【小例子：PDF-CDF 互推】**
 > 设指数分布的 CDF 为 $F_X(x) = 1 - e^{-\lambda x}$（$x \geq 0$），则其 PDF 为：
@@ -310,7 +310,7 @@ $$
 
 ## 六、典型连续分布的 PDF 与 CDF 实例
 
-![六种常见概率分布的PDF（蓝色实线）和CDF（绿色虚线）对比：正态分布、柯西分布、指数分布、均匀分布、拉普拉斯分布、逻辑分布](./fig_4_common_distributions.png)
+![六种常见概率分布的PDF（蓝色实线）和CDF（绿色虚线）对比：正态分布、柯西分布、指数分布、均匀分布、拉普拉斯分布、逻辑分布](img/fig_4_common_distributions.png)
 
 ### 6.1 正态（高斯）分布 $\mathcal{N}(\mu, \sigma^2)$
 
