@@ -111,7 +111,7 @@ $$
 
 ---
 
-![自相关函数的几何直观：移位 × 相乘 × 积分](./fig_1_shift_multiply_integrate.png)
+![自相关函数的几何直观：移位 × 相乘 × 积分](img/fig_1_shift_multiply_integrate.png)
 
 **图 1**：自相关函数的三步几何操作——(1) 原始信号 $x(t) = \sin(t)$；(2) 将其延迟 $\tau = \pi/2$ 得到 $x(t-\tau)$；(3) 两信号逐点相乘（绿色为正，红色为负）；(4) 对乘积积分得到 $R_{xx}(\tau)$，即曲线下净面积。当两信号正交时（如 $\sin$ 与 $\cos$），正负面积完全抵消，$R_{xx}(\pi/2) = 0$。
 
@@ -134,7 +134,7 @@ $$
 > - 固定 $\omega$（即固定 $A$ 和 $\Theta$ 的具体取值）：$X(t)$ 是一条确定的余弦曲线。
 > 这个随机过程描述了"振幅和相位都随机"的一类正弦信号。
 
-![随机过程的样本函数集合与固定时刻的分布](./fig_2_wss_process_ensemble.png)
+![随机过程的样本函数集合与固定时刻的分布](img/fig_2_wss_process_ensemble.png)
 
 **图 2**：(a) 同一个随机过程的 5 条样本函数 $x^{(\omega_i)}(t)$，每次实验（每个 $\omega_i$）得到不同的实现；(b) 在固定时刻 $t_1, t_2, t_3$ 处，所有样本的取值构成一个概率分布（直方图），虚线表示期望值 $\mathbb{E}[X(t_i)]$。
 
@@ -361,7 +361,7 @@ $$
 
 ---
 
-![典型自相关函数的形状与核心性质](./fig_3_autocorr_exponential_decay.png)
+![典型自相关函数的形状与核心性质](img/fig_3_autocorr_exponential_decay.png)
 
 **图 3**：(a) 四种典型自相关函数的形状——指数衰减（一阶马尔可夫过程）、高斯型（平滑过程）、三角型（有限记忆）、带限 sinc 型（理想低通）；(b) 自相关函数的三大核心性质——最大值在原点 $R_{xx}(0) = \sigma^2 + \mu^2$、偶函数对称性 $R_{xx}(-\tau) = R_{xx}(\tau)$、以及当 $|\tau| \to \infty$ 时的衰减趋势。
 
@@ -424,7 +424,7 @@ $$
 
 ---
 
-![Wiener-Khinchin 定理的时域-频域对偶关系](./fig_4_wiener_khinchin_duality.png)
+![Wiener-Khinchin 定理的时域-频域对偶关系](img/fig_4_wiener_khinchin_duality.png)
 
 **图 4**：(a) 时域中的随机信号 $x(t)$；(b) 其自相关函数 $R_{xx}(\tau)$（时域中呈指数衰减）；(c) 功率谱密度 $S_{xx}(f)$（频域中的洛伦兹型分布）；(d) Wiener-Khinchin 定理的框图表示：时域信号 $x(t)$ 经傅里叶变换（FT）得频域表示 $X(f)$；时域自相关 $R_{xx}(\tau)$ 经傅里叶变换得功率谱密度 $S_{xx}(f)$，二者互为傅里叶变换对。
 
