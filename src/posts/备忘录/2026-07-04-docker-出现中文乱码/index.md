@@ -18,7 +18,7 @@ apt install -y locales fonts-wqy-zenhei fonts-noto-cjk
 # 2. 生成 UTF-8 locale
 locale-gen zh_CN.UTF-8 en_US.UTF-8
 
-# 3. 设置环境变量（最好导入~/.bashrc，否则容器重启后失效，需重新执行）
+# 3. 设置环境遍历：vim ~/.bashrc，进行如下配置
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
 
@@ -26,3 +26,4 @@ export LC_ALL=en_US.UTF-8
 fc-cache -fv
 ```
 
+重启容器即可。
