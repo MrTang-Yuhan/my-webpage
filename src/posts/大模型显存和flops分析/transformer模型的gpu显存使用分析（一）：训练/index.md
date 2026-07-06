@@ -184,6 +184,7 @@ $$
 另外注意，ZeRO 还可以通过 **ZeRO-R** 在数据并行进程上对激活值进行分区。这会使上面的激活值内存项除以张量并行度 $t$。更多细节请阅读相关的 [ZeRO 论文](https://arxiv.org/abs/1910.02054) 和 [配置选项](https://www.deepspeed.ai/docs/config-json/#activation-checkpointing)（在 GPT-NeoX 中，对应的是 **partition_activations** 标志）。如果你正在训练一个超大模型，你可能希望用一些内存开销换取额外的通信成本，此时激活值会成为瓶颈。以下是将 ZeRO-R 与 ZeRO-1 结合使用的示例：
 
 <div style="overflow-x: auto;">
+
 $$
 \text{Total Memory}_{\text{Training}} \approx \text{Model Memory} + \frac{\text{Optimizer Memory}}{\text{(GPU 数量)}} + \text{Activation Memory} + \text{Gradient Memory}
 $$
@@ -235,6 +236,7 @@ $$
 将所有这些综合起来，对于一个典型的使用激活分区的 3D 并行 ZeRO-1 运行：
 
 <div style="overflow-x: auto;">
+
 $$
 \text{Total Memory}_\text{Training} \approx \frac{\text{Model Memory}}{\text{Pipe-Parallel-Size} + \text{Tensor-Parallel-Size}} + \frac{\text{Optimizer Memory}}{\text{GPU 数量}} + \frac{\text{Activation Memory}}{\text{Tensor-Parallel-Size}} + \frac{\text{Gradient Memory}}{\text{Pipe-Parallel-Size}}
 $$
