@@ -236,6 +236,7 @@ $$
 将所有这些综合起来，对于一个典型的使用激活分区的 3D 并行 ZeRO-1 运行：
 
 <div style="overflow-x: auto;">
+
 $$
 \text{Total Memory}_\text{Training} \approx \frac{\text{Model Memory}}{\text{Pipe-Parallel-Size} + \text{Tensor-Parallel-Size}} + \frac{\text{Optimizer Memory}}{\text{GPU 数量}} + \frac{\text{Activation Memory}}{\text{Tensor-Parallel-Size}} + \frac{\text{Gradient Memory}}{\text{Pipe-Parallel-Size}}
 $$
