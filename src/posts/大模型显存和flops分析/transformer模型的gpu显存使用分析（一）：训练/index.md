@@ -174,8 +174,19 @@ $$
 按照这篇博文的术语（假设使用混合精度和 Adam 优化器）：
 
 * 对于 ZeRO-1：
+$$
+\begin{align*}\text{Total Memory}_{\text{Training}}\approx\text{memory}_{\text{model}}+\frac{\text{memory}_{\text{optimizer}}}{(\text{\#GPUs})}+\text{memory}_{\text{activations}}+\text{memory}_{\text{gradients}}\end{align*}
+$$
+
 * 对于 ZeRO-2：
+$$
+\begin{align*}\text{Total Memory}_{\text{Training}}\approx\text{memory}_{\text{model}}+\text{memory}_{\text{activations}}+\frac{\text{memory}_{\text{optimizer}}+\text{memory}_{\text{gradients}}}{(\text{\#GPUs})}\end{align*}
+$$
+
 * 对于 ZeRO-3：
+$$
+\begin{align*}\text{Total Memory}_{\text{Training}}\approx \text{memory}_{\text{activations}}+\frac{\text{memory}_{\text{model}}+\text{memory}_{\text{optimizer}}+\text{memory}_{\text{gradients}}}{(\text{\#GPUs})} + \text{(ZeRO-3 Live Params)}\end{align*}
+$$
 
 其中，数据并行度（DP Degree）在未使用流水线并行和/或张量并行时即为 GPU 数量。详细信息请参见[分片优化器和3D 并行](https://www.notion.so/Sharded-Optimizers-3D-Parallelism-9c476d020d7641a299fb6be6ae82e9f8)部分。
 
