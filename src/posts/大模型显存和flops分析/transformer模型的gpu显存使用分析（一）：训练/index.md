@@ -155,8 +155,9 @@ $$
 因此，对于“这个模型能放进去训练吗”这个问题的一个良好启发式答案是：
 
 <div style="overflow-x: auto;">
-$$
-\text{Total Memory}_{\text{Training}} = \text{Model Memory} + \text{Optimizer Memory} + \text{Activation Memory} + \text{Gradient Memory}
+
+$$ 
+\text{Total Memory}_{\text{Training}} = \text{Model Memory} + \text{Optimizer Memory} + \text{Activation Memory} + \text{Gradient Memory} 
 $$
 </div>
 
