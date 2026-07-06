@@ -120,15 +120,17 @@ Adam 很神奇，但它的内存效率非常低。除了需要保存模型参数
 存储 Transformer 模型激活值所需内存的基本公式如下：
 
 $$
-\text{memory}_{\text{No Recomputation activations}} = \text{sbh}L\left(10 + \frac{24}{t} + 5\frac{a \cdot s}{h \cdot t}\right) \text{ bytes}
+\begin{align*}\text{memory}^{\text{No Recomputation}}_{\text{activations}}=sbhL(10+\frac{24}{t}+5\frac{a \cdot s}{h\cdot t}) \text{ bytes}\end{align*}
 $$
 
 $$
-\text{memory}_{\text{Selective Recomputation activations}} = \text{sbh}L\left(10 + \frac{24}{t}\right) \text{ bytes}
+
+\begin{align*}\text{memory}^{\text{Selective Recomputation}}_{\text{activations}}=sbhL(10+\frac{24}{t}) \text{ bytes}\end{align*}
 $$
 
 $$
-\text{memory}_{\text{Full Recomputation activations}} = 2 \cdot \text{sbhL} \text{ bytes}
+
+\begin{align*}\text{memory}^{\text{Full Recomputation}}_{\text{activations}}=2 \cdot sbhL \text{ bytes}\end{align*}
 $$ 
 [^2]
 
@@ -210,11 +212,12 @@ $$
 **流水线并行或张量/模型并行：** 这些并行方案将模型的参数拆分到多个 GPU 上。这类方案需要大量的通信开销，但它们减少内存的效果近似为：
 
 $$
-\text{memory}_{\text{w/ parallelism model}} \approx \frac{\text{Model Memory}}{\text{Pipe-Parallel-Size} \times \text{Tensor-Parallel-Size}}
+
+\begin{align*}\text{memory}^{\text{No Recomputation}}_{\text{activations}}=sbhL(10+\frac{24}{t}+5\frac{a \cdot s}{h\cdot t}) \text{ bytes}\end{align*}
 $$
 
 $$
-\text{memory}_{\text{w/ parallelism gradients}} \approx \frac{\text{Gradient Memory}}{\text{Pipe-Parallel-Size}}
+\begin{align*}\text{memory}^{\text{w/ parallelism}}_{\text{gradients}}\approx\frac{\text{memory}_{\text{gradients}}}{\text{(Pipe-Parallel-Size})}\end{align*}
 $$
 [^4]
 
