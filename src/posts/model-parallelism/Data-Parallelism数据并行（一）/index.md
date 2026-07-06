@@ -1,15 +1,15 @@
 ---
 layout: post.njk
 post_id: Data-Parallelism数据并行（一）
-title: "Data-Parallelism数据并行（一）"
+archive: model-parallelism
+title: Data-Parallelism数据并行（一）
 date: 2026-05-03
-description: "Model Parallelism 之 Data Parallelism: Naive Data Parallelism, Distributed Data Parallelism (DDP), ZeRO Data Parallelism"
+description: "Model Parallelism 之 Data Parallelism: Naive Data Parallelism,
+  Distributed Data Parallelism (DDP), ZeRO Data Parallelism"
 tags:
   - post
   - data parallelism
   - model parallelism
-
-archive: model-parallelism
 ---
 
 
@@ -208,7 +208,7 @@ ZeRO 一共有三个级别，分别对应 Model States 不同程度的分割（P
 
     ![(https://www.cnblogs.com/whiteBear/p/18341975)](./img/zero-dp-5.png)
 
-3. 使用 3 -stage 策略，将 OPG 和数据都进行拆分放在 4 张卡上
+3. 使用 3 -stage 策略，将 OPG（优化器状态、模型参数和梯度三者简称 OPG） 和数据都进行拆分放在 4 张卡上
 
     ![(https://www.cnblogs.com/whiteBear/p/18341975)](./img/zero-dp-6.png)
 
