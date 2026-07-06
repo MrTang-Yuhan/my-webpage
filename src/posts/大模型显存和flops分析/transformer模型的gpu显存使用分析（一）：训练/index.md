@@ -120,15 +120,17 @@ Adam 很神奇，但它的内存效率非常低。除了需要保存模型参数
 存储 Transformer 模型激活值所需内存的基本公式如下：
 
 $$
-\text{memory}_{\text{No Recomputation activations}} = \text{sbh}L\left(10 + \frac{24}{t} + 5\frac{a \cdot s}{h \cdot t}\right) \text{ bytes}
+\begin{align*}\text{memory}^{\text{No Recomputation}}_{\text{activations}}=sbhL(10+\frac{24}{t}+5\frac{a \cdot s}{h\cdot t}) \text{ bytes}\end{align*}
 $$
 
 $$
-\text{memory}_{\text{Selective Recomputation activations}} = \text{sbh}L\left(10 + \frac{24}{t}\right) \text{ bytes}
+
+\begin{align*}\text{memory}^{\text{Selective Recomputation}}_{\text{activations}}=sbhL(10+\frac{24}{t}) \text{ bytes}\end{align*}
 $$
 
 $$
-\text{memory}_{\text{Full Recomputation activations}} = 2 \cdot \text{sbhL} \text{ bytes}
+
+\begin{align*}\text{memory}^{\text{Full Recomputation}}_{\text{activations}}=2 \cdot sbhL \text{ bytes}\end{align*}
 $$ 
 [^2]
 
@@ -174,8 +176,19 @@ $$
 按照这篇博文的术语（假设使用混合精度和 Adam 优化器）：
 
 * 对于 ZeRO-1：
+$$
+\begin{align*}\text{Total Memory}_{\text{Training}}\approx\text{memory}_{\text{model}}+\frac{\text{memory}_{\text{optimizer}}}{(\text{\#GPUs})}+\text{memory}_{\text{activations}}+\text{memory}_{\text{gradients}}\end{align*}
+$$
+
 * 对于 ZeRO-2：
+$$
+\begin{align*}\text{Total Memory}_{\text{Training}}\approx\text{memory}_{\text{model}}+\text{memory}_{\text{activations}}+\frac{\text{memory}_{\text{optimizer}}+\text{memory}_{\text{gradients}}}{(\text{\#GPUs})}\end{align*}
+$$
+
 * 对于 ZeRO-3：
+$$
+\begin{align*}\text{Total Memory}_{\text{Training}}\approx \text{memory}_{\text{activations}}+\frac{\text{memory}_{\text{model}}+\text{memory}_{\text{optimizer}}+\text{memory}_{\text{gradients}}}{(\text{\#GPUs})} + \text{(ZeRO-3 Live Params)}\end{align*}
+$$
 
 其中，数据并行度（DP Degree）在未使用流水线并行和/或张量并行时即为 GPU 数量。详细信息请参见[分片优化器和3D 并行](https://www.notion.so/Sharded-Optimizers-3D-Parallelism-9c476d020d7641a299fb6be6ae82e9f8)部分。
 
@@ -199,11 +212,12 @@ $$
 **流水线并行或张量/模型并行：** 这些并行方案将模型的参数拆分到多个 GPU 上。这类方案需要大量的通信开销，但它们减少内存的效果近似为：
 
 $$
-\text{memory}_{\text{w/ parallelism model}} \approx \frac{\text{Model Memory}}{\text{Pipe-Parallel-Size} \times \text{Tensor-Parallel-Size}}
+
+\begin{align*}\text{memory}^{\text{No Recomputation}}_{\text{activations}}=sbhL(10+\frac{24}{t}+5\frac{a \cdot s}{h\cdot t}) \text{ bytes}\end{align*}
 $$
 
 $$
-\text{memory}_{\text{w/ parallelism gradients}} \approx \frac{\text{Gradient Memory}}{\text{Pipe-Parallel-Size}}
+\begin{align*}\text{memory}^{\text{w/ parallelism}}_{\text{gradients}}\approx\frac{\text{memory}_{\text{gradients}}}{\text{(Pipe-Parallel-Size})}\end{align*}
 $$
 [^4]
 
