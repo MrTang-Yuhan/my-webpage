@@ -82,10 +82,8 @@ $$
 
 很方便的是，和的梯度等于各分项梯度的和。因此，我们可以在每台机器上独立计算样本的梯度，然后在更新权重之前将它们累加起来。[^9] 同步之后，我们希望每个节点上的梯度都是一样的：
 
-
-
 $$
-\nabla W^{\text{sync'd}} = \frac{1}{\text{\\#Nodes}} \sum_{i=0}^{\text{\\#Nodes}} \nabla W_i^{\text{local}}
+\nabla W^{\text{sync'd}} = \frac{1}{\text{\#Nodes}} \sum_{i=0}^{\text{\#Nodes}} \nabla W_i^{\text{local}}
 $$
 
 同步完成后，我们就可以进行权重更新并更新优化器状态。将分布式梯度累加并使每个节点都拿到这个累加和，是通过 `MPI.AllReduce` 操作实现的。[^10]
@@ -102,11 +100,11 @@ $$
 
 
 
-- **带宽**：使用 Ring AllReduce 时，每个节点需要与其两个环邻居之间传输 $2(\\#nodes - 1)\frac{\\#params}{\\#nodes}$ 个浮点数。当 $\\#nodes$ 足够多时，这个公式等同于 $2\\#params$。此外，Ring AllReduce 在带宽上是最优的，意味着没有其他方法可以用更少的数据传输完成同样的任务。[^13]
+- **带宽**：使用 Ring AllReduce 时，每个节点需要与其两个环邻居之间传输 $2(\#nodes - 1)\frac{\#params}{\#nodes}$ 个浮点数。当 $\#nodes$ 足够多时，这个公式等同于 $2\#params$。此外，Ring AllReduce 在带宽上是最优的，意味着没有其他方法可以用更少的数据传输完成同样的任务。[^13]
 
 
 
-- **延迟**：同样对于 Ring AllReduce，我们需要执行 $\\#nodes-1$ 步的 `MPI.ReduceScatter` 和 $\\#nodes-1$ 步的 `MPI.AllGather`。这意味着虽然增加节点数不会增加数据传输量，但会线性增加通信轮数。这对整体运行时间的影响取决于节点之间的延迟。
+- **延迟**：同样对于 Ring AllReduce，我们需要执行 $\#nodes-1$ 步的 `MPI.ReduceScatter` 和 $\#nodes-1$ 步的 `MPI.AllGather`。这意味着虽然增加节点数不会增加数据传输量，但会线性增加通信轮数。这对整体运行时间的影响取决于节点之间的延迟。
 
 下面我们可以直观地看到 AllReduce 是如何使用的。当梯度计算完成后，使用 `MPI.Communicator` 中的所有节点执行 AllReduce。
 
@@ -217,7 +215,7 @@ def wait_for_comms(params):
 
 
 $$
-\mathrm{batchsize} \cdot \sum_{i \in \\#layers} \mathrm{input\\_size}_i
+\mathrm{batchsize} \cdot \sum_{i \in \#layers} \mathrm{input\_size}_i
 $$
 
 
