@@ -1,7 +1,7 @@
 ---
 layout: post.njk
-archive: 大模型显存和flops分析
 post_id: transformer模型的gpu显存使用分析（二）：推理
+archive: 大模型显存和flops分析
 title: Transformer 模型 GPU 显存分析（二）：推理
 date: 2026-05-11
 description: transformer 模型的 GPU 显存使用分析：推理阶段分析
@@ -476,7 +476,7 @@ V_cache: [B, n_head, T_c, d_head]
 ```
 
 
-由于 `d_model = n_head - d_head`，所以每层 KV cache 元素数：
+由于 `d_model = n_head * d_head`，所以每层 KV cache 元素数：
 
 
 $2 \times B \times T_c \times d_{model}$
