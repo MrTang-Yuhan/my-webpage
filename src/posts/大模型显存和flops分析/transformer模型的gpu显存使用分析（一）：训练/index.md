@@ -1,7 +1,7 @@
 ---
 layout: post.njk
-archive: 大模型显存和flops分析
 post_id: transformer模型的gpu显存使用分析（一）：训练
+archive: 大模型显存和flops分析
 title: Transformer 模型 GPU 显存分析（一）：训练
 date: 2026-05-03
 description: transformer 模型的 GPU 显存使用分析：训练阶段分析
@@ -37,7 +37,7 @@ $$
 这里有必要讨论一下 $C$ 的单位。$C$ 是总计算量的度量，可以用多种单位来衡量，例如：
 
 * FLOP-秒，单位为 $\frac{\text{浮点运算次数}}{\text{秒}} \times \text{秒}$
-* GPU-小时，单位为 $\[\text{GPU 数量}] \times \[\text{小时}]$
+* GPU-小时，单位为 $\text{GPU 数量} \times \text{小时}$
 * 缩放定律论文通常以 PetaFLOP-天 为单位，即 $10^{15} \times 24 \times 3600$ 次总浮点运算
 
 一个值得记住的有用区别是 **实际 FLOPS** 这一概念。虽然 GPU 加速器的白皮书通常会宣传它们的理论 FLOPS，但在实际中（尤其是在分布式环境下）这些数值从未被达到。在下面的“计算成本”部分中，会报告一些在分布式训练环境中常见的 **实际 FLOPS** 数值。
