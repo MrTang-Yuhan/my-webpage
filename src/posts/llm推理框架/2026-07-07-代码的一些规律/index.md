@@ -23,3 +23,9 @@ $$\text{shape}\left(\frac{\partial L}{\partial x}\right) \equiv \text{shape}(x)$
 - 标量损失 $L$ 是一个**数值**，对张量 $x$ 的每个元素 $x_i$ 求偏导 $\frac{\partial L}{\partial x_i}$，结果自然与 $x$ 同形。
 - 自动微分框架（PyTorch、JAX 等）的 `x.grad` 严格遵循此形状守恒，以便**原地更新**：$x \leftarrow x - \eta \cdot \text{grad}$。
 ---
+
+## 注释和调试注意
+
+- 注释标注变量的形状。
+
+
