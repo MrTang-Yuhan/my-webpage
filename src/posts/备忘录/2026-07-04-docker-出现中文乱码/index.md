@@ -39,6 +39,9 @@ fc-cache -fv
 ```bash
 du -ah /dev/shm
 
-# 删除不需要的共享内存
+# 删除不需要的共享内存，比如
+rm /dev/shm/mpich_shm_*
+
+# 全部释放
 rm /dev/shm/*
 ```
