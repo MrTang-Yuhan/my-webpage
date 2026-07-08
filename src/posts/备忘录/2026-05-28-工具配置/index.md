@@ -40,6 +40,8 @@ nnoremap <F4> :echo expand('%:p')<CR> 按 F4 显示完整路径
 
 ```
 
+---
+
 # tmux 配置
 
 安装 tmux:
@@ -56,6 +58,9 @@ set -g prefix C-a
 bind C-a send-prefix
 ```
 
+---
+
+
 # NVCC 配置
 
 写入 ` ~/.bashrc`:
@@ -69,3 +74,14 @@ export PATH=$CUDA_INSTALL_PATH/bin:$PATH
 
 载入配置：`source ~/.bashrc`
 
+---
+
+# Miniconda 退出自动激活
+
+安装好 Miniconda 后，每次新开终端总会自动激活 conda 环境。如果不想要自动激活，执行以下命令即可：
+
+```bash
+conda config --set auto_activate_base false
+```
+
+这会对 `~/.condarc` 进行配置修改。
