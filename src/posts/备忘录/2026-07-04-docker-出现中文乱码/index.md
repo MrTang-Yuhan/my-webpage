@@ -2,12 +2,14 @@
 layout: post.njk
 post_id: 2026-07-04-docker-出现中文乱码
 archive: 备忘录
-title: docker 出现中文乱码
+title: docker 环境问题
 date: 2026-07-04
 description: ""
 tags:
   - post
 ---
+# docker 出现中文乱码 
+
 进入容器后执行：
 
 ```bash
@@ -27,3 +29,16 @@ fc-cache -fv
 ```
 
 重启容器即可。
+
+# conda 环境提醒空间不足
+
+在 docker 容器内，使用 conda 加载环境时，**提醒空间不足**。
+
+解决方法：
+
+```bash
+du -ah /dev/shm
+
+# 删除不需要的共享内存
+rm /dev/shm/*
+```
