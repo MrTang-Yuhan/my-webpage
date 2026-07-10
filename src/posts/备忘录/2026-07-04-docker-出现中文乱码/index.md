@@ -50,3 +50,21 @@ rm /dev/shm/*
 
 ## 解决方法二（一劳永逸）
 在容器创建时，就指定共享内存的大小。
+
+---
+
+# docker 环境配置
+
+```bash
+docker run -itd --gpus all --ipc=host --runtime=nvidia  --ulimit memlock=-1 --ulimit stack=67108864   -v /home/tangyuhan/workpath/docker-data/infra:/root --name tangyuhan-infra-tech nvcr.io/nvidia/pytorch:26.01-py3 /bin/bash
+```
+
+- `-itd`: 容器在后台运行，但保留交互能力，后续可通过 `docker exec -it tangyuhan-infra-tech /bin/bash` 进入
+- `--gpus all`: 通过 NVIDIA Container Toolkit 将主机上所有 GPU 暴露给容器。
+- `--runtime=nvidia`: 显式指定容器运行时（runtime）为 nvidia。
+- `--ipc=host`: 将容器的 IPC（Inter-Process Communication）命名空间与主机共享。让容器直接使用主机的 /dev/shm（通常为主机内存的 50%，如 256GB 服务器对应 128GB），彻底消除共享内存瓶颈。
+- `--ulimit memlock=-1`: 解除容器内进程的 locked memory（锁定内存）限制。
+- `--ulimit stack=67108864`: 设置容器内进程的 栈大小上限为 67,108,864 bytes = 64 MiB。
+- `-v /home/tangyuhan/workpath/docker-data/infra:/root`: 将主机路径挂载到容器内的 /root 目录。
+
+
