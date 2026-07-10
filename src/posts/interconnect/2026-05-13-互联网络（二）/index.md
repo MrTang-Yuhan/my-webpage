@@ -56,28 +56,12 @@ A_{m1} & A_{m2} & \cdots & A_{mn}
 | `Recv` | `Send` | 前向点对点接收数据，反向对应发送梯度。例：流水线并行中 stage 1 前向 `Recv` stage 0 的激活；反向时 stage 1 需要 `Send` 激活梯度回 stage 0。 |
 
 [^2]: 比如在前向传播时，使用 all-reduce-sum 算子，用矩阵乘法表示 $\mathbf{y} = A\mathbf{x}$，矩阵 $A$ 必须是一个 $p \times p$ 的**全 1 矩阵**（此处假设共 $p$ 台设备）。
-  反向传播时，上游传来梯度向量：
-  $$
-  \nabla \mathbf{y} = [\nabla y_1, \nabla y_2, \dots, \nabla y_p]^\top
-  $$
-  我们需要计算 $\mathbf{x}$ 的梯度。根据链式法则：
-  $$
-  \nabla \mathbf{x} = A^\top \nabla \mathbf{y}
-  $$
-  关键在于**全 1 矩阵是对称的**：
-  $$
-  A^\top = A
-  $$
-  因为矩阵中每个元素都是 1，转置后仍然每个元素都是 1，矩阵不变。
-  因此：
-  $$
-  \nabla \mathbf{x} = A \nabla \mathbf{y}
-  $$
-  也就是说，反向计算与正向计算的矩阵**完全相同**：
-  $$
-  \nabla x_i = \sum_{j=1}^p \nabla y_j, \quad \text{对所有 } i
-  $$
-  每台设备 $i$ 都收到所有上游梯度 $\nabla y_j$ 的总和。
+反向传播时，上游传来梯度向量：$$\nabla \mathbf{y} = [\nabla y_1, \nabla y_2, \dots, \nabla y_p]^\top$$
+我们需要计算 $\mathbf{x}$ 的梯度。根据链式法则：$$\nabla \mathbf{x} = A^\top \nabla \mathbf{y}$$
+关键在于**全 1 矩阵是对称的**：$$A^\top = A$$
+因为矩阵中每个元素都是 1，转置后仍然每个元素都是 1，矩阵不变。因此：$$\nabla \mathbf{x} = A \nabla \mathbf{y}$$
+也就是说，反向计算与正向计算的矩阵**完全相同**：$$\nabla x_i = \sum_{j=1}^p \nabla y_j, \quad \text{对所有 } i$$
+每台设备 $i$ 都收到所有上游梯度 $\nabla y_j$ 的总和。
 
 ## 伴随通信算子的作用
 
