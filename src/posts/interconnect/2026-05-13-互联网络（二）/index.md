@@ -1,7 +1,7 @@
 ---
 layout: post.njk
-archive: interconnect
 post_id: 2026-05-13-互联网络（二）
+archive: interconnect
 title: 互联网络（二）：伴随通信算子
 date: 2026-05-14
 description: 介绍通信算子和伴随通信算子
@@ -25,33 +25,19 @@ $$
 $$
 [^1]
 
-[^1]: 对于列向量 $y$, $x$, 矩阵 $A$，如果 $y=Ax$，那么 $y$ 对 $x$ 的导数就是矩阵 $A$ 本身。推导如下：<br>
-把 $y = Ax$ 写成各个分量的形式：
-$$
-y_i = \sum_{k=1}^n A_{ik} x_k
-$$
-现在看输出向量的每一个分量 $y_i$ 对输入向量的每一个分量 $x_j$ 的偏导数：
-$$
-\frac{\partial y_i}{\partial x_j} = A_{ij}
-$$
-将这个结果填入雅可比矩阵 $\frac{\partial y}{\partial x}$ 中，它的第 $i$ 行、第 $j$ 列恰好就是 $\frac{\partial y_i}{\partial x_j}$。所以矩阵的每个位置都对应矩阵 $A$ 的元素：
-$$
+[^1]: 对于列向量 $y$, $x$, 矩阵 $A$，如果 $y=Ax$，那么 $y$ 对 $x$ 的导数就是矩阵 $A$ 本身。推导如下：把 $y = Ax$ 写成各个分量的形式：$$y_i = \sum_{k=1}^n A_{ik} x_k$$
+现在看输出向量的每一个分量 $y_i$ 对输入向量的每一个分量 $x_j$ 的偏导数：$$\frac{\partial y_i}{\partial x_j} = A_{ij}$$
+将这个结果填入雅可比矩阵 $\frac{\partial y}{\partial x}$ 中，它的第 $i$ 行、第 $j$ 列恰好就是 $\frac{\partial y_i}{\partial x_j}$。所以矩阵的每个位置都对应矩阵 $A$ 的元素：$$
 J(x)=\frac{\partial y}{\partial x} =
 \begin{bmatrix}
 A_{11} & A_{12} & \cdots & A_{1n} \cr
 A_{21} & A_{22} & \cdots & A_{2n} \cr
 \vdots & \vdots & \ddots & \vdots \cr
 A_{m1} & A_{m2} & \cdots & A_{mn} 
-\end{bmatrix} = A
-$$
-因此可以简记为：
-$$
-\frac{\partial (Ax)}{\partial x} = A
-$$
+\end{bmatrix} = A$$
+因此可以简记为：$$\frac{\partial (Ax)}{\partial x} = A$$
 这正好与反向传播公式 $\nabla x = A^\top \nabla y$ 衔接上了，其中的转置正是来源于这个雅可比矩阵 $A$。
-
 其中 $\nabla y=\frac{\partial L}{\partial y}$, $\nabla x=\frac{\partial L}{\partial x}$
-
 其中 $A^\top$ 就是 $A$ 的伴随通信算子。
 
 常用通信算子及其伴随算子汇总如下[^2]：
