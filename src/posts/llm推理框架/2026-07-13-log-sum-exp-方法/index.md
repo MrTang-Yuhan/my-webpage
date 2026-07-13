@@ -113,7 +113,7 @@ $$a_{i}^{(I)} = \frac{\exp(s_{i})}{\sum_{j \in I} \exp(s_{j})} \neq \frac{\exp(s
 
 直接相加 $\mathbf{O}(I) + \mathbf{O}(J)$ 会导致每个 token 的权重被错误地放大（因为局部分母更小），结果必然偏离全局正确值。
 
-<!-- ![序列切分与局部softmax问题](fig_1_sequence_split_softmax.png) -->
+<!-- ![序列切分与局部softmax问题](img/fig_1_sequence_split_softmax.png) -->
 
 ---
 
@@ -273,7 +273,7 @@ $$= \log(\exp(m)) + \log\left(\sum_{i=1}^{n} \exp(x_{i} - m)\right) = m + \log\l
 
 由于 $x_{i} - m \leq 0$（因为 $m$ 是最大值），$\exp(x_{i} - m) \in (0, 1]$，求和不会溢出。这是工程实现中计算 LSE 的标准方法。
 
-![LSE数值稳定性](fig_4_lse_numerical_stability.png)
+![LSE数值稳定性](img/fig_4_lse_numerical_stability.png)
 
 ---
 
@@ -291,7 +291,7 @@ $$\begin{bmatrix} \mathbf{O}_{\text{acc}} \\ \ell_{\text{acc}} \end{bmatrix} \le
 
 最终 $\mathbf{O}_{\text{acc}}$ 即为全局正确的 attention 输出。每个设备只需向环中的下一个设备传递当前的 $(\mathbf{O}_{\text{acc}}, \ell_{\text{acc}})$ 二元组，以及本地的 $(\mathbf{O}(I_{k}), \text{LSE}(I_{k}))$，即可完成全局合并。
 
-![Ring Attention 通信与合并流程](fig_2_ring_attention_merge_flow.png)
+![Ring Attention 通信与合并流程](img/fig_2_ring_attention_merge_flow.png)
 
 ---
 
@@ -324,7 +324,7 @@ $$\begin{bmatrix} \mathbf{O}_{\text{acc}} \\ \ell_{\text{acc}} \end{bmatrix} \le
 
 那么合并后的结果与在单设备上计算完整序列的 attention 输出**在数学上完全一致**（忽略浮点舍入误差）。
 
-![数值验证对比](fig_3_numerical_verification.png)
+![数值验证对比](img/fig_3_numerical_verification.png)
 
 ---
 
