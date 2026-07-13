@@ -297,18 +297,7 @@ $$\begin{bmatrix} \mathbf{O}_{\text{acc}} \\ \ell_{\text{acc}} \end{bmatrix} \le
 
 ## 三、直观意义解释
 
-### 3.1 "能量"视角
-
-将 $\exp(s_{i})$ 理解为第 $i$ 个 token 对当前 query 的"注意力能量"。那么：
-
-- $\exp(\text{LSE}(I)) = \sum_{i \in I} \exp(s_{i})$ 是块 $I$ 的"总能量"。
-- 局部输出 $\mathbf{O}(I)$ 是"在块 $I$ 内部归一化"后的加权平均，每个 value 的权重是局部的、相对于块内其他 token 的。
-- 将 $\mathbf{O}(I)$ 乘回 $\exp(\text{LSE}(I))$，相当于**取消局部归一化**，还原成"未归一的加权和"（即分子部分）。
-- 把各块的未归一加权和相加，再用全局总能量重新归一化，就得到了全局正确的结果。
-
-**类比**：假设两个班级分别计算了平均分，但班级人数不同。直接把两个平均分相加没有意义。正确的做法是：先把每个班级的"总分 = 平均分 × 人数"还原出来，相加得到总总分，再除以总人数，得到全局平均分。这里的"人数"就对应 $\exp(\text{LSE})$，"平均分"就对应 $\mathbf{O}$。
-
-### 3.2 通信效率
+### 3.1 通信效率
 
 每个设备只需传递两个量：
 - $\mathbf{O}(I) \in \mathbb{R}^{1 \times d_{v}}$：局部输出（向量，大小与最终输出相同）
@@ -316,7 +305,7 @@ $$\begin{bmatrix} \mathbf{O}_{\text{acc}} \\ \ell_{\text{acc}} \end{bmatrix} \le
 
 相比于传递完整的注意力矩阵或所有 key/value，通信量极小。这是 Ring Attention 能够支持**无限长序列**的关键——序列越长，切的块数越多，但每块只需传递固定大小的 $(\mathbf{O}, \text{LSE})$。
 
-### 3.3 与标准 Attention 的等价性
+### 3.2 与标准 Attention 的等价性
 
 该合并公式是**数学恒等式**，不是近似。只要满足：
 1. 各块的局部计算使用相同的分数 $s_{i}$（即 query 和 key 的点积一致）；
@@ -359,5 +348,4 @@ Softmax 修正公式的核心思想可以概括为一句话：
 
 ---
 
-*文档生成时间：2026-07-13*
-*适用场景：Ring Attention, Blockwise FlashAttention, DeepSpeed Ulysses 等序列并行算法的理论分析*
+
