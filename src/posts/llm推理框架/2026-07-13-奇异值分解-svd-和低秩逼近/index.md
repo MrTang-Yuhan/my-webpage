@@ -193,7 +193,7 @@ $$
 **为什么要做这一步**：目前 $\{\mathbf{u}_1, \dots, \mathbf{u}_r\}$ 只有 $r$ 个向量，而 $\mathbf{U}$ 需要是 $m \times m$ 的正交矩阵，必须有 $m$ 个列向量。我们需要把它们"补全"为 $\mathbb{R}^m$ 的完整标准正交基。
 
 **操作**：
-1. 将 $\{\mathbf{u}_1, \dots, \mathbf{u}_r\}$ 通过**格拉姆-施密特正交化（Gram-Schmidt）**或任意标准方法，扩展为 $\mathbb{R}^m$ 的完整标准正交基 $\{\mathbf{u}_1, \dots, \mathbf{u}_r, \mathbf{u}_{r+1}, \dots, \mathbf{u}_m\}$。
+1. 将 $\{\mathbf{u}_1, \dots, \mathbf{u}_r\}$ 通过**格拉姆-施密特正交化（Gram-Schmidt）** 或任意标准方法，扩展为 $\mathbb{R}^m$ 的完整标准正交基 $\{\mathbf{u}_1, \dots, \mathbf{u}_r, \mathbf{u}_{r+1}, \dots, \mathbf{u}_m\}$。
 2. 构造矩阵：
    $$
    \mathbf{U} \triangleq [\mathbf{u}_1, \mathbf{u}_2, \dots, \mathbf{u}_m] \in \mathbb{R}^{m \times m}
