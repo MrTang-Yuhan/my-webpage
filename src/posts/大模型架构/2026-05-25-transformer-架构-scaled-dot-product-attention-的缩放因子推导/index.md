@@ -170,7 +170,7 @@ $$
 \text{Std}\left(\frac{q \cdot k}{\sqrt{d_k}}\right) = 1
 $$
 
-也就是说，除以 $\sqrt{d_k}$ 后，attention logits 的尺度大致回到 $O(1)$ 的量级，不会随着 $ \text{head\\_dim} $ 增大而持续变大。
+也就是说，除以 $\sqrt{d_k}$ 后，attention logits 的尺度大致回到 $O(1)$ 的量级，不会随着 $ \text{head\_dim} $ 增大而持续变大。
 
 因此，在原始 Transformer 中：
 
