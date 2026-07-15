@@ -10,7 +10,6 @@ tags:
 # FlashDecoding 数学推导
 
 > 参考网页：https://zhuanlan.zhihu.com/p/1988996116017086993
-> 推导日期：2026-07-15
 
 ---
 
@@ -39,12 +38,6 @@ $$
 > - **公式**：对于向量 $\mathbf{x} = [x_1, x_2, \ldots, x_n]$，$\mathrm{softmax}(x_i) = \frac{\exp(x_i)}{\sum_{j=1}^{n} \exp(x_j)}$。
 > - **本步作用**：将注意力分数转换为权重分布，使得所有位置的重要性之和为 1。
 
-> **【小例子：Softmax 函数】**
-> 假设注意力分数向量为 $\mathbf{x} = [2.0, 1.0, 0.5]$。
-> $$\exp(2.0) = 7.389, \quad \exp(1.0) = 2.718, \quad \exp(0.5) = 1.649$$
-> 求和：$7.389 + 2.718 + 1.649 = 11.756$。
-> 则 softmax 输出为：$[7.389/11.756, 2.718/11.756, 1.649/11.756] = [0.628, 0.231, 0.140]$。
-> 可以看到，最大的输入值 2.0 获得了最大的概率权重 0.628，且三者之和为 1.0。
 
 #### 2.1.2 解码阶段的并行度瓶颈
 
@@ -56,16 +49,6 @@ $$
 - 如果使用 FlashAttention 的原版策略，只有一个 SM（或少量 SM）在工作，**大量 SM 空闲**。
 - 同时，KV Cache 的序列长度 $N_{kv}$ 可能非常长（例如 32K、64K 甚至更长），读取 KV Cache 成为瓶颈。
 
-> **【知识卡片：GPU 流式多处理器（SM）】**
-> - **定义**：SM（Streaming Multiprocessor）是 NVIDIA GPU 的核心计算单元，每个 SM 可以并行执行多个线程块。GPU 的整体并行计算能力来自于大量 SM 的同时工作。
-> - **公式**：若 GPU 有 $N_{\text{SM}}$ 个 SM，理想情况下可以同时调度 $N_{\text{SM}}$ 个线程块。
-> - **本步作用**：FlashDecoding 的目标是让尽可能多的 SM 同时参与计算，避免资源闲置。
-
-> **【小例子：SM 利用率】**
-> 假设 NVIDIA H100 GPU 有 132 个 SM。
-> - Prefill 阶段：Query 长度 = 4096，可切分为 128 个 Tile，每个 SM 处理一个 Tile → **132 个 SM 全部忙碌**。
-> - Decoding 阶段：Query 长度 = 1，无法切分 → 只有 1 个 Tile → **仅 1 个 SM 工作，131 个 SM 空闲**。
-> FlashDecoding 通过切分 KV Cache，将 1 个 Query 与 128 个 KV Tile 的匹配计算分配到 128 个 SM 上，重新实现高并行度。
 
 #### 2.1.3 FlashDecoding 的核心思想
 
@@ -94,16 +77,6 @@ $$
 
 其中 $\mathbf{s}^{(b)}$ 是第 $b$ 个 Tile 上的注意力分数向量。
 
-> **【知识卡片：矩阵乘法与转置】**
-> - **定义**：矩阵乘法 $\mathbf{A} \mathbf{B}^{\top}$ 计算 $\mathbf{A}$ 的每一行与 $\mathbf{B}$ 的每一行的点积。若 $\mathbf{A} \in \mathbb{R}^{m \times d}$，$\mathbf{B} \in \mathbb{R}^{n \times d}$，则 $\mathbf{A}\mathbf{B}^{\top} \in \mathbb{R}^{m \times n}$。
-> - **公式**：$(\mathbf{A}\mathbf{B}^{\top})_{i,j} = \sum_{k=1}^{d} A_{i,k} \cdot B_{j,k}$。
-> - **本步作用**：计算 Query 与 Key 之间的相似度分数，这里 $\mathbf{q} \in \mathbb{R}^{1 \times d}$，$\mathbf{K}^{(b)} \in \mathbb{R}^{N_{\text{tile}} \times d}$，所以 $\mathbf{q}\mathbf{K}^{(b)\top} \in \mathbb{R}^{1 \times N_{\text{tile}}}$，即每个 Tile 中每个 Key 位置一个分数。
-
-> **【小例子：注意力分数计算】**
-> 设 $\mathbf{q} = [1.0, 0.5] \in \mathbb{R}^{1 \times 2}$，$\mathbf{K}^{(1)} = \begin{bmatrix} 0.8 & 0.2 \\ 0.3 & 0.9 \end{bmatrix} \in \mathbb{R}^{2 \times 2}$，$d = 2$，$\sqrt{d} = 1.414$。
-> $$\mathbf{q}\mathbf{K}^{(1)\top} = [1.0 \cdot 0.8 + 0.5 \cdot 0.2, \quad 1.0 \cdot 0.3 + 0.5 \cdot 0.9] = [0.9, \; 0.75]$$
-> 归一化后：$\mathbf{s}^{(1)} = [0.9/1.414, \; 0.75/1.414] = [0.636, \; 0.530]$。
-
 ---
 
 ### 2.3 Online Softmax：核心数学工具
@@ -124,20 +97,9 @@ $$
 \frac{\exp(x_i)}{\sum_{j=1}^{N} \exp(x_j)} = \frac{\exp(x_i - m)}{\sum_{j=1}^{N} \exp(x_j - m)}
 $$
 
-其中 $m = \max_{j=1}^{N} x_j$ 是输入向量的最大值。
+分子分母同乘 $\exp(-m)$ 即可得该恒等式。其中 $m = \max_{j=1}^{N} x_j$ 是输入向量的最大值。
 
-> **【知识卡片：数值稳定性技巧（Max-Shift）】**
-> - **定义**：在计算 softmax 时，先将所有输入减去最大值，再进行指数运算，可以避免数值溢出。
-> - **公式**：$\mathrm{softmax}(x_i) = \frac{\exp(x_i - m)}{\sum_{j=1}^{N} \exp(x_j - m)}$，其中 $m = \max_j x_j$。
-> - **本步作用**：确保指数运算的参数不超过 0（最大为 0），避免了 $\exp(\text{大正数})$ 的溢出问题。
 
-> **【小例子：Max-Shift 技巧】**
-> 假设 $\mathbf{x} = [1000, 1001, 999]$。直接计算 $\exp(1000)$ 会溢出。
-> 最大值 $m = 1001$。平移后：$\mathbf{x} - m = [-1, 0, -2]$。
-> $\exp(-1) = 0.368$，$\exp(0) = 1.0$，$\exp(-2) = 0.135$。
-> 求和：$0.368 + 1.0 + 0.135 = 1.503$。
-> softmax 输出：$[0.368/1.503, 1.0/1.503, 0.135/1.503] = [0.245, 0.665, 0.090]$。
-> 结果正确且计算过程无溢出！
 
 #### 2.3.2 Online Softmax 的递推公式
 
@@ -164,10 +126,6 @@ $$
 \mathrm{softmax}(x_i) = \frac{\exp(x_i - m_N)}{d_N}
 $$
 
-> **【知识卡片：递推关系（Recurrence Relation）】**
-> - **定义**：递推关系是用前面已知的值来定义当前值的一种方式，类似于数列中的递推公式。
-> - **公式**：$a_n = f(a_{n-1}, a_{n-2}, \ldots)$。
-> - **本步作用**：Online Softmax 使用递推关系，使得我们可以在不知道全部输入的情况下，逐步累积 softmax 的中间结果。这是分块计算后能够合并的关键。
 
 > **【小例子：Online Softmax 递推】**
 > 设 $\mathbf{x} = [1.0, 2.0, 0.5]$。
