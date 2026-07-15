@@ -368,7 +368,9 @@ $$
 因此：
 
 $$
-\sum_{j \in \text{Tile } b} \exp(s_j - m_{\text{global}}) \cdot \mathbf{V}_j = \exp(m^{(b)} - m_{\text{global}}) \sum_{j \in \text{Tile } b} \exp(s_j - m^{(b)}) \cdot \mathbf{V}_j = \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)} \cdot \mathbf{o}^{(b)}
+\sum_{j \in \text{Tile } b} \exp(s_j - m_{\text{global}}) \cdot \mathbf{V}_j = \exp(m^{(b)} - m_{\text{global}}) \sum_{j \in \text{Tile } b} \exp(s_j - m^{(b)}) \cdot \mathbf{V}_j = \\
+
+\exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)} \cdot \mathbf{o}^{(b)}
 $$
 
 同理，分母：
@@ -434,7 +436,9 @@ FlashDecoding 的完整公式可以概括为：
 **局部计算（每个 Tile 并行）**：
 
 $$
-\mathbf{s}^{(b)} = \frac{\mathbf{q} \mathbf{K}^{(b)\top}}{\sqrt{d}}, \quad m^{(b)} = \max_j s_j^{(b)}, \quad \ell^{(b)} = \sum_j \exp(s_j^{(b)} - m^{(b)}), \quad \mathbf{o}^{(b)} = \frac{\sum_j \exp(s_j^{(b)} - m^{(b)}) \mathbf{V}_j^{(b)}}{\ell^{(b)}}
+\mathbf{s}^{(b)} = \frac{\mathbf{q} \mathbf{K}^{(b)\top}}{\sqrt{d}}, \quad m^{(b)} = \max_j s_j^{(b)}, \quad \ell^{(b)} = \sum_j \exp(s_j^{(b)} - m^{(b)}), \\
+
+\quad \mathbf{o}^{(b)} = \frac{\sum_j \exp(s_j^{(b)} - m^{(b)}) \mathbf{V}_j^{(b)}}{\ell^{(b)}}
 $$
 
 **全局合并**：
@@ -447,4 +451,3 @@ $$
 
 ---
 
-*本文档所有推导均基于 Dao et al., "Flash-Decoding for long-context inference" (2023) 及知乎技术博客，推导过程经过双重校验。*
