@@ -27,8 +27,11 @@ tags:
 
 我们首先建立严格的数学符号体系。
 
-设输入序列长度为 $L$，每个 token 的维度为 $d_{\text{model}}$。对于某个固定的注意力头（head）和某个固定的 query token（为简化推导，我们考虑单头、单 query 的情形，多 query 的情形由逐 query 独立应用本公式可得），定义：
+设输入序列长度为 $L$，每个 token 的维度为 $d_{\text{model}}$。对于某个固定的注意力头（head）和某个固定的 query token（**为简化推导，我们考虑单头、单 query 的情形，多 query 的情形由逐 query 独立应用本公式可得**），定义：
 
+- 设 $\mathbf{Q} \in \mathbb{R}^{L \times d_k}$。固定某个 query 为 $\mathbf{q}$。
+- 设 $\mathbf{K} \in \mathbb{R}^{L \times d_k}$，第 $i$ 行为 $\mathbf{k}_i$；
+- $\mathbf{q}^{\top} \mathbf{K}^{\top} \in \mathbb{R}^{1 \times L}$，即分数向量 $\mathbf{s}$ 的维度来源；
 - $\mathbf{s} \in \mathbb{R}^{L}$：该 query 与全部 $L$ 个 key 的点积分数（scores），即 $s_{i} = \mathbf{q}^{\top} \mathbf{k}_{i}$，其中 $\mathbf{q} \in \mathbb{R}^{d_{k}}$ 为 query 向量，$\mathbf{k}_{i} \in \mathbb{R}^{d_{k}}$ 为第 $i$ 个 key 向量；
 - $\mathbf{V} \in \mathbb{R}^{L \times d_{v}}$：value 矩阵，第 $i$ 行为 $\mathbf{v}_{i}^{\top} \in \mathbb{R}^{1 \times d_{v}}$；
 - $\mathbf{O} \in \mathbb{R}^{1 \times d_{v}}$：该 query 的 attention 输出向量。
@@ -52,13 +55,17 @@ tags:
 
 标准的 Scaled Dot-Product Attention 输出定义为：
 
-$$\mathbf{O} = \text{softmax}\left(\frac{\mathbf{q}^{\top} \mathbf{K}^{\top}}{\sqrt{d_{k}}}\right) \mathbf{V} = \sum_{i=1}^{L} a_{i} \cdot \mathbf{v}_{i}^{\top},$$
+$$\mathbf{O} = \text{softmax}\left(\frac{\mathbf{q} \mathbf{K}^{\top}}{\sqrt{d_{k}}}\right) \mathbf{V} = \sum_{i=1}^{L} a_{i} \cdot \mathbf{v}_{i}^{\top},$$
+
+为简化书写，后续推导中省略缩放因子 $\frac{1}{\sqrt{d_{k}}}$（它不影响 softmax 的归一化结构，只是一个常数缩放）。
 
 其中注意力权重 $a_{i}$ 满足：
 
 $$a_{i} = \frac{\exp(s_{i})}{\sum_{j=1}^{L} \exp(s_{j})}, \quad \forall i \in \{1, 2, \ldots, L\}.$$
 
-为简化书写，后续推导中省略缩放因子 $\frac{1}{\sqrt{d_{k}}}$（它不影响 softmax 的归一化结构，只是一个常数缩放）。
+此时 $\mathbf{a} \in \mathbb{R}^{1 \times L}$。
+
+
 
 ---
 
@@ -130,7 +137,7 @@ $$a_{i}^{(I)} = \frac{\exp(s_{i})}{\sum_{j \in I} \exp(s_{j})} \neq \frac{\exp(s
 > **【小例子：Log-Sum-Exp】**
 > 继续使用分数 $\mathbf{s} = [1, 2, 3]$。
 > $$\text{LSE}(\mathbf{s}) = \log(e^{1} + e^{2} + e^{3}) = \log(2.718 + 7.389 + 20.086) = \log(30.193) \approx 3.407.$$
-> 验证：$\exp(\text{LSE}(\mathbf{s})) = \exp(3.407) = 30.193$，恰好等于 softmax 的分母。这意味着 **$\exp(\text{LSE}(\mathbf{s}))$ 就是全局归一化所需的"总能量"**。
+> 验证：$\exp(\text{LSE}(\mathbf{s})) = \exp(3.407) = 30.193$，恰好等于 softmax 的分母。
 
 ---
 
@@ -156,7 +163,7 @@ $$\exp(\text{LSE}(I)) = \sum_{i \in I} \exp(s_{i}), \quad \exp(\text{LSE}(J)) = 
 
 $$\mathbf{O}(I \cup J) = \sum_{i \in I \cup J} a_{i}^{\text{global}} \cdot \mathbf{v}_{i}^{\top} = \frac{\sum_{i \in I \cup J} \exp(s_{i}) \cdot \mathbf{v}_{i}^{\top}}{\sum_{j \in I \cup J} \exp(s_{j})}.$$
 
-**数学依据**：这是 attention 输出的原始定义，分子是 value 的指数加权和，分母是全局 softmax 的归一化因子。
+**思路：** 分子分母同时进行 $log$ 运算。
 
 **步骤 2：将全集拆分为两个不相交子集的并。**
 
@@ -164,7 +171,7 @@ $$\mathbf{O}(I \cup J) = \sum_{i \in I \cup J} a_{i}^{\text{global}} \cdot \math
 
 $$\sum_{i \in I \cup J} \exp(s_{i}) \cdot \mathbf{v}_{i}^{\top} = \sum_{i \in I} \exp(s_{i}) \cdot \mathbf{v}_{i}^{\top} + \sum_{j \in J} \exp(s_{j}) \cdot \mathbf{v}_{j}^{\top}.$$
 
-**数学依据**：求和运算对不相交集合的并满足可加性，即 $\sum_{x \in A \cup B} f(x) = \sum_{x \in A} f(x) + \sum_{x \in B} f(x)$，当 $A \cap B = \emptyset$ 时成立。
+
 
 **步骤 3：将局部输出还原为"未归一的加权和"。**
 
@@ -176,7 +183,7 @@ $$\mathbf{O}(I) = \sum_{i \in I} a_{i}^{(I)} \cdot \mathbf{v}_{i}^{\top} = \sum_
 
 $$\left(\sum_{k \in I} \exp(s_{k})\right) \cdot \mathbf{O}(I) = \sum_{i \in I} \exp(s_{i}) \cdot \mathbf{v}_{i}^{\top}.$$
 
-**数学依据**：等式两边同乘一个非零标量（分母为正，因为指数函数恒正），等式仍然成立。
+
 
 利用步骤 2 中 LSE 的关键观察 $\exp(\text{LSE}(I)) = \sum_{k \in I} \exp(s_{k})$，代入得：
 
@@ -196,7 +203,7 @@ $$\sum_{i \in I \cup J} \exp(s_{i}) \cdot \mathbf{v}_{i}^{\top} = \exp(\text{LSE
 
 $$\sum_{j \in I \cup J} \exp(s_{j}) = \sum_{j \in I} \exp(s_{j}) + \sum_{j \in J} \exp(s_{j}) = \exp(\text{LSE}(I)) + \exp(\text{LSE}(J)).$$
 
-**数学依据**：同样利用求和的可加性，以及 LSE 与指数和的关系。
+
 
 因此，全局正确的输出为：
 
