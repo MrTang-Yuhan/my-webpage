@@ -15,7 +15,7 @@ tags:
 
 ## 一、公式作用概述
 
-在 Transformer 的 Self-Attention 机制中，当输入序列长度 $L$ 超过单张 GPU 的显存容量时，需要将序列切分到多个设备上并行计算。**Softmax 修正公式**解决的核心问题是：当 $Q$（Query）、$K$（Key）、$V$（Value）矩阵都按序列维度切分后，每个设备只能看到局部的 key 和 value，此时若在每个设备上独立做 softmax，得到的注意力权重只归一化到局部范围，而非全局。该公式提供了一种**通信高效的合并规则**，使得各设备只需传递两个**小的统计量（局部输出和局部 Log-Sum-Exp）而非完整的KV**，即可通过代数运算还原出与全局计算完全一致的结果。
+在 Transformer 的 Self-Attention 机制中，当输入序列长度 $L$ 超过单张 GPU 的显存容量时，需要将序列切分到多个设备上并行计算。**Softmax 修正公式**解决的核心问题是：当 $Q$（Query）、$K$（Key）、$V$（Value）矩阵都按序列维度切分后，每个设备只能看到局部的 key 和 value，此时若在每个设备上独立做 softmax，得到的注意力权重只归一化到局部范围，而非全局。该公式提供了一种**通信高效的合并规则**，使得各设备只需传递两个**小的统计量（局部输出 $\mathbf{O}$ 和局部 $\text{LSE}$）而非完整的KV**，即可通过代数运算还原出与全局计算完全一致的结果。
 
 该公式是 Ring Attention、Blockwise FlashAttention、以及 DeepSpeed Ulysses 等序列并行算法的数学基石，适用于任何需要将 softmax 操作分块执行的分布式场景。
 
@@ -29,8 +29,8 @@ tags:
 
 设输入序列长度为 $L$，每个 token 的维度为 $d_{\text{model}}$。对于某个固定的注意力头（head）和某个固定的 query token（**为简化推导，我们考虑单头、单 query 的情形，多 query 的情形由逐 query 独立应用本公式可得**），定义：
 
-- 设 $\mathbf{Q} \in \mathbb{R}^{L \times d_k}$。固定某个 query 为 $\mathbf{q}$。
-- 设 $\mathbf{K} \in \mathbb{R}^{L \times d_k}$，第 $i$ 行为 $\mathbf{k}_i$；
+- 设 $\mathbf{Q} \in \mathbb{R}^{L \times d_k}$。固定某个 query 为 $\mathbf{q} \in \mathbb{R}^{d_{k}}$。
+- 设 $\mathbf{K} \in \mathbb{R}^{L \times d_k}$，第 $i$ 行为 $\mathbf{k}_i \in \mathbb{R}^{d_{k}}$；
 - $\mathbf{q}^{\top} \mathbf{K}^{\top} \in \mathbb{R}^{1 \times L}$，即分数向量 $\mathbf{s}$ 的维度来源；
 - $\mathbf{s} \in \mathbb{R}^{L}$：该 query 与全部 $L$ 个 key 的点积分数（scores），即 $s_{i} = \mathbf{q}^{\top} \mathbf{k}_{i}$，其中 $\mathbf{q} \in \mathbb{R}^{d_{k}}$ 为 query 向量，$\mathbf{k}_{i} \in \mathbb{R}^{d_{k}}$ 为第 $i$ 个 key 向量；
 - $\mathbf{V} \in \mathbb{R}^{L \times d_{v}}$：value 矩阵，第 $i$ 行为 $\mathbf{v}_{i}^{\top} \in \mathbb{R}^{1 \times d_{v}}$；
