@@ -179,16 +179,11 @@ d_j = d_{j-1} \cdot \exp(m_{j-1} - m_j) + \exp(x_j - m_j) $$
 
 | 符号 | 名称 | 含义 | 在 Online Softmax 中的作用 |
 |------|------|------|------------------------|
-| $m^{(b)}$ | 局部最大值 | 第 $b$ 个 Tile 中所有注意力分数的最大值 | 用于 Max-Shift 数值稳定：计算 $\exp(s_j - m^{(b)})$ 时避免指数溢出 |
+| $m^{(b)}$ | 局部最大值 | 第 $b$ 个 Tile 中所有注意力分数的最大值 | 用于数值稳定：计算 $\exp(s_j - m^{(b)})$ 时避免指数溢出 |
 | $\ell^{(b)}$（或写作 $l^{(b)}$） | 局部指数和 | 第 $b$ 个 Tile 中所有 $\exp(s_j - m^{(b)})$ 的和 | 作为该 Tile 局部 softmax 的归一化分母 |
 | $\mathbf{o}^{(b)}$ | 局部输出 | 第 $b$ 个 Tile 的局部注意力结果 | 该 Tile 内部做 softmax 后的加权平均值 |
 
-> **$m^{(b)}$ 和 $\ell^{(b)}$ 为什么缺一不可？**
-> 
-> 每个 Tile 独立计算时，为了保证数值稳定性， softmax 内部减去了局部最大值 $m^{(b)}$。这意味着：
-> - Tile 内的所有指数值都是相对于 $m^{(b)}$ 计算的
-> - 不同 Tile 的指数值处于**不同的参考系**（有的 Tile 最高分是 5，有的是 8）
-> - 要合并它们，必须知道每个 Tile 的 $m^{(b)}$（用于换算到同一参考系）和 $\ell^{(b)}$（用于正确加权）
+
 
 #### 2.4.1 每个 Tile 的局部计算
 
@@ -198,10 +193,10 @@ d_j = d_{j-1} \cdot \exp(m_{j-1} - m_j) + \exp(x_j - m_j) $$
    - 这是 Query $\mathbf{q}$ 与 Tile $b$ 中所有 Key 的相似度分数向量。
 
 2. **局部最大值**（running max）：$m^{(b)} = \max_{j=1}^{N_{\text{tile}}} s_j^{(b)}$
-   - 该 Tile 中最大的注意力分数，用于后续 Max-Shift 数值稳定。
+   - 该 Tile 中最大的注意力分数，用于数值稳定。
 
 3. **局部指数和**（running sum）：$\ell^{(b)} = \sum_{j=1}^{N_{\text{tile}}} \exp\bigl(s_j^{(b)} - m^{(b)}\bigr)$
-   - 该 Tile 内所有（经 Max-Shift 后的）指数值之和，充当局部 softmax 的分母。
+   - 该 Tile 内所有（经数值稳定后的）指数值之和，充当局部 softmax 的分母。
 
 4. **局部加权输出**：$\mathbf{o}^{(b)} = \frac{\sum_{j=1}^{N_{\text{tile}}} \exp\bigl(s_j^{(b)} - m^{(b)}\bigr) \cdot \mathbf{V}_j^{(b)}}{\ell^{(b)}} \in \mathbb{R}^{1 \times d}$
    - 该 Tile 的局部 softmax 结果，即 Value 的加权平均，权重来自局部 softmax。
@@ -232,9 +227,9 @@ $$
 
 > **推导依据**：
 > $$
-> \sum_{b=1}^{B} \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m_{\text{global}}) = \sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m^{(b)}) = \sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)}
-> $$
-> 这里使用了指数乘法恒等式 $\exp(a - c) = \exp(a - b) \cdot \exp(b - c)$。
+> \ell_{\text{global}} =\sum_{b=1}^{B} \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m_{\text{global}}) = \\
+\sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m^{(b)}) = \\
+\sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)}$$
 
 > **【知识卡片：指数乘法恒等式】**
 > - **定义**：指数函数满足 $\exp(a + b) = \exp(a) \cdot \exp(b)$。
@@ -263,7 +258,8 @@ $$
 >
 > 分子展开：
 > $$
-> \sum_{b=1}^{B} \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m_{\text{global}}) \cdot \mathbf{V}_j^{(b)} = \sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m^{(b)}) \cdot \mathbf{V}_j^{(b)}
+> \sum_{b=1}^{B} \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m_{\text{global}}) \cdot \mathbf{V}_j^{(b)} = \\
+\sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m^{(b)}) \cdot \mathbf{V}_j^{(b)}
 > $$
 >
 > 注意到 $\mathbf{o}^{(b)} = \frac{\sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m^{(b)}) \cdot \mathbf{V}_j^{(b)}}{\ell^{(b)}}$，所以 $\sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m^{(b)}) \cdot \mathbf{V}_j^{(b)} = \ell^{(b)} \cdot \mathbf{o}^{(b)}$。
