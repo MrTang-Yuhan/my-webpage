@@ -227,9 +227,9 @@ $$
 
 > **推导依据**：
 > $$
-> \sum_{b=1}^{B} \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m_{\text{global}}) = \sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m^{(b)}) = \sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)}
-> $$
-> 这里使用了指数乘法恒等式 $\exp(a - c) = \exp(a - b) \cdot \exp(b - c)$。
+> \ell_{\text{global}} =\sum_{b=1}^{B} \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m_{\text{global}}) = \\
+\sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m^{(b)}) = \\
+\sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)}$$
 
 > **【知识卡片：指数乘法恒等式】**
 > - **定义**：指数函数满足 $\exp(a + b) = \exp(a) \cdot \exp(b)$。
@@ -258,7 +258,8 @@ $$
 >
 > 分子展开：
 > $$
-> \sum_{b=1}^{B} \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m_{\text{global}}) \cdot \mathbf{V}_j^{(b)} = \sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m^{(b)}) \cdot \mathbf{V}_j^{(b)}
+> \sum_{b=1}^{B} \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m_{\text{global}}) \cdot \mathbf{V}_j^{(b)} = \\
+\sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m^{(b)}) \cdot \mathbf{V}_j^{(b)}
 > $$
 >
 > 注意到 $\mathbf{o}^{(b)} = \frac{\sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m^{(b)}) \cdot \mathbf{V}_j^{(b)}}{\ell^{(b)}}$，所以 $\sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m^{(b)}) \cdot \mathbf{V}_j^{(b)} = \ell^{(b)} \cdot \mathbf{o}^{(b)}$。
