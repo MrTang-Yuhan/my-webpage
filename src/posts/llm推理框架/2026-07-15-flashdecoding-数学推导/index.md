@@ -80,7 +80,7 @@ FlashDecoding 的解决方案是**反转并行策略**：
 
 4. **使用 Online Softmax 合并局部结果**：由于 softmax 涉及全局归一化（需要知道所有位置的 exp 之和），各 SM 的局部结果不能直接相加，需要通过 Online Softmax 技巧进行归一化合并。
 
-![FlashDecoding Tile并行计算示意图](./fig_1_flash_decoding_overview.png)
+![FlashDecoding Tile并行计算示意图](img/fig_1_flash_decoding_overview.png)
 
 ---
 
@@ -193,7 +193,7 @@ $$
 > - $\mathrm{softmax}(x_2) = 7.389 / 11.756 = 0.629$ ✓
 > - $\mathrm{softmax}(x_3) = 1.649 / 11.756 = 0.140$ ✓
 
-![Online Softmax 迭代计算示意图](./fig_2_online_softmax.png)
+![Online Softmax 迭代计算示意图](img/fig_2_online_softmax.png)
 
 ---
 
@@ -413,9 +413,9 @@ $$
 \mathbf{o}_{\text{direct}} = \frac{\sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)} \cdot \mathbf{o}^{(b)}}{\ell_{\text{global}}} = \mathbf{o}_{\text{final}}
 $$
 
-**证毕。** ∎
+**证毕。** 
 
-![FlashDecoding Tile合并流程图](./fig_3_tile_merge_flow.png)
+![FlashDecoding Tile合并流程图](img/fig_3_tile_merge_flow.png)
 
 ---
 
@@ -430,7 +430,7 @@ $$
 | 是否需要合并 | 不需要（各 SM 结果独立） | 需要 Online Softmax 合并 |
 | 适用阶段 | Prefill（编码阶段） | Decoding（解码阶段） |
 
-![FlashAttention vs FlashDecoding 对比图](./fig_4_fa_vs_fd_comparison.png)
+![FlashAttention vs FlashDecoding 对比图](img/fig_4_fa_vs_fd_comparison.png)
 
 ---
 
