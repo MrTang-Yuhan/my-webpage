@@ -94,7 +94,7 @@ $$
 在数值计算中，直接使用这个公式会有数值溢出的风险：如果某个 $x_i$ 很大，$\exp(x_i)$ 会超出浮点数表示范围。**数值稳定的 softmax** 实现利用了以下恒等式：
 
 $$
-\frac{\exp(x_i)}{\sum_{j=1}^{N} \exp(x_j)} = \frac{\exp(x_i - m)}{\sum_{j=1}^{N} \exp(x_j - m)}
+\mathrm{softmax}(x_i) = \frac{\exp(x_i)}{\sum_{j=1}^{N} \exp(x_j)} = \frac{\exp(x_i - m)}{\sum_{j=1}^{N} \exp(x_j - m)}
 $$
 
 分子分母同乘 $\exp(-m)$ 即可得该恒等式。其中 $m = \max_{j=1}^{N} x_j$ 是输入向量的最大值。
@@ -106,7 +106,7 @@ $$
 Online Softmax 的核心观察是：**可以将 softmax 的计算分解为增量更新**。假设我们已经处理了前 $j-1$ 个元素，现在要加入第 $j$ 个元素 $x_j$，可以维护两个状态变量：
 
 - **$m_j$**：前 $j$ 个元素中的最大值（running maximum）
-- **$d_j$**：前 $j$ 个元素的 $\exp$ 之和（running sum of exponentials）
+- **$d_j$**：前 $j$ 个元素的 $\exp$ 之和（running sum of exponentials）: $d_j = \sum_{i=1}^{j} \exp(x_i - m_j)$
 
 初始状态：$m_1 = x_1$，$d_1 = \exp(x_1 - m_1) = \exp(0) = 1$。
 
@@ -120,14 +120,30 @@ $$
 d_j = d_{j-1} \cdot \exp(m_{j-1} - m_j) + \exp(x_j - m_j)
 $$
 
-最终输出：
-
+处理完全部 $N$ 个元素后，状态为 $(m_N, d_N)$。对任意 $x_i$：
 $$
-\mathrm{softmax}(x_i) = \frac{\exp(x_i - m_N)}{d_N}
+\mathrm{softmax}(x_i) = \frac{\exp(x_i - m_N)}{d_N} = \frac{\exp(x_i - m_N)}{\sum_{j=1}^{N} \exp(x_j - m_N)}
 $$
 
+即 Online Softmax 与 标准 Softmax **数学等价**。
 
-> **【小例子：Online Softmax 递推】**
+> **【Online Softmax 推导】**
+> 
+> 将 $d_j$ 拆分为历史项与新项：
+> $$
+d_j = \underbrace{\sum_{i=1}^{j-1} \exp(x_i - m_j)}_{\text{历史 } j-1 \text{ 项}} + \underbrace{\exp(x_j - m_j)}_{\text{新项 } x_j}$$
+> 对任意历史项 $i \le j-1$，做基准平移：
+> $$
+\exp(x_i - m_j) = \exp(x_i - m_{j-1} + m_{j-1} - m_j) = \exp(x_i - m_{j-1}) \cdot \exp(m_{j-1} - m_j)$$
+> 对 $i = 1, \dots, j-1$ 求和：
+> $$
+\sum_{i=1}^{j-1} \exp(x_i - m_j) = \exp(m_{j-1} - m_j) \cdot \underbrace{\sum_{i=1}^{j-1} \exp(x_i - m_{j-1})}_{= d_{j-1}} $$
+> 合并得到递推式：
+> $$
+d_j = d_{j-1} \cdot \exp(m_{j-1} - m_j) + \exp(x_j - m_j) $$
+
+
+> **【小例子：Online Softmax 和标准 Softmax 数学等价】**
 > 设 $\mathbf{x} = [1.0, 2.0, 0.5]$。
 >
 > **初始化**（$j=1$）：$m_1 = 1.0$，$d_1 = \exp(1.0 - 1.0) = 1.0$。
