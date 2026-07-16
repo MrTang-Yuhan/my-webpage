@@ -348,8 +348,6 @@ $$
 $$
 
 
-> **数学依据**：因为 LSE 和加权和的运算本质上是对指数和的累加，而求和运算天然满足结合律。这意味着无论按什么顺序合并多个 Tile，最终结果都相同。
-
 
 #### 2.3.6 LSE 方法与标准 Attention 的等价性证明
 
@@ -393,71 +391,12 @@ $$
 **证毕。**
 
 
----
-
-
-### 2.4 两种 FlashDecoding 方法之间的等价性证明
-
-
-**定理**：传统 m/l/o 方法与 LSE S/o 方法在数学上完全等价，即对于相同的输入和相同的 Tile 划分，两种方法产生的全局输出完全相同。
-
-**证明**：
-
-**第一部分：局部量之间的关系**
-
-对于任意 Tile $b$，由 2.3.2 节的推导：
-
-
-$$
-S^{(b)} = m^{(b)} + \log(\ell^{(b)}) \iff \exp(S^{(b)}) = \exp(m^{(b)}) \cdot \ell^{(b)}
-$$
-
-
-**第二部分：全局归一化因子的等价性**
-
-传统方法的全局归一化因子为 $\ell_{\text{global}}^{\text{(trad)}} = \sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)}$。
-
-LSE 方法的全局归一化因子为 $\exp(S_{\text{global}})$。
-
-
-$$
-\begin{aligned}
-\exp(S_{\text{global}}) &= \sum_{b=1}^{B} \exp(S^{(b)}) = \sum_{b=1}^{B} \exp(m^{(b)}) \cdot \ell^{(b)} \\
-&= \sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}} + m_{\text{global}}) \cdot \ell^{(b)} \\
-&= \exp(m_{\text{global}}) \cdot \sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)} \\
-&= \exp(m_{\text{global}}) \cdot \ell_{\text{global}}^{\text{(trad)}}
-\end{aligned}
-$$
-
-
-因此 $\exp(S_{\text{global}}) = \exp(m_{\text{global}}) \cdot \ell_{\text{global}}^{\text{(trad)}}$。
-
-**第三部分：全局输出的等价性**
-
-LSE 方法的权重：
-
-
-$$
-\exp(S^{(b)} - S_{\text{global}}) = \frac{\exp(S^{(b)})}{\exp(S_{\text{global}})} = \frac{\exp(m^{(b)}) \cdot \ell^{(b)}}{\exp(m_{\text{global}}) \cdot \ell_{\text{global}}^{\text{(trad)}}} = \frac{\exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)}}{\ell_{\text{global}}^{\text{(trad)}}}
-$$
-
-
-代入 LSE 方法的全局输出公式：
-
-
-$$
-\mathbf{o}_{\text{final}}^{\text{(lse)}} = \sum_{b=1}^{B} \frac{\exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)}}{\ell_{\text{global}}^{\text{(trad)}}} \cdot \mathbf{o}^{(b)} = \\
-\frac{\sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)} \cdot \mathbf{o}^{(b)}}{\ell_{\text{global}}^{\text{(trad)}}} = \mathbf{o}_{\text{final}}^{\text{(trad)}}
-$$
-
-
-**证毕。**
-
 
 > **【直观理解】**
-> 两种方法的本质区别在于**信息编码方式**：
+> 两种 FlashDecoding 方法的本质区别在于**信息编码方式**：
 > - **传统方法**将指数和 $\sum \exp(s_j)$ 编码为两个数 $(m^{(b)}, \ell^{(b)})$ 的乘积形式 $\exp(m^{(b)}) \cdot \ell^{(b)}$。合并时需要先统一参考系（减去全局最大值 $m_{\text{global}}$）。
 > - **LSE 方法**将指数和直接编码为对数空间的一个标量 $S^{(b)} = \log(\sum \exp(s_j))$。合并时直接使用对数空间的加法规则。
+>
 > 两种编码方式完全等价（因为 $S^{(b)} = m^{(b)} + \log(\ell^{(b)})$），只是"坐标系"不同。
 
 
