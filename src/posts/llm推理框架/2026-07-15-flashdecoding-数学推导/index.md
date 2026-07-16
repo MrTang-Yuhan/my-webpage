@@ -183,7 +183,9 @@ d_j = d_{j-1} \cdot \exp(m_{j-1} - m_j) + \exp(x_j - m_j) $$
 | $\ell^{(b)}$（或写作 $l^{(b)}$） | 局部指数和 | 第 $b$ 个 Tile 中所有 $\exp(s_j - m^{(b)})$ 的和 | 作为该 Tile 局部 softmax 的归一化分母 |
 | $\mathbf{o}^{(b)}$ | 局部输出 | 第 $b$ 个 Tile 的局部注意力结果 | 该 Tile 内部做 softmax 后的加权平均值 |
 
-
+> 特别需要注意的是，$\mathbf{o}^{(b)}$ 的维度为 `[batch_size, num_heads, seq_len_q, head_dim]`，而 $\ell^{(b)}$ 和 $m^{(b)}$ 的维度为 `[batch_size, num_heads, seq_len_q, 1]`。在 Decode 阶段，`seq_len_q=1`。
+>
+> 这是因为在注意力分数矩阵中，我们沿着 key 的序列长度维度（即最后一个维度 `dim=-1`，对应 `tile_size_kv`）进行求最大值或求和规约。对应的数学含义即一个 query 对所有 key 的注意力分数进行操作。
 
 #### 2.4.1 每个 Tile 的局部计算
 
