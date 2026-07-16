@@ -10,8 +10,10 @@ tags:
 # FlashDecoding 数学推导：传统 m/l/o 方法与 LSE 方法
 
 > 参考网页：
-> - LSE 方法推导：https://my-webpage-adu.pages.dev/posts/llm%E6%8E%A8%E7%90%86%E6%A1%86%E6%9E%B6/2026-07-13-log-sum-exp-%E6%96%B9%E6%B3%95/
-> - FlashDecoding 传统方法推导：https://zhuanlan.zhihu.com/p/1988996116017086993
+> - LSE 方法推导：[Log-Sum-Exp (LSE) 方法](https://my-webpage-adu.pages.dev/posts/llm%E6%8E%A8%E7%90%86%E6%A1%86%E6%9E%B6/2026-07-13-log-sum-exp-%E6%96%B9%E6%B3%95/)
+> - FlashDecoding 传统方法推导：
+- [推理长序列利器：ChunkedPrefill&FlashDecoding原理详解](https://zhuanlan.zhihu.com/p/1988996116017086993)
+- 
 
 
 
