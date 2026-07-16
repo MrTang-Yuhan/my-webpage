@@ -1077,24 +1077,6 @@ FlashDecoding 是一种针对 LLM 推理**解码阶段**的高效注意力算法
   $$S_{\text{global}} = \log\left(\sum_b \exp(S^{(b)})\right), \quad \mathbf{o}_{\text{final}} = \sum_b \exp(S^{(b)} - S_{\text{global}}) \cdot \mathbf{o}^{(b)}$$
 - **合并算子**：$[\mathbf{o}_1, S_1] \oplus [\mathbf{o}_2, S_2] = [\frac{e^{S_1}\mathbf{o}_1 + e^{S_2}\mathbf{o}_2}{e^{S_1} + e^{S_2}}, \log(e^{S_1} + e^{S_2})]$
 
-
-### 5.3 等价性结论
-
-- **传统方法 $\Leftrightarrow$ 标准 Attention**：已证（2.2.3 节）
-- **LSE 方法 $\Leftrightarrow$ 标准 Attention**：已证（2.3.6 节）
-- **传统方法 $\Leftrightarrow$ LSE 方法**：已证（2.4 节），核心恒等式为 $S^{(b)} = m^{(b)} + \log(\ell^{(b)})$
-
-
-### 5.4 工程实践建议
-
-| 场景 | 推荐方法 | 理由 |
-|------|---------|------|
-| 一般推理加速 | 传统方法 | 实现成熟，生态完善 |
-| 通信受限（多机/跨节点） | LSE 方法 | 通信量减少 33%，更简洁 |
-| Ring Attention 序列并行 | LSE 方法 | 结合律保证任意合并顺序正确 |
-| CUDA Kernel 手写优化 | 传统方法 | 与 FlashAttention 原版一致 |
-
-
 该算法已被集成到 FlashAttention 2.2+、xFormers、FlashInfer 等主流推理加速库中，成为长序列 LLM 推理的标准优化技术。
 
 
