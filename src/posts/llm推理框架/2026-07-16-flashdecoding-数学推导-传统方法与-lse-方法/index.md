@@ -805,6 +805,46 @@ $$
 $$
 
 
+
+> **流内合并公式的完整推导**
+>
+> 合并算子 $\oplus$ 的定义（已在 2.3.5 节给出）为：
+> $$
+\begin{bmatrix} \mathbf{o}_{\text{acc}} \\ S_{\text{acc}} \end{bmatrix} \oplus \begin{bmatrix} \mathbf{o}_i \\ S_i \end{bmatrix} = \begin{bmatrix} \displaystyle\frac{\exp(S_{\text{acc}}) \cdot \mathbf{o}_{\text{acc}} + \exp(S_i) \cdot \mathbf{o}_i}{\exp(S_{\text{acc}}) + \exp(S_i)} \\ \log(\exp(S_{\text{acc}}) + \exp(S_i)) \end{bmatrix} $$
+> **步骤 1：推导合并后的 LSE 值 $S_{\text{merged}}$**
+>
+> 从定义出发：
+> $$
+S_{\text{merged}} = \log(\exp(S_{\text{acc}}) + \exp(S_i)) $$
+> 当 $|S_{\text{acc}} - S_i|$ 很大时，直接计算 $\exp(S_{\text{acc}}) + \exp(S_i)$ 可能数值溢出。使用 safe LSE 技巧：
+>
+> 设 $S_{\max} = \max(S_{\text{acc}}, S_i)$，$S_{\min} = \min(S_{\text{acc}}, S_i)$，则：
+> $$
+\begin{aligned}
+S_{\text{merged}} &= \log(\exp(S_{\text{acc}}) + \exp(S_i)) \\
+&= \log(\exp(S_{\max}) + \exp(S_{\min})) \\
+&= \log\left(\exp(S_{\max}) \cdot \left(1 + \frac{\exp(S_{\min})}{\exp(S_{\max})}\right)\right) \\
+&= \log(\exp(S_{\max})) + \log\left(1 + \exp(S_{\min} - S_{\max})\right) \\
+&= S_{\max} + \log(1 + \exp(S_{\min} - S_{\max}))
+\end{aligned} $$
+> 由于 $S_{\min} - S_{\max} \leq 0$，$\exp(S_{\min} - S_{\max}) \in (0, 1]$，不会溢出。
+>
+> **步骤 2：推导合并后的输出 $\mathbf{o}_{\text{merged}}$**
+>
+> 从 $\oplus$ 的定义出发：
+> $$
+\mathbf{o}_{\text{merged}} = \frac{\exp(S_{\text{acc}}) \cdot \mathbf{o}_{\text{acc}} + \exp(S_i) \cdot \mathbf{o}_i}{\exp(S_{\text{acc}}) + \exp(S_i)} $$
+>
+> 分母恰好等于 $\exp(S_{\text{merged}})$（由 $S_{\text{merged}}$ 的定义），因此：
+> $$
+\mathbf{o}_{\text{merged}} = \frac{\exp(S_{\text{acc}}) \cdot \mathbf{o}_{\text{acc}} + \exp(S_i) \cdot \mathbf{o}_i}{\exp(S_{\text{merged}})}$$
+> 将分子两项分别除以分母：
+> $$
+\mathbf{o}_{\text{merged}} = \mathbf{o}_{\text{acc}} \cdot \exp(S_{\text{acc}} - S_{\text{merged}}) + \mathbf{o}_i \cdot \exp(S_i - S_{\text{merged}}) $$
+
+
+
+
 ---
 
 **阶段 3：全局归约合并**
