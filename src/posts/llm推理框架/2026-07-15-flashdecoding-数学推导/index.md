@@ -2,7 +2,7 @@
 layout: post.njk
 post_id: 2026-07-15-flashdecoding-数学推导
 archive: llm推理框架
-title: FlashDecoding 数学推导
+title: FlashDecoding 数学推导（一）：传统方法
 date: 2026-07-15
 tags:
   - post
