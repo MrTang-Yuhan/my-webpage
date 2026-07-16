@@ -15,7 +15,7 @@ tags:
 
 ## 一、公式作用概述
 
-FlashDecoding 是一种用于**大语言模型（LLM）推理解码阶段（Decoding Stage）** 的高效注意力计算算法。在 Decoding 阶段，模型每次只生成一个新 token，因此 Query 的长度为 1，这导致 GPU 的并行度严重不足（大量流式多处理器 SM 处于空闲状态）。FlashDecoding 的核心思想是：**将 KV Cache（键值缓存）沿序列维度切分为多个 Tile（子块），分配到不同的 SM 上并行计算局部注意力结果，最后通过 Online Softmax 技术将各局部结果合并为全局正确的输出**。这种方法在不改变计算结果精度的前提下，显著提升了长序列解码的 GPU 利用率，实现了高达 8 倍的加速。
+FlashDecoding 是一种用于**大语言模型（LLM）推理解码阶段（Decoding Stage）** 的高效注意力计算算法。在 Decoding 阶段，模型每次只生成一个新 token，因此 Query 的长度为 1，这导致 GPU 的并行度严重不足（大量流式多处理器 SM 处于空闲状态）。FlashDecoding 的核心思想是：**将 KV Cache（键值缓存）沿序列维度切分为多个 Tile（子块），分配到不同的 SM 上并行计算局部注意力结果，最后通过 Online Softmax 技术将各局部结果合并为全局正确的输出**。这种方法在不改变计算结果精度的前提下，显著提升了长序列解码的 GPU 利用率。
 
 ---
 
@@ -31,13 +31,10 @@ $$
 \mathrm{Attention}(\mathbf{q}, \mathbf{K}, \mathbf{V}) = \mathrm{softmax}\left(\frac{\mathbf{q}\mathbf{K}^{\top}}{\sqrt{d}}\right) \mathbf{V}
 $$
 
-**为什么要除以 $\sqrt{d}$？** 这是因为当维度 $d$ 较大时，点积的数值会变得非常大，导致 softmax 函数的梯度变得非常小（梯度消失问题）。除以 $\sqrt{d}$ 可以将点积的方差缩放到约 1，保持数值稳定性。
 
 > **【知识卡片：Softmax 函数】**
 > - **定义**：Softmax 函数将一个实数向量转换为概率分布，使得所有输出值在 $(0, 1)$ 之间且和为 1。
 > - **公式**：对于向量 $\mathbf{x} = [x_1, x_2, \ldots, x_n]$，$\mathrm{softmax}(x_i) = \frac{\exp(x_i)}{\sum_{j=1}^{n} \exp(x_j)}$。
-> - **本步作用**：将注意力分数转换为权重分布，使得所有位置的重要性之和为 1。
-
 
 #### 2.1.2 解码阶段的并行度瓶颈
 
@@ -48,7 +45,6 @@ $$
 - **无法通过切分 Query 来获得并行度**（Query 只有一行）。
 - 如果使用 FlashAttention 的原版策略，只有一个 SM（或少量 SM）在工作，**大量 SM 空闲**。
 - 同时，KV Cache 的序列长度 $N_{kv}$ 可能非常长（例如 32K、64K 甚至更长），读取 KV Cache 成为瓶颈。
-
 
 #### 2.1.3 FlashDecoding 的核心思想
 
@@ -99,8 +95,6 @@ $$
 
 分子分母同乘 $\exp(-m)$ 即可得该恒等式。其中 $m = \max_{j=1}^{N} x_j$ 是输入向量的最大值。
 
-
-
 #### 2.3.2 Online Softmax 的递推公式
 
 Online Softmax 的核心观察是：**可以将 softmax 的计算分解为增量更新**。假设我们已经处理了前 $j-1$ 个元素，现在要加入第 $j$ 个元素 $x_j$，可以维护两个状态变量：
@@ -130,20 +124,16 @@ $$
 > **【Online Softmax 推导】**
 > 
 > 将 $d_j$ 拆分为历史项与新项：
-> $$
-d_j = \underbrace{\sum_{i=1}^{j-1} \exp(x_i - m_j)}_{\text{历史 } j-1 \text{ 项}} + \underbrace{\exp(x_j - m_j)}_{\text{新项 } x_j}$$
+> $$d_j = \underbrace{\sum_{i=1}^{j-1} \exp(x_i - m_j)}_{\text{历史 } j-1 \text{ 项}} + \underbrace{\exp(x_j - m_j)}_{\text{新项 } x_j}$$
 > 对任意历史项 $i \le j-1$，做基准平移：
-> $$
-\exp(x_i - m_j) = \exp(x_i - m_{j-1} + m_{j-1} - m_j) = \exp(x_i - m_{j-1}) \cdot \exp(m_{j-1} - m_j)$$
+> $$\exp(x_i - m_j) = \exp(x_i - m_{j-1} + m_{j-1} - m_j) = \exp(x_i - m_{j-1}) \cdot \exp(m_{j-1} - m_j)$$
 > 对 $i = 1, \dots, j-1$ 求和：
-> $$
-\sum_{i=1}^{j-1} \exp(x_i - m_j) = \exp(m_{j-1} - m_j) \cdot \underbrace{\sum_{i=1}^{j-1} \exp(x_i - m_{j-1})}_{= d_{j-1}} $$
+> $$\sum_{i=1}^{j-1} \exp(x_i - m_j) = \exp(m_{j-1} - m_j) \cdot \underbrace{\sum_{i=1}^{j-1} \exp(x_i - m_{j-1})}_{= d_{j-1}}$$
 > 合并得到递推式：
-> $$
-d_j = d_{j-1} \cdot \exp(m_{j-1} - m_j) + \exp(x_j - m_j) $$
-
+> $$d_j = d_{j-1} \cdot \exp(m_{j-1} - m_j) + \exp(x_j - m_j)$$
 
 > **【小例子：Online Softmax 和标准 Softmax 数学等价】**
+>
 > 设 $\mathbf{x} = [1.0, 2.0, 0.5]$。
 >
 > **初始化**（$j=1$）：$m_1 = 1.0$，$d_1 = \exp(1.0 - 1.0) = 1.0$。
@@ -187,9 +177,15 @@ d_j = d_{j-1} \cdot \exp(m_{j-1} - m_j) + \exp(x_j - m_j) $$
 >
 > 这是因为在注意力分数矩阵中，我们沿着 key 的序列长度维度（即最后一个维度 `dim=-1`，对应 `tile_size_kv`）进行求最大值或求和规约。对应的数学含义即一个 query 对所有 key 的注意力分数进行操作。
 
+
+
 #### 2.4.1 每个 Tile 的局部计算
 
-对于第 $b$ 个 KV Tile（$b = 1, 2, \ldots, B$），SM $b$ 并行计算以下四个量：
+对于第 $b$ 个 KV Tile（$b = 1, 2, \ldots, B$），SM $b$ 并行计算以下量。每个 Tile 的计算可以采用**直接计算**或**增量更新**两种方式，二者在数学上完全等价，但增量更新方式更适合 CUDA Kernel 实现。
+
+---
+
+**直接计算方式（先算完整 Tile 再做 softmax）**
 
 1. **注意力分数**：$\mathbf{s}^{(b)} = \frac{\mathbf{q} \mathbf{K}^{(b)\top}}{\sqrt{d}} \in \mathbb{R}^{1 \times N_{\text{tile}}}$
    - 这是 Query $\mathbf{q}$ 与 Tile $b$ 中所有 Key 的相似度分数向量。
@@ -203,7 +199,87 @@ d_j = d_{j-1} \cdot \exp(m_{j-1} - m_j) + \exp(x_j - m_j) $$
 4. **局部加权输出**：$\mathbf{o}^{(b)} = \frac{\sum_{j=1}^{N_{\text{tile}}} \exp\bigl(s_j^{(b)} - m^{(b)}\bigr) \cdot \mathbf{V}_j^{(b)}}{\ell^{(b)}} \in \mathbb{R}^{1 \times d}$
    - 该 Tile 的局部 softmax 结果，即 Value 的加权平均，权重来自局部 softmax。
 
+---
+
+**增量更新方式（逐个元素/子块 Online Softmax 递推）**
+
+在 CUDA Kernel 中，通常不会等整个 Tile 的注意力分数全部算完再做 softmax。而是将 Tile 进一步划分为更小的子块（sub-tile），逐个加载到 SRAM（如 Shared Memory）中处理，并在子块之间维护 running states。设 Tile $b$ 内有 $N_{\text{tile}}$ 个位置，逐个处理第 $j$ 个位置（$j = 1, 2, \ldots, N_{\text{tile}}$），维护以下三个 running states：
+
+| State | 含义 | 初始值（$j=1$） |
+|-------|------|----------------|
+| $m_j$ | 前 $j$ 个分数中的最大值 | $m_1 = s_1^{(b)}$ |
+| $\ell_j$ | 前 $j$ 个分数的指数和（经数值稳定） | $\ell_1 = \exp(s_1^{(b)} - m_1) = 1$ |
+| $\mathbf{o}_j$ | 前 $j$ 个 Value 的 softmax 加权平均 | $\mathbf{o}_1 = \mathbf{V}_1^{(b)}$ |
+
+**应用 Online Softmax 递推更新**（处理第 $j$ 个元素，$j \geq 2$）：
+
+$$
+m_j = \max(m_{j-1}, \, s_j^{(b)})
+$$
+
+$$
+\ell_j = \ell_{j-1} \cdot \exp(m_{j-1} - m_j) + \exp(s_j^{(b)} - m_j)
+$$
+
+$$
+\mathbf{o}_j = \frac{\ell_{j-1} \cdot \exp(m_{j-1} - m_j) \cdot \mathbf{o}_{j-1} + \exp(s_j^{(b)} - m_j) \cdot \mathbf{V}_j^{(b)}}{\ell_j}
+$$
+
+**Tile 最终结果**：
+
+处理完 Tile $b$ 中全部 $N_{\text{tile}}$ 个元素后：
+
+$$
+m^{(b)} = m_{N_{\text{tile}}}, \quad \ell^{(b)} = \ell_{N_{\text{tile}}}, \quad \mathbf{o}^{(b)} = \mathbf{o}_{N_{\text{tile}}}
+$$
+
+> **为什么增量更新公式正确？**
+>
+> 关键在于 $\mathbf{o}_j$ 的递推式。设前 $j-1$ 个元素的"正确"softmax 加权平均为：
+> $$\mathbf{o}_{j-1} = \frac{\sum_{i=1}^{j-1} \exp(s_i^{(b)} - m_{j-1}) \cdot \mathbf{V}_i^{(b)}}{\ell_{j-1}}$$
+>
+> 当加入第 $j$ 个元素后，新的参考最大值变为 $m_j = \max(m_{j-1}, s_j^{(b)})$。前 $j-1$ 个元素的历史积累需要平移到新的参考系：
+> $$\sum_{i=1}^{j-1} \exp(s_i^{(b)} - m_j) \cdot \mathbf{V}_i^{(b)} = \exp(m_{j-1} - m_j) \cdot \sum_{i=1}^{j-1} \exp(s_i^{(b)} - m_{j-1}) \cdot \mathbf{V}_i^{(b)} = \ell_{j-1} \cdot \exp(m_{j-1} - m_j) \cdot \mathbf{o}_{j-1}$$
+>
+> 新元素的贡献为：$\exp(s_j^{(b)} - m_j) \cdot \mathbf{V}_j^{(b)}$。
+>
+> 分子合并：$\ell_{j-1} \cdot \exp(m_{j-1} - m_j) \cdot \mathbf{o}_{j-1} + \exp(s_j^{(b)} - m_j) \cdot \mathbf{V}_j^{(b)}$
+>
+> 分母为新的指数和 $\ell_j$，因此：
+> $$\mathbf{o}_j = \frac{\ell_{j-1} \cdot \exp(m_{j-1} - m_j) \cdot \mathbf{o}_{j-1} + \exp(s_j^{(b)} - m_j) \cdot \mathbf{V}_j^{(b)}}{\ell_j}$$
+
+> **【知识卡片：增量更新的工程意义】**
+> - **定义**：增量更新（Incremental Update）指在处理数据流时，不等待全部数据到达，而是每收到一个新数据就立即更新中间结果。
+> - **公式**：$m_j, \ell_j, \mathbf{o}_j$ 的递推式。
+> - **本步作用**：在 CUDA Kernel 中，KV Cache 数据从 HBM 加载到 SRAM 是分批进行的。增量更新允许 kernel **边加载边计算**，无需缓存整个 Tile 的注意力分数，大幅减少 SRAM 占用。这是 Flash Attention 系列算法的核心设计模式。
+
+> **【小例子：增量更新 vs 直接计算 数值等价验证】**
+>
+> 设 $\mathbf{q} = [0.1, 0.2, 0.3, 0.4]$，$d = 4$，$\sqrt{d} = 2.0$。
+>
+> Tile $b$ 中有 3 个 KV 对：
+> | Key | Value | 分数 $s_j^{(b)}$ |
+> |-----|-------|-----------------|
+> | $[0.5, 0.1, 0.3, 0.2]$ | $[0.1, 0.2, 0.3, 0.4]$ | $0.1200$ |
+> | $[0.2, 0.6, 0.1, 0.4]$ | $[0.5, 0.4, 0.3, 0.2]$ | $0.1650$ |
+> | $[0.3, 0.2, 0.7, 0.1]$ | $[0.2, 0.6, 0.1, 0.5]$ | $0.1600$ |
+>
+> **增量更新过程**：
+>
+> | 步骤 | $m_j$ | $\ell_j$ | $\mathbf{o}_j$ |
+> |------|-------|----------|----------------|
+> | $j=1$ | $0.1200$ | $1.0000$ | $[0.100, 0.200, 0.300, 0.400]$ |
+> | $j=2$ | $\max(0.12, 0.165) = 0.1650$ | $1 \cdot e^{-0.045} + e^{0} = 1.9560$ | $[0.304, 0.302, 0.300, 0.298]$ |
+> | $j=3$ | $\max(0.165, 0.16) = 0.1650$ | $1.956 \cdot e^{0} + e^{-0.005} = 2.9510$ | $[0.269, 0.403, 0.233, 0.366]$ |
+>
+> **直接计算验证**：
+> - $m^{(b)} = 0.1650$ ✓
+> - $\ell^{(b)} = e^{-0.045} + e^{0} + e^{-0.005} = 0.956 + 1.0 + 0.995 = 2.9510$ ✓
+> - 两种方法的 $\mathbf{o}^{(b)}$ 差异 $< 10^{-15}$ ✓
+
 > **重要说明**：这里的 $\mathbf{o}^{(b)}$ 是**局部 softmax 结果**——它只考虑了 Tile $b$ 内部的归一化。如果直接将所有 $\mathbf{o}^{(b)}$ 相加，结果不等于全局 Attention，因为每个 Tile 的 softmax 分母 $\ell^{(b)}$ 只包含了该 Tile 内的指数和，而非全局所有位置的指数和。**必须通过 2.4.2 节的全局合并公式才能得到正确结果**。
+
+
 
 #### 2.4.2 全局合并公式推导
 
@@ -228,8 +304,7 @@ $$
 $$
 
 > **推导依据**：
-> $$
-> \ell_{\text{global}} =\sum_{b=1}^{B} \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m_{\text{global}}) = \\
+> $$\ell_{\text{global}} = \sum_{b=1}^{B} \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m_{\text{global}}) = \\
 \sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m^{(b)}) = \\
 \sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)}$$
 
@@ -254,22 +329,16 @@ $$
 $$
 
 > **推导依据**：
-> $$
-> \mathbf{o}_{\text{final}} = \frac{\sum_{b=1}^{B} \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m_{\text{global}}) \cdot \mathbf{V}_j^{(b)}}{\sum_{b=1}^{B} \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m_{\text{global}})}
-> $$
+> $$\mathbf{o}_{\text{final}} = \frac{\sum_{b=1}^{B} \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m_{\text{global}}) \cdot \mathbf{V}_j^{(b)}}{\sum_{b=1}^{B} \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m_{\text{global}})}$$
 >
 > 分子展开：
-> $$
-> \sum_{b=1}^{B} \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m_{\text{global}}) \cdot \mathbf{V}_j^{(b)} = \\
-\sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m^{(b)}) \cdot \mathbf{V}_j^{(b)}
-> $$
+> $$\sum_{b=1}^{B} \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m_{\text{global}}) \cdot \mathbf{V}_j^{(b)} = \\
+\sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m^{(b)}) \cdot \mathbf{V}_j^{(b)}$$
 >
 > 注意到 $\mathbf{o}^{(b)} = \frac{\sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m^{(b)}) \cdot \mathbf{V}_j^{(b)}}{\ell^{(b)}}$，所以 $\sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m^{(b)}) \cdot \mathbf{V}_j^{(b)} = \ell^{(b)} \cdot \mathbf{o}^{(b)}$。
 >
 > 代入即得：
-> $$
-> \mathbf{o}_{\text{final}} = \frac{\sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)} \cdot \mathbf{o}^{(b)}}{\ell_{\text{global}}}
-> $$
+> $$\mathbf{o}_{\text{final}} = \frac{\sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)} \cdot \mathbf{o}^{(b)}}{\ell_{\text{global}}}$$
 
 ---
 
@@ -283,7 +352,7 @@ $$
 
 ---
 
-**阶段 1：各 SM 并行计算局部结果（步骤 (2a)-(2d) 对每个 Tile 并行执行）**
+**阶段 1：各 SM 并行计算局部结果（对每个 Tile 并行执行）**
 
 对每个 Tile $b = 1, 2, \ldots, B$（其中 $B = \lceil N_{kv} / N_{\text{tile}} \rceil$）：
 
@@ -303,18 +372,32 @@ $$
 \mathbf{s}^{(b)} = \frac{\mathbf{q} \mathbf{K}^{(b)\top}}{\sqrt{d}} \in \mathbb{R}^{1 \times N_{\text{tile}}^{(b)}}
 $$
 
-(2c) 计算局部统计量（数值稳定的 Online Softmax）：
+(2c) 计算局部统计量（**增量更新方式**，数值稳定的 Online Softmax）：
+
+初始化：
 
 $$
-m^{(b)} = \max_{j=1}^{N_{\text{tile}}^{(b)}} s_j^{(b)}
+m_1 = s_1^{(b)}, \quad \ell_1 = 1, \quad \mathbf{o}_1 = \mathbf{V}_1^{(b)}
+$$
+
+对 $j = 2, 3, \ldots, N_{\text{tile}}^{(b)}$ 递推：
+
+$$
+m_j = \max(m_{j-1}, \, s_j^{(b)})
 $$
 
 $$
-\ell^{(b)} = \sum_{j=1}^{N_{\text{tile}}^{(b)}} \exp(s_j^{(b)} - m^{(b)})
+\ell_j = \ell_{j-1} \cdot \exp(m_{j-1} - m_j) + \exp(s_j^{(b)} - m_j)
 $$
 
 $$
-\mathbf{o}^{(b)} = \frac{\sum_{j=1}^{N_{\text{tile}}^{(b)}} \exp(s_j^{(b)} - m^{(b)}) \cdot \mathbf{V}_j^{(b)}}{\ell^{(b)}} \in \mathbb{R}^{1 \times d}
+\mathbf{o}_j = \frac{\ell_{j-1} \cdot \exp(m_{j-1} - m_j) \cdot \mathbf{o}_{j-1} + \exp(s_j^{(b)} - m_j) \cdot \mathbf{V}_j^{(b)}}{\ell_j}
+$$
+
+Tile 最终结果：
+
+$$
+m^{(b)} = m_{N_{\text{tile}}^{(b)}}, \quad \ell^{(b)} = \ell_{N_{\text{tile}}^{(b)}}, \quad \mathbf{o}^{(b)} = \mathbf{o}_{N_{\text{tile}}^{(b)}}
 $$
 
 ---
@@ -371,7 +454,6 @@ $$
 
 $$
 \sum_{j \in \text{Tile } b} \exp(s_j - m_{\text{global}}) \cdot \mathbf{V}_j = \exp(m^{(b)} - m_{\text{global}}) \sum_{j \in \text{Tile } b} \exp(s_j - m^{(b)}) \cdot \mathbf{V}_j = \\
-
 \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)} \cdot \mathbf{o}^{(b)}
 $$
 
@@ -387,7 +469,7 @@ $$
 \mathbf{o}_{\text{direct}} = \frac{\sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)} \cdot \mathbf{o}^{(b)}}{\ell_{\text{global}}} = \mathbf{o}_{\text{final}}
 $$
 
-**证毕。** 
+**证毕。**
 
 ![FlashDecoding Tile合并流程图](img/fig_3_tile_merge_flow.png)
 
@@ -415,7 +497,8 @@ $$
 | Softmax 函数 | 将注意力分数转换为概率分布 | $\mathrm{softmax}(x_i) = \frac{\exp(x_i)}{\sum_j \exp(x_j)}$ |
 | 缩放点积注意力 | 定义 Query 与 KV 的交互方式 | $\mathrm{Attention}(Q,K,V) = \mathrm{softmax}(QK^T/\sqrt{d})V$ |
 | Max-Shift 数值稳定 | 避免 softmax 计算中的指数溢出 | $\mathrm{softmax}(x_i) = \frac{\exp(x_i - m)}{\sum_j \exp(x_j - m)}$，$m = \max_j x_j$ |
-| Online Softmax | 支持增量式 softmax 计算，是分块合并的核心 | 递推维护 $m_j = \max(m_{j-1}, x_j)$ 和 $d_j = d_{j-1} \cdot \exp(m_{j-1} - m_j) + \exp(x_j - m_j)$ |
+| Online Softmax | 支持增量式 softmax 计算，是分块合并的核心 | 递推维护 $m_j = \max(m_{j-1}, x_j)$ 和 $\ell_j = \ell_{j-1} \cdot \exp(m_{j-1} - m_j) + \exp(x_j - m_j)$ |
+| 增量更新（Tile 内） | 在单个 Tile 内逐个元素更新 $m, \ell, \mathbf{o}$ | $\mathbf{o}_j = \frac{\ell_{j-1} \cdot e^{m_{j-1} - m_j} \cdot \mathbf{o}_{j-1} + e^{s_j - m_j} \cdot \mathbf{V}_j}{\ell_j}$ |
 | 指数乘法恒等式 | 将局部坐标系的指数值转换到全局坐标系 | $\exp(a - c) = \exp(a - b) \cdot \exp(b - c)$ |
 | 矩阵乘法 | 计算 Query 与 Key 的相似度分数 | $(\mathbf{A}\mathbf{B}^{\top})_{i,j} = \sum_{k} A_{i,k} \cdot B_{j,k}$ |
 | GPU SM（流式多处理器） | FlashDecoding 要充分利用的并行计算资源 | GPU 的核心计算单元，多个 SM 可同时执行不同任务 |
@@ -431,25 +514,34 @@ FlashDecoding 是一种针对 LLM 推理**解码阶段**的高效注意力算法
 
 1. **反转并行策略**：Prefill 阶段切分 Query，Decoding 阶段切分 KV Cache。
 2. **Online Softmax 合并**：通过维护每个 Tile 的局部最大值 $m^{(b)}$ 和局部指数和 $\ell^{(b)}$，在全局归约阶段将各局部结果正确合并。
-3. **数学等价性**：分块计算的结果与全序列直接计算的结果完全等价（已在 2.6 节证明）。
+3. **增量更新（Tile 内）**：在每个 Tile 内部，通过逐个元素/子块的 Online Softmax 递推，实现边加载边计算，减少 SRAM 占用。递推公式为：
+
+$$
+m_j = \max(m_{j-1}, s_j^{(b)}), \quad \ell_j = \ell_{j-1} \cdot e^{m_{j-1} - m_j} + e^{s_j^{(b)} - m_j}, \quad \mathbf{o}_j = \frac{\ell_{j-1} \cdot e^{m_{j-1} - m_j} \cdot \mathbf{o}_{j-1} + e^{s_j^{(b)} - m_j} \cdot \mathbf{V}_j^{(b)}}{\ell_j}
+$$
+
+4. **数学等价性**：分块计算的结果与全序列直接计算的结果完全等价（已在 2.6 节证明）。
 
 FlashDecoding 的完整公式可以概括为：
 
-**局部计算（每个 Tile 并行）**：
+**局部计算（每个 Tile 并行，增量更新）**：
 
 $$
-\mathbf{s}^{(b)} = \frac{\mathbf{q} \mathbf{K}^{(b)\top}}{\sqrt{d}}, \quad m^{(b)} = \max_j s_j^{(b)}, \quad \ell^{(b)} = \sum_j \exp(s_j^{(b)} - m^{(b)}), \\
-
-\quad \mathbf{o}^{(b)} = \frac{\sum_j \exp(s_j^{(b)} - m^{(b)}) \mathbf{V}_j^{(b)}}{\ell^{(b)}}
+\mathbf{s}^{(b)} = \frac{\mathbf{q} \mathbf{K}^{(b)\top}}{\sqrt{d}}, \quad
+m_j = \max(m_{j-1}, s_j^{(b)}), \quad
+\ell_j = \ell_{j-1} \cdot e^{m_{j-1} - m_j} + e^{s_j^{(b)} - m_j}, \quad
+\mathbf{o}_j = \frac{\ell_{j-1} \cdot e^{m_{j-1} - m_j} \cdot \mathbf{o}_{j-1} + e^{s_j^{(b)} - m_j} \cdot \mathbf{V}_j^{(b)}}{\ell_j}
 $$
 
 **全局合并**：
 
 $$
-m_{\text{global}} = \max_b m^{(b)}, \quad \mathbf{o}_{\text{final}} = \frac{\sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)} \cdot \mathbf{o}^{(b)}}{\sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)}}
+m_{\text{global}} = \max_b m^{(b)}, \quad
+\mathbf{o}_{\text{final}} = \frac{\sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)} \cdot \mathbf{o}^{(b)}}{\sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)}}
 $$
 
 该算法已被集成到 FlashAttention 2.2+、xFormers、FlashInfer 等主流推理加速库中，成为长序列 LLM 推理的标准优化技术。
 
 ---
+
 
