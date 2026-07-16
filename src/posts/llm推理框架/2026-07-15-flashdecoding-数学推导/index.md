@@ -126,7 +126,8 @@ $$
 > 将 $d_j$ 拆分为历史项与新项：
 > $$d_j = \underbrace{\sum_{i=1}^{j-1} \exp(x_i - m_j)}_{\text{历史 } j-1 \text{ 项}} + \underbrace{\exp(x_j - m_j)}_{\text{新项 } x_j}$$
 > 对任意历史项 $i \le j-1$，做基准平移：
-> $$\exp(x_i - m_j) = \exp(x_i - m_{j-1} + m_{j-1} - m_j) = \exp(x_i - m_{j-1}) \cdot \exp(m_{j-1} - m_j)$$
+> $$\exp(x_i - m_j) = \exp(x_i - m_{j-1} + m_{j-1} - m_j) = \\
+\exp(x_i - m_{j-1}) \cdot \exp(m_{j-1} - m_j)$$
 > 对 $i = 1, \dots, j-1$ 求和：
 > $$\sum_{i=1}^{j-1} \exp(x_i - m_j) = \exp(m_{j-1} - m_j) \cdot \underbrace{\sum_{i=1}^{j-1} \exp(x_i - m_{j-1})}_{= d_{j-1}}$$
 > 合并得到递推式：
@@ -239,7 +240,7 @@ $$
 > $$\mathbf{o}_{j-1} = \frac{\sum_{i=1}^{j-1} \exp(s_i^{(b)} - m_{j-1}) \cdot \mathbf{V}_i^{(b)}}{\ell_{j-1}}$$
 >
 > 当加入第 $j$ 个元素后，新的参考最大值变为 $m_j = \max(m_{j-1}, s_j^{(b)})$。前 $j-1$ 个元素的历史积累需要平移到新的参考系：
-> $$\sum_{i=1}^{j-1} \exp(s_i^{(b)} - m_j) \cdot \mathbf{V}_i^{(b)} = \exp(m_{j-1} - m_j) \cdot \sum_{i=1}^{j-1} \exp(s_i^{(b)} - m_{j-1}) \cdot \mathbf{V}_i^{(b)} = \ell_{j-1} \cdot \exp(m_{j-1} - m_j) \cdot \mathbf{o}_{j-1}$$
+> $$\sum_{i=1}^{j-1} \exp(s_i^{(b)} - m_j) \cdot \mathbf{V}_i^{(b)} = \exp(m_{j-1} - m_j) \cdot \sum_{i=1}^{j-1} \exp(s_i^{(b)} - m_{j-1}) \cdot \mathbf{V}_i^{(b)} = \\ \ell_{j-1} \cdot \exp(m_{j-1} - m_j) \cdot \mathbf{o}_{j-1}$$
 >
 > 新元素的贡献为：$\exp(s_j^{(b)} - m_j) \cdot \mathbf{V}_j^{(b)}$。
 >
@@ -517,7 +518,8 @@ FlashDecoding 是一种针对 LLM 推理**解码阶段**的高效注意力算法
 3. **增量更新（Tile 内）**：在每个 Tile 内部，通过逐个元素/子块的 Online Softmax 递推，实现边加载边计算，减少 SRAM 占用。递推公式为：
 
 $$
-m_j = \max(m_{j-1}, s_j^{(b)}), \quad \ell_j = \ell_{j-1} \cdot e^{m_{j-1} - m_j} + e^{s_j^{(b)} - m_j}, \quad \mathbf{o}_j = \frac{\ell_{j-1} \cdot e^{m_{j-1} - m_j} \cdot \mathbf{o}_{j-1} + e^{s_j^{(b)} - m_j} \cdot \mathbf{V}_j^{(b)}}{\ell_j}
+m_j = \max(m_{j-1}, s_j^{(b)}), \quad \ell_j = \ell_{j-1} \cdot e^{m_{j-1} - m_j} + e^{s_j^{(b)} - m_j}, \\
+\quad \mathbf{o}_j = \frac{\ell_{j-1} \cdot e^{m_{j-1} - m_j} \cdot \mathbf{o}_{j-1} + e^{s_j^{(b)} - m_j} \cdot \mathbf{V}_j^{(b)}}{\ell_j}
 $$
 
 4. **数学等价性**：分块计算的结果与全序列直接计算的结果完全等价（已在 2.6 节证明）。
@@ -529,7 +531,8 @@ FlashDecoding 的完整公式可以概括为：
 $$
 \mathbf{s}^{(b)} = \frac{\mathbf{q} \mathbf{K}^{(b)\top}}{\sqrt{d}}, \quad
 m_j = \max(m_{j-1}, s_j^{(b)}), \quad
-\ell_j = \ell_{j-1} \cdot e^{m_{j-1} - m_j} + e^{s_j^{(b)} - m_j}, \quad
+\ell_j = \ell_{j-1} \cdot e^{m_{j-1} - m_j} + e^{s_j^{(b)} - m_j}, \\
+\quad
 \mathbf{o}_j = \frac{\ell_{j-1} \cdot e^{m_{j-1} - m_j} \cdot \mathbf{o}_{j-1} + e^{s_j^{(b)} - m_j} \cdot \mathbf{V}_j^{(b)}}{\ell_j}
 $$
 
