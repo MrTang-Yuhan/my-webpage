@@ -444,7 +444,7 @@ $$
 $$
 
 
-(1c) 计算局部统计量（**数值稳定的 Online Softmax**，推导见 [FlashDecoding 数学推导（一）：传统方法](https://my-webpage-adu.pages.dev/posts/llm%E6%8E%A8%E7%90%86%E6%A1%86%E6%9E%B6/2026-07-15-flashdecoding-%E6%95%B0%E5%AD%A6%E6%8E%A8%E5%AF%BC/)）：
+(1c) 计算局部统计量（**数值稳定的 Online Softmax**）：
 
 初始化：
 
@@ -479,7 +479,17 @@ $$
 m^{(b)} = m_{N_{\text{tile}}^{(b)}}, \quad \ell^{(b)} = \ell_{N_{\text{tile}}^{(b)}}, \quad \mathbf{o}^{(b)} = \mathbf{o}_{N_{\text{tile}}^{(b)}}
 $$
 
-
+> **数值稳定的 Online Softmax** 推导见 [FlashDecoding 数学推导（一）：传统方法](https://my-webpage-adu.pages.dev/posts/llm%E6%8E%A8%E7%90%86%E6%A1%86%E6%9E%B6/2026-07-15-flashdecoding-%E6%95%B0%E5%AD%A6%E6%8E%A8%E5%AF%BC/)）
+>
+>  注：与 Online Softmax 相对的**直接计算方式（先算完整 Tile 再做 softmax）**
+> 1. **注意力分数**：$\mathbf{s}^{(b)} = \frac{\mathbf{q} \mathbf{K}^{(b)\top}}{\sqrt{d}} \in \mathbb{R}^{1 \times N_{\text{tile}}}$
+>    - 这是 Query $\mathbf{q}$ 与 Tile $b$ 中所有 Key 的相似度分数向量。
+> 2. **局部最大值**（running max）：$m^{(b)} = \max_{j=1}^{N_{\text{tile}}} s_j^{(b)}$
+>    - 该 Tile 中最大的注意力分数，用于数值稳定。
+> 3. **局部指数和**（running sum）：$\ell^{(b)} = \sum_{j=1}^{N_{\text{tile}}} \exp\bigl(s_j^{(b)} - m^{(b)}\bigr)$
+>    - 该 Tile 内所有（经数值稳定后的）指数值之和，充当局部 softmax 的分母。
+> 4. **局部加权输出**：$\mathbf{o}^{(b)} = \frac{\sum_{j=1}^{N_{\text{tile}}} \exp\bigl(s_j^{(b)} - m^{(b)}\bigr) \cdot \mathbf{V}_j^{(b)}}{\ell^{(b)}} \in \mathbb{R}^{1 \times d}$
+>    - 该 Tile 的局部 softmax 结果，即 Value 的加权平均，权重来自局部 softmax。
 ---
 
 **阶段 2：全局归约合并（一个轻量级的 Reduce Kernel）**
