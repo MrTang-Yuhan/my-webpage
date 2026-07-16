@@ -14,6 +14,7 @@ tags:
 > - FlashDecoding 传统方法推导：https://zhuanlan.zhihu.com/p/1988996116017086993
 
 
+
 ---
 
 
@@ -24,9 +25,9 @@ FlashDecoding 是一种用于**大语言模型（LLM）推理解码阶段（Deco
 
 本文档将介绍两种数学上等价的 FlashDecoding 实现方法，并分别证明它们与标准 Attention 的等价性：
 
-1. **传统方法（m/l/o 三元组法）**：每个 Tile 存储局部最大值 $m^{(b)}$、局部指数和 $\ell^{(b)}$ 和局部输出 $\mathbf{o}^{(b)}$，合并时使用指数缩放因子 $\exp(m^{(b)} - m_{\text{global}})$ 进行全局归一化。
+1. **传统方法（m/l/o 三元组法）**：每个 Tile 存储局部最大值 $m^{(b)}$、局部指数和 $\ell^{(b)}$ 和局部输出 $\mathbf{o}^{(b)}$。
 
-2. **LSE 方法（Log-Sum-Exp 二元组法）**：每个 Tile 存储局部 LSE 值 $S^{(b)} = \text{LSE}(\text{Tile } b)$ 和局部输出 $\mathbf{o}^{(b)}$，合并时在对数空间使用 LSE 迭代运算。
+2. **LSE 方法（Log-Sum-Exp 二元组法）**：每个 Tile 存储局部 LSE 值 $S^{(b)} = \text{LSE}(\text{Tile } b)$ 和局部输出 $\mathbf{o}^{(b)}$。
 
 两种方法均与标准 Attention **数学等价**（忽略浮点舍入误差），但 LSE 方法在通信量和实现简洁性上更具优势。
 
@@ -132,11 +133,6 @@ $$
 这是 Tile $b$ 的局部 softmax 结果，即 Value 的加权平均，权重来自 Tile 内部的 softmax 归一化。
 
 
-> **为什么需要三个量？**
-> - $\mathbf{o}^{(b)}$ 是局部 softmax 后的加权平均（已归一化到 Tile 内部）。
-> - $m^{(b)}$ 是跨 Tile 合并时的数值稳定参考点。
-> - $\ell^{(b)}$ 是跨 Tile 合并时的归一化分母。
-> 三者缺一不可，共同编码了 Tile $b$ 的完整注意力信息。
 
 
 #### 2.2.2 全局合并公式
@@ -163,7 +159,8 @@ $$
 
 
 > **推导依据**：
-> $$\ell_{\text{global}} = \sum_{b=1}^{B} \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m_{\text{global}}) = \sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m^{(b)}) = \sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)}$$
+> $$\ell_{\text{global}} = \sum_{b=1}^{B} \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m_{\text{global}}) = \\
+\sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m^{(b)}) = \sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)}$$
 
 **步骤 3：合并局部输出**
 
@@ -176,7 +173,8 @@ $$
 > **推导依据**：
 > $$\mathbf{o}_{\text{final}} = \frac{\sum_{b=1}^{B} \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m_{\text{global}}) \cdot \mathbf{V}_j^{(b)}}{\sum_{b=1}^{B} \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m_{\text{global}})}$$
 > 分子展开：
-> $$\sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m_{\text{global}}) \cdot \mathbf{V}_j^{(b)} = \exp(m^{(b)} - m_{\text{global}}) \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m^{(b)}) \cdot \mathbf{V}_j^{(b)} = \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)} \cdot \mathbf{o}^{(b)}$$
+> $$\sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m_{\text{global}}) \cdot \mathbf{V}_j^{(b)} = \\
+\exp(m^{(b)} - m_{\text{global}}) \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m^{(b)}) \cdot \mathbf{V}_j^{(b)} = \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)} \cdot \mathbf{o}^{(b)}$$
 > 代入即得全局合并公式。
 
 
@@ -207,7 +205,8 @@ $$
 
 
 $$
-\sum_{j \in \text{Tile } b} \exp(s_j - m_{\text{global}}) \cdot \mathbf{V}_j = \exp(m^{(b)} - m_{\text{global}}) \sum_{j \in \text{Tile } b} \exp(s_j - m^{(b)}) \cdot \mathbf{V}_j = \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)} \cdot \mathbf{o}^{(b)}
+\sum_{j \in \text{Tile } b} \exp(s_j - m_{\text{global}}) \cdot \mathbf{V}_j = \\
+\exp(m^{(b)} - m_{\text{global}}) \sum_{j \in \text{Tile } b} \exp(s_j - m^{(b)}) \cdot \mathbf{V}_j = \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)} \cdot \mathbf{o}^{(b)}
 $$
 
 
@@ -245,6 +244,7 @@ $$
 > - **定义**：对于向量 $\mathbf{x} = (x_1, x_2, \ldots, x_n) \in \mathbb{R}^n$，$\text{LSE}(\mathbf{x}) = \log\left(\sum_{i=1}^{n} \exp(x_i)\right)$。
 > - **关键性质**：$\exp(\text{LSE}(\mathbf{x})) = \sum_{i=1}^{n} \exp(x_i)$，恰好是 softmax 的分母。
 > - **数值稳定版本**：$\text{LSE}(\mathbf{x}) = m + \log\left(\sum_{i=1}^{n} \exp(x_i - m)\right)$，其中 $m = \max_i x_i$。
+> - 证明过程见: [softmax 修正公式：Log-Sum-Exp (LSE) 方法](https://my-webpage-adu.pages.dev/posts/llm%E6%8E%A8%E7%90%86%E6%A1%86%E6%9E%B6/2026-07-13-log-sum-exp-%E6%96%B9%E6%B3%95/)
 
 
 #### 2.3.2 定义局部 LSE 值 $S^{(b)}$
@@ -267,7 +267,8 @@ $$
 
 
 > **推导验证**：
-> $$\sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)}) = \sum_{j=1}^{N_{\text{tile}}} \exp(m^{(b)} + s_j^{(b)} - m^{(b)}) = \exp(m^{(b)}) \cdot \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m^{(b)}) = \exp(m^{(b)}) \cdot \ell^{(b)}$$
+> $$\sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)}) = \sum_{j=1}^{N_{\text{tile}}} \exp(m^{(b)} + s_j^{(b)} - m^{(b)}) = \\
+\exp(m^{(b)}) \cdot \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m^{(b)}) = \exp(m^{(b)}) \cdot \ell^{(b)}$$
 > 取对数：
 > $$S^{(b)} = \log(\exp(m^{(b)}) \cdot \ell^{(b)}) = m^{(b)} + \log(\ell^{(b)})$$
 
@@ -310,7 +311,8 @@ $$
 > 全局正确的 Attention 输出为：
 > $$\mathbf{o}_{\text{final}} = \frac{\sum_{b=1}^{B} \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)}) \cdot \mathbf{V}_j^{(b)}}{\sum_{b=1}^{B} \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)})}$$
 > 分子（Tile $b$ 的贡献）：
-> $$\sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)}) \cdot \mathbf{V}_j^{(b)} = \exp(m^{(b)}) \cdot \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m^{(b)}) \cdot \mathbf{V}_j^{(b)} = \exp(m^{(b)}) \cdot \ell^{(b)} \cdot \mathbf{o}^{(b)} = \exp(S^{(b)}) \cdot \mathbf{o}^{(b)}$$
+> $$\sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)}) \cdot \mathbf{V}_j^{(b)} = \exp(m^{(b)}) \cdot \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)} - m^{(b)}) \cdot \mathbf{V}_j^{(b)} = \\
+\exp(m^{(b)}) \cdot \ell^{(b)} \cdot \mathbf{o}^{(b)} = \exp(S^{(b)}) \cdot \mathbf{o}^{(b)}$$
 > 分母：
 > $$\sum_{b=1}^{B} \sum_{j=1}^{N_{\text{tile}}} \exp(s_j^{(b)}) = \sum_{b=1}^{B} \exp(S^{(b)}) = \exp(S_{\text{global}})$$
 > 因此：
@@ -442,7 +444,8 @@ $$
 
 
 $$
-\mathbf{o}_{\text{final}}^{\text{(lse)}} = \sum_{b=1}^{B} \frac{\exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)}}{\ell_{\text{global}}^{\text{(trad)}}} \cdot \mathbf{o}^{(b)} = \frac{\sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)} \cdot \mathbf{o}^{(b)}}{\ell_{\text{global}}^{\text{(trad)}}} = \mathbf{o}_{\text{final}}^{\text{(trad)}}
+\mathbf{o}_{\text{final}}^{\text{(lse)}} = \sum_{b=1}^{B} \frac{\exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)}}{\ell_{\text{global}}^{\text{(trad)}}} \cdot \mathbf{o}^{(b)} = \\
+\frac{\sum_{b=1}^{B} \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)} \cdot \mathbf{o}^{(b)}}{\ell_{\text{global}}^{\text{(trad)}}} = \mathbf{o}_{\text{final}}^{\text{(trad)}}
 $$
 
 
@@ -1018,7 +1021,7 @@ class FlashDecodingLSE:
 | `S_i` | $S^{(b)}$ | 局部 LSE 值 $m^{(b)} + \log(\ell^{(b)})$ |
 | `O_i` | $\mathbf{o}^{(b)}$ | 局部 softmax 加权输出 |
 | `S_global` | $S_{\text{global}}$ | 全局 LSE 值 |
-| `torch.log1p(torch.exp(S_min - S_max))` | $\log(1 + \exp(S_{\min} - S_{\max}}))$ | 数值稳定的两数 LSE 增量项 |
+| `torch.log1p(torch.exp(S_min - S_max))` | $\log(1 + \exp(S_{\min} - S_{\max}))$ | 数值稳定的两数 LSE 增量项 |
 | `torch.exp(S_i - S_global)` | $\exp(S^{(b)} - S_{\text{global}})$ | 全局合并权重 |
 
 
@@ -1073,7 +1076,7 @@ FlashDecoding 是一种针对 LLM 推理**解码阶段**的高效注意力算法
 
 - **局部计算**：每个 Tile 计算 $(m^{(b)}, \ell^{(b)}, \mathbf{o}^{(b)})$
 - **全局合并**：
-  $$m_{\text{global}} = \max_b m^{(b)}, \quad \ell_{\text{global}} = \sum_b \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)}, \quad \mathbf{o}_{\text{final}} = \frac{\sum_b \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)} \cdot \mathbf{o}^{(b)}}{\ell_{\text{global}}}$$
+  $$m_{\text{global}} = \max_b m^{(b)}, \quad \ell_{\text{global}} = \sum_b \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)}, \\ \quad \mathbf{o}_{\text{final}} = \frac{\sum_b \exp(m^{(b)} - m_{\text{global}}) \cdot \ell^{(b)} \cdot \mathbf{o}^{(b)}}{\ell_{\text{global}}}$$
 
 
 ### 5.2 LSE 方法（S/o 二元组法）
