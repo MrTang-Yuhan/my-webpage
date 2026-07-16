@@ -2,7 +2,7 @@
 layout: post.njk
 post_id: 2026-07-16-flashdecoding-数学推导-传统方法与-lse-方法
 archive: llm推理框架
-title: FlashDecoding 数学推导：传统方法与 LSE 方法
+title: FlashDecoding 数学推导（二）：传统方法与 LSE 方法
 date: 2026-07-16
 tags:
   - post
@@ -12,8 +12,8 @@ tags:
 > 参考网页：
 > - LSE 方法推导：[Log-Sum-Exp (LSE) 方法](https://my-webpage-adu.pages.dev/posts/llm%E6%8E%A8%E7%90%86%E6%A1%86%E6%9E%B6/2026-07-13-log-sum-exp-%E6%96%B9%E6%B3%95/)
 > - FlashDecoding 传统方法推导：
-- [推理长序列利器：ChunkedPrefill&FlashDecoding原理详解](https://zhuanlan.zhihu.com/p/1988996116017086993)
-- 
+>   - [推理长序列利器：ChunkedPrefill&FlashDecoding原理详解](https://zhuanlan.zhihu.com/p/1988996116017086993)
+>   - [FlashDecoding 数学推导（一）：传统方法](https://my-webpage-adu.pages.dev/posts/llm%E6%8E%A8%E7%90%86%E6%A1%86%E6%9E%B6/2026-07-15-flashdecoding-%E6%95%B0%E5%AD%A6%E6%8E%A8%E5%AF%BC/)
 
 
 
