@@ -444,7 +444,7 @@ $$
 $$
 
 
-(1c) 计算局部统计量（数值稳定的 Online Softmax）：
+(1c) 计算局部统计量（**数值稳定的 Online Softmax**，推导见 [FlashDecoding 数学推导（一）：传统方法](https://my-webpage-adu.pages.dev/posts/llm%E6%8E%A8%E7%90%86%E6%A1%86%E6%9E%B6/2026-07-15-flashdecoding-%E6%95%B0%E5%AD%A6%E6%8E%A8%E5%AF%BC/)）：
 
 初始化：
 
