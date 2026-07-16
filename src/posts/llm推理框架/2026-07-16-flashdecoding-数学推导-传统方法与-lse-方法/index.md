@@ -1077,6 +1077,8 @@ FlashDecoding 是一种针对 LLM 推理**解码阶段**的高效注意力算法
   $$S_{\text{global}} = \log\left(\sum_b \exp(S^{(b)})\right), \quad \mathbf{o}_{\text{final}} = \sum_b \exp(S^{(b)} - S_{\text{global}}) \cdot \mathbf{o}^{(b)}$$
 - **合并算子**：$[\mathbf{o}_1, S_1] \oplus [\mathbf{o}_2, S_2] = [\frac{e^{S_1}\mathbf{o}_1 + e^{S_2}\mathbf{o}_2}{e^{S_1} + e^{S_2}}, \log(e^{S_1} + e^{S_2})]$
 
+---
+
 该算法已被集成到 FlashAttention 2.2+、xFormers、FlashInfer 等主流推理加速库中，成为长序列 LLM 推理的标准优化技术。
 
 
