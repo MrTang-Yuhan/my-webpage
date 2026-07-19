@@ -67,4 +67,6 @@ docker run -itd --gpus all --ipc=host --runtime=nvidia  --ulimit memlock=-1 --ul
 - `--ulimit stack=67108864`: 设置容器内进程的 栈大小上限为 67,108,864 bytes = 64 MiB。
 - `-v /home/tangyuhan/workpath/docker-data/infra:/root`: 将主机路径挂载到容器内的 /root 目录。
 
+**注**：
+可以加上 `--rm`，当容器 stop 时，会自动删除容器。
 
