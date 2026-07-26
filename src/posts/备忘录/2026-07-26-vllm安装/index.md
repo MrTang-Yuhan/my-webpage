@@ -46,6 +46,12 @@ source .venv/bin/activate
 由于 CUDA 版本为 12.8，所以要安装对应版本的 Pytorch。
 
 ```bash
+uv pip install torch==2.7.0 torchvision==0.22.0 torchaudio==2.7.0 --extra-index-url https://download.pytorch.org/whl/cu128
+```
+
+注意下面的没有指定版本的做法，会默认安装最新的 torch, torchvision 和 torchaudio，导致后续依赖安装出错：
+
+```bash
 uv pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu128
 ```
 
