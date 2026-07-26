@@ -22,6 +22,8 @@ tags:
 
 ### 1. 安装 uv
 
+> 安装参考： [uv 文档](https://uv.doczh.com/getting-started/installation/#docker)
+
 安装命令：
 ```bash
 pip install uv
