@@ -72,7 +72,7 @@ grep -v '^torch==' requirements/build/cuda.txt | uv pip install -r -
 uv pip install -e . --no-build-isolation
 ```
 
-### 7. 增量编译 vLLM
+### 7. 增量编译 vLLM （还未测试）
 
 在开发位于 csrc/ 目录下的 vLLM C++/CUDA 核函数（kernels）时，每次更改都使用 uv pip install -e . 重新编译整个项目会非常耗时。使用 CMake 的增量编译工作流允许在初始设置后仅重新编译必要的组件，从而实现更快的迭代。具体请参考：[vLLM 增量编译工作流](https://docs.vllm.com.cn/en/latest/contributing/#developing)。
 
