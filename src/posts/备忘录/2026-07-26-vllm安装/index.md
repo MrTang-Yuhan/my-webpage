@@ -46,7 +46,7 @@ source .venv/bin/activate
 由于 CUDA 版本为 12.8，所以要安装对应版本的 Pytorch。
 
 ```bash
-uv pip install torch==2.7.0 torchvision==0.22.0 torchaudio==2.7.0 --extra-index-url https://download.pytorch.org/whl/cu128
+uv pip install torch==2.9.0 torchvision==0.24.0 torchaudio==2.9.0 --index-url https://download.pytorch.org/whl/cu128
 ```
 
 注意下面的没有指定版本的做法，会默认安装最新的 torch, torchvision 和 torchaudio，导致后续依赖安装出错：
@@ -57,10 +57,14 @@ uv pip install torch torchvision torchaudio --extra-index-url https://download.p
 
 ### 4. 克隆 vLLM 仓库
 
+注意切换到 vLLM 的 v0.12.0 版本，支持 Pytorch 2.9.0+cu128 和 CUDA 12.8。
+
 ```bash
 git clone https://github.com/vllm-project/vllm.git
 cd vllm
+git checkout v0.12.0
 ```
+
 
 ### 5. 从 vLLM 仓库安装必要依赖
 
