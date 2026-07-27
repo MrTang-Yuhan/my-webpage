@@ -89,7 +89,7 @@ Host remote-150-pycharm
   HostName 202.197.4.150
   User tyh
   ProxyCommand ssh -W %h:%p eda
-  IdentityFile C:\Users\i26298\.ssh\id_ed25519_bastion_i26298
+  IdentityFile C:\Users\Tang\.ssh\id_ed25519
 
 ```
 特别注意，**此处使用的跳板命令是：`ProxyCommand ssh -W %h:%p eda`**。
