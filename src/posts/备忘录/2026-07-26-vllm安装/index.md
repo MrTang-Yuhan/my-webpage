@@ -16,8 +16,32 @@ tags:
 >
 > **Docker镜像环境**：
 > - **nvcc 版本：12.8**
+> 
 >
 > **安装参考**：[vLLM 中文手册](https://docs.vllm.com.cn/en/latest/contributing/#job-board)
+> 
+> **环境依赖链条**：
+>
+> - **第 1 层：GPU 硬件**
+>
+> 每块 GPU 有固定的架构（如 Pascal、Ampere、Blackwell）和计算能力（sm_xx）。它决定了驱动"能不能识别你这块卡"——太老的驱动不认识新卡，太新的驱动会主动砍掉对旧卡的支持。
+>
+> - **第 2 层：NVIDIA 驱动（宿主机唯一必需）**
+> 
+> 宿主机上**只需要装驱动 (如 535.54 / 570.86 / 580.12)**，不需要装 CUDA Toolkit。当你用 `docker run --gpus all` 启动容器时，`nvidia-container-toolkit` 会自动把驱动的用户态库（如 `libcuda.so`）和设备文件挂载进容器，让容器里的程序能直接调用 GPU。
+> 
+> - **第 3 层：驱动支持的最高 CUDA 版本**
+> 
+> 在宿主机执行 `nvidia-smi`，右上角显示的 **"CUDA Version"** 就是这块驱动能支持的最高 CUDA 版本。驱动向后兼容，所以容器里跑更低版本的 CUDA 也没问题。
+>
+> - **第 4 层：容器内的 CUDA Toolkit（可选）**
+> 
+> 只有当你需要在容器里**编译 CUDA 程序**（比如 `pip install` 某些需要 `nvcc` 的包）时才需要装。它只是个编译工具链，单纯跑 PyTorch 训练/推理时，容器里完全可以没有 CUDA Toolkit。其版本同样不能超过驱动支持的上限。
+> 
+> - **第 5 层：PyTorch / TensorFlow 等框架**
+>
+> 官方发布的 wheel 包（如 `torch==2.7.0+cu128`）**已经自带了 CUDA 运行时库**，不依赖容器里有没有装 CUDA Toolkit。唯一的硬性约束是：**框架自带的 CUDA 版本 ≤ 驱动支持的最高 CUDA 版本**。
+
 
 ## 开发 vLLM 的 Python 和 CUDA/C++ 代码
 
