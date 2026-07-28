@@ -113,8 +113,91 @@ uv pip install -e . --no-build-isolation
 
 **注意：** `pip install -e .`（editable 模式）的本质是在 Python 的 site-packages 目录下创建一个指向你源码目录的链接（.pth 文件或 .egg-link）。Python 解释器导入 vllm 包时，会直接读取你源码目录下的 .py 文件，而不是复制到 site-packages 里的副本。所以，**使用 `uv pip install -e . --no-build-isolation` 命令安装时，改 python 代码也无需再重新安装。**
 
-### 7. 增量编译 vLLM （还未测试）
+### 7. 测试修改 vLLM 的 Python 代码无需重新编译安装
 
-在开发位于 csrc/ 目录下的 vLLM C++/CUDA 核函数（kernels）时，每次更改都使用 uv pip install -e . 重新编译整个项目会非常耗时。使用 CMake 的增量编译工作流允许在初始设置后仅重新编译必要的组件，从而实现更快的迭代。具体请参考：[vLLM 增量编译工作流](https://docs.vllm.com.cn/en/latest/contributing/#developing)。
+验证方法：
+
+```bash
+# 1. 找到 vllm 包的实际位置
+python -c "import vllm; print(vllm.__file__)"
+# 输出应该是类似 /workspace/vllm/vllm/__init__.py
+# 而不是 /root/.cache/uv/... 或 site-packages 下的路径
+
+# 2. 修改任意 .py 文件，加一行 print
+echo 'print("THIS_IS_MY_EDIT")' >> vllm/__init__.py
+
+# 3. 直接 python 导入，立刻看到输出
+python -c "import vllm"
+# 你会看到 THIS_IS_MY_EDIT，证明读取的是源码目录的最新内容
+```
 
 
+### 8. 修改 vLLM 的 CUDA/C++ 代码，但是使用增量编译
+
+在开发位于 csrc/ 目录下的 vLLM C++/CUDA 核函数（kernels）时，每次更改都使用 `uv pip install -e .` 重新编译整个项目会非常耗时。使用 CMake 的增量编译工作流允许在初始设置后仅重新编译必要的组件，从而实现更快的迭代。在 vllm 根目录下进行如下操作：
+
+```bash
+# 1. 先完整编译一次（不用预编译 wheel）
+uv pip install -e . --no-build-isolation
+
+# 2. 之后所有 C++ 修改都用 CMake 增量编译
+
+# 生成 CMake 配置文件
+python tools/generate_cmake_presets.py
+# 初始化 CMake 构建环境首次构建并安装
+cmake --preset release
+# 首次构建并安装
+cmake --build --preset release --target install
+```
+
+**后续如果修改 CUDA/C++ 代码，只需要重新运行下面的命令进行增量编译：**
+
+```bash
+cmake --build --preset release --target install
+```
+
+
+> 参考：[vLLM 增量编译工作流](https://docs.vllm.com.cn/en/latest/contributing/#developing)。
+
+### 9. vLLM 代码库自测
+
+vLLM 使用 pytest 测试代码库。
+
+安装测试依赖：
+
+```bash
+# CUDA 平台完整测试依赖
+uv pip install -r requirements/common.txt -r requirements/dev.txt --torch-backend=auto
+
+# 最小测试依赖（通用）
+uv pip install pytest pytest-asyncio
+```
+
+运行测试：
+
+```bash
+# 全量测试
+pytest tests/
+
+# 单个文件详细输出
+pytest -s -v tests/test_logger.py
+
+### 10. 代码检查
+
+vLLM 使用 pre-commit 对代码库进行 linting 和格式化。如果您不熟悉 pre-commit，请参阅 [pre-commit 手册](https://pre-commit.git-scm.cn/#usage)。设置 pre-commit 就像这样简单：
+
+```bash
+uv pip install "pre-commit>=4.5.1"
+pre-commit install
+```
+vLLM 的 pre-commit 钩子现在将在您每次 `git commit` 提交时自动运行。
+
+当然也可以手动进行代码自查：
+
+```
+# 改代码前的自查（养成习惯）
+pre-commit run -a
+```
+
+
+```
