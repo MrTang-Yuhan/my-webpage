@@ -200,5 +200,40 @@ vLLM 的 pre-commit 钩子现在将在您每次 `git commit` 提交时自动运�
 pre-commit run -a
 ```
 
+### 11. 加速增量编译
 
+安装 ccache:
+
+```bash
+apt install ccache
+```
+
+查看当前的支持：
+
+```bash
+echo "========== GPU 架构 =========="
+nvidia-smi --query-gpu=name,compute_cap,memory.total --format=csv
+
+echo ""
+echo "========== CPU 核心 =========="
+echo "逻辑核心数: $(nproc)"
+
+echo ""
+echo "========== 内存 =========="
+free -h | grep "Mem:"
+
+echo ""
+echo "========== ccache 状态 =========="
+which ccache && ccache -s || echo "ccache 未安装"
+
+echo ""
+echo "========== nvcc 版本 =========="
+nvcc --version | grep "release"
+
+echo ""
+echo "========== 推荐配置 =========="
+CAP=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader | head -1 | tr -d '.')
+echo "export TORCH_CUDA_ARCH_LIST=\\\"$CAP\\\""
+echo "export MAX_JOBS=$(nproc)"
+```
 
