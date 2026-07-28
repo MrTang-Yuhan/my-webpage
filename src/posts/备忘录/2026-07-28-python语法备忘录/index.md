@@ -2,7 +2,7 @@
 layout: post.njk
 post_id: 2026-07-28-python语法备忘录
 archive: 备忘录
-title: python语法备忘录
+title: Python语法备忘录
 date: 2026-07-28
 tags:
   - post
