@@ -86,7 +86,7 @@ uv pip install torch torchvision torchaudio --extra-index-url https://download.p
 
 ### 4. 克隆 vLLM 仓库
 
-注意切换到 vLLM 的 v0.12.0 版本，支持 Pytorch 2.9.0+cu128 和 CUDA 12.8。
+注意**切换到 vLLM 的 v0.12.0 版本**，支持 Pytorch 2.9.0+cu128 和 CUDA 12.8。
 
 ```bash
 git clone https://github.com/vllm-project/vllm.git
@@ -141,12 +141,11 @@ python -c "import vllm"
 uv pip install -e . --no-build-isolation
 
 # 2. 之后所有 C++ 修改都用 CMake 增量编译
-
-# 生成 CMake 配置文件
+## 生成 CMake 配置文件
 python tools/generate_cmake_presets.py
-# 初始化 CMake 构建环境首次构建并安装
+## 初始化 CMake 构建环境首次构建并安装
 cmake --preset release
-# 首次构建并安装
+## 首次构建并安装
 cmake --build --preset release --target install
 ```
 
@@ -181,6 +180,8 @@ pytest tests/
 
 # 单个文件详细输出
 pytest -s -v tests/test_logger.py
+```
+
 
 ### 10. 代码检查
 
@@ -200,4 +201,4 @@ pre-commit run -a
 ```
 
 
-```
+
