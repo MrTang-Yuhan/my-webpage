@@ -158,49 +158,9 @@ cmake --build --preset release --target install
 
 > 参考：[vLLM 增量编译工作流](https://docs.vllm.com.cn/en/latest/contributing/#developing)。
 
-### 9. vLLM 代码库自测
+### 9. 加速增量编译
 
-vLLM 使用 pytest 测试代码库。
-
-安装测试依赖：
-
-```bash
-# CUDA 平台完整测试依赖
-uv pip install -r requirements/common.txt -r requirements/dev.txt --torch-backend=auto
-
-# 最小测试依赖（通用）
-uv pip install pytest pytest-asyncio
-```
-
-运行测试：
-
-```bash
-# 全量测试
-pytest tests/
-
-# 单个文件详细输出
-pytest -s -v tests/test_logger.py
-```
-
-
-### 10. 代码检查
-
-vLLM 使用 pre-commit 对代码库进行 linting 和格式化。如果您不熟悉 pre-commit，请参阅 [pre-commit 手册](https://pre-commit.git-scm.cn/#usage)。设置 pre-commit 就像这样简单：
-
-```bash
-uv pip install "pre-commit>=4.5.1"
-pre-commit install
-```
-vLLM 的 pre-commit 钩子现在将在您每次 `git commit` 提交时自动运行。
-
-当然也可以手动进行代码自查：
-
-```
-# 改代码前的自查（养成习惯）
-pre-commit run -a
-```
-
-### 11. 加速增量编译
+如果还想加速增量编译的过程，可以进行如下操作：
 
 安装 ccache:
 
@@ -208,7 +168,7 @@ pre-commit run -a
 apt install ccache
 ```
 
-查看当前的支持：
+查看当前的架构：
 
 ```bash
 echo "========== GPU 架构 =========="
@@ -235,5 +195,62 @@ echo "========== 推荐配置 =========="
 CAP=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader | head -1 | tr -d '.')
 echo "export TORCH_CUDA_ARCH_LIST=\\\"$CAP\\\""
 echo "export MAX_JOBS=$(nproc)"
+```
+
+后续可以只对当前硬件的架构进行编译， 例如：
+
+```bash
+# 设置环境变量（永久生效则保存到~/.bashrc)
+export TORCH_CUDA_ARCH_LIST="8.9"
+export MAX_JOBS=$(nproc)   # 自动获取核心数
+
+# 清理旧构建，重新生成 preset（让新架构变量生效）
+rm -rf cmake-build-release
+python tools/generate_cmake_presets.py --force-overwrite
+cmake --preset release
+cmake --build --preset release --target install
+
+```
+
+### 10. vLLM 代码库自测
+
+vLLM 使用 pytest 测试代码库。
+
+安装测试依赖：
+
+```bash
+# CUDA 平台完整测试依赖
+uv pip install -r requirements/common.txt -r requirements/dev.txt --torch-backend=auto
+
+# 最小测试依赖（通用）
+uv pip install pytest pytest-asyncio
+```
+
+运行测试：
+
+```bash
+# 全量测试
+pytest tests/
+
+# 单个文件详细输出
+pytest -s -v tests/test_logger.py
+```
+
+
+### 11. 代码检查
+
+vLLM 使用 pre-commit 对代码库进行 linting 和格式化。如果您不熟悉 pre-commit，请参阅 [pre-commit 手册](https://pre-commit.git-scm.cn/#usage)。设置 pre-commit 就像这样简单：
+
+```bash
+uv pip install "pre-commit>=4.5.1"
+pre-commit install
+```
+vLLM 的 pre-commit 钩子现在将在您每次 `git commit` 提交时自动运行。
+
+当然也可以手动进行代码自查：
+
+```
+# 改代码前的自查（养成习惯）
+pre-commit run -a
 ```
 
