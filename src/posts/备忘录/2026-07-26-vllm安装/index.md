@@ -2,7 +2,7 @@
 layout: post.njk
 post_id: 2026-07-26-vllm安装
 archive: 备忘录
-title: vLLM安装
+title: vLLM 安装
 date: 2026-07-26
 tags:
   - post
