@@ -2,7 +2,7 @@
 layout: post.njk
 post_id: 2026-05-17-vscode-ssh-免密远程连接配置
 archive: 备忘录
-title: VSCode SSH 和 Pycharm SSH 免密远程连接配置
+title: VSCode SSH 和 Pycharm SSH 免密远程连接和 WSL 连接配置
 date: 2026-05-18
 description: 在 Windows 系统下配置 SSH 免密登录远程服务器，并且支持多用户配置。
 tags:
@@ -99,3 +99,16 @@ Host remote-150-pycharm
 ![](img/pycharm-ssh.png)
 
 即可远程连接。
+
+# PyCharm 连接 WSL
+
+通过以下操作打开宿主机的 WSL 内部文件：
+
+![](img/pycharm-op1.png)
+![](img/pycharm-op2.png)
+
+Pycharm 调试 Jupyter 时，选择 pydevd 调试器可能报错，此时更换成 debugpy 调试器即可:
+
+![](img/pycharm-op3.png)
+![](img/pycharm-op4.png)
+
