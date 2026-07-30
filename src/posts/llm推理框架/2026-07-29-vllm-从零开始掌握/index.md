@@ -17,3 +17,4 @@ tags:
 
 1. 讲清了 vLLM 的 Prefix Cache 机制： 
     - [vLLM的prefix cache为何零开销](https://zhuanlan.zhihu.com/p/1896927732027335111)
+    - [高效推理的核心：vLLM V1 KV cache 管理机制剖析](https://zhuanlan.zhihu.com/p/1954128446398633139)
