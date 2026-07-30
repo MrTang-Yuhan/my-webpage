@@ -23,3 +23,9 @@ tags:
     - [高效推理的核心：vLLM V1 KV cache 管理机制剖析](https://zhuanlan.zhihu.com/p/1954128446398633139)
     - [vLLM PD分离KV cache传递机制详解与演进分析](https://zhuanlan.zhihu.com/p/1906741007606878764)
     - [1.5x提升:PD分离KV cache传输的实践经验](https://zhuanlan.zhihu.com/p/1946608360259577576)
+
+### Scheduler
+
+- [vLLM Scheduler逻辑难啃？先手搓一个基础调度器](https://zhuanlan.zhihu.com/p/1988193790129902960)
+
+- [vLLM V1 Scheduler的调度逻辑&优先级分析](https://zhuanlan.zhihu.com/p/1900957007575511876)
