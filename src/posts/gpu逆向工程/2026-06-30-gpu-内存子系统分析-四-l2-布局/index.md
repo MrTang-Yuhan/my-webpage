@@ -7,6 +7,9 @@ date: 2026-06-30
 tags:
   - post
 ---
+> 所有测试脚本和代码：[l2c-test-tangyuhan.zip](attach/l2c-test-tangyuhan.zip)
+
+
 # NVIDIA RTX 5080 L2 缓存微体系结构测量
 
 本文以 **NVIDIA GeForce RTX 5080** 作为实验平台，基于一套 CUDA 微基准测试程序，系统评估了流式多处理器（Streaming Multiprocessor, SM）至 L2 缓存的访问延迟、L2 有效容量、缓存行空间占用特性、硬件预取粒度提示、L2 持久缓存（Persisting L2 Cache）行为，以及访存与计算吞吐的饱和特性。实验方法借鉴并扩展了既有工作 [1] 中针对 NVIDIA L40 的非均匀 L2 延迟测量框架；GPU 架构参数参考 NVIDIA 官方技术文档 [2]；底层指令优化则基于 PTX ISA 9.3 [3] 实现。
