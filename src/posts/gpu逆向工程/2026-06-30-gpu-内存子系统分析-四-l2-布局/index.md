@@ -67,7 +67,7 @@ python3 scripts/analyze_topology_enhanced.py results/raw/rtx5080_topology_202607
 统计各个 SM 到 L2 的平均延迟，并画出延迟轮廓。如下图所示，观察到，延迟轮廓在 SM 标识符的前、后两个区间之间表现出很强的相似性。这一现象支持 GPU 中所有 SM 的物理布局可能符合**双半区结构假设**，即芯片可能被物理划分为两个完全对称的区域。
 
 
-![](../figures/topology/topology_per_sm.png)
+![](img/topology_per_sm.png)
 
 > **结论：** 5080 GPU 上的 L2 依赖加载延迟呈现与双半区组织一致的重复轮廓，推测 SM 的真实物理布局可能存在对称结构。但是对于 SM 数量无法均分为两组的 GPU，此类对称性结果预计不复现。
 
@@ -98,7 +98,7 @@ $$
 
 本次数据上的 $R^2=0.9973$，且实测值与模型预测值基本沿对角线分布。这表明当前延迟矩阵的大部分变异可以由 SM 主效应和地址探针主效应的线性叠加解释，SM–地址交互相对于总变异较弱。该结果验证了加性分解作为延迟描述模型的有效性，但高 $R^2$ 并不能证明片上网络不存在拥塞、特殊路由或其他微体系结构机制；它只说明这些因素没有在当前实验条件下形成显著的非加性交互。
 
-![](../figures/topology/topology_model.png)
+![](img/topology_model.png)
 
 > **结论：** 5080 GPU 内 SM 与地址探针各自具有稳定的延迟主效应，加性 NUCA 模型能够较好地描述二者的组合；模型拟合结果不等同于对具体物理路由机制的唯一解释。
 
@@ -108,7 +108,7 @@ $$
 
 图中标注的 `confidence` 实际是候选 GPC 分组在每 SM 平均延迟上的方差分析 F 统计量，即组间离散程度与组内离散程度之比。该值较大说明所构造分组在当前特征上分离明显，聚类结果越可信。此时结果为 `confidence = 361.42`，说明聚类结果高度可信。
 
-![](../figures/topology/topology_gpc_tpc_combined.png)
+![](img/topology_gpc_tpc_combined.png)
 
 > **结论：** 5080 GPU 通过延迟矩阵能够构造内部一致、分离明显的 TPC/GPC 候选分组，可用于提出拓扑假设。
 
@@ -116,12 +116,12 @@ $$
 
 自相关分析可用于判别时域信号中是否蕴含周期性结构。对于理想周期信号，其自相关函数在低置信区间外呈现显著峰值，峰值间隔即对应信号周期；对于纯噪声信号，除零滞后处的峰值外，其余峰值均落入置信带内，表明不存在周期性。即便信号被强噪声污染，自相关分析仍可能检出显著峰值（尽管周期估计可能失真），但足以判断信号中是否蕴含某种周期性成分，如下图所示。
 
-![](./auxiliary/acf_5_signals_with_period_annotations.png)
+![](img/acf_5_signals_with_period_annotations.png)
 
 
 基于上述原理，本文对地址探针延迟序列的主效应项进行自相关分析，旨在检测地址到 L2 slice 的映射中是否存在周期性模式，进而推断 128B 偏移的探针地址在 L2 slice 间是否遵循某种确定性的交错排布规律。结果如下图所示。分析表明，自相关函数在低置信带外存在显著峰值，证实延迟序列中确实存在某种周期性结构；然而，相邻峰值间隔不相同，故无法根据峰值位置准确判定具体周期值。此外，周期性的存在仅表明地址映射遵循某种确定性的分片规律，尚不足以区分该规律源于哈希函数还是其他周期性映射策略。
 
-![](../figures/topology/topology_autocorr.png)
+![](img/topology_autocorr.png)
 
 > **结论**：延迟序列的周期性特征表明，地址到 L2 slice 的映射并非均匀随机，而是遵循某种具有周期性的地址映射规律；但仅凭延迟信息无法区分该规律具体源于哈希函数还是其他映射策略。
 
@@ -151,7 +151,7 @@ python3 scripts/analyze_capacity.py results/raw/rtx5080_l2_capacity_pilot_202607
 
 下图给出了工作集递增时，单个 SM 上单个线程执行随机指针链依赖加载的平均访存延迟测量结果。延迟曲线呈现典型的双平台特征：在较小工作集下，延迟稳定于低水平平台，表明访存请求主要命中 L2；当工作集逼近标称 L2 容量时，延迟进入过渡区；随着工作集进一步增大，延迟跃升并稳定于更高平台，此时发生 L2 容量缺失，访存请求主要落入显存。该趋势符合由 L2 命中主导逐步转向容量缺失与显存访问主导的预期行为。
 
-![](../figures/capacity_pilot/l2_latency.png)
+![](img/capacity_pilot/capacity_pilot.png)
 
 > **结论：** RTX 5080 的依赖加载延迟曲线在标称 L2 容量（64 MiB）附近出现由低延迟平台向高延迟平台的显著转折，验证了本实验对 L2 有效容量边界的识别能力。
 
@@ -189,7 +189,7 @@ python3 scripts/analyze_tag_scaling.py results/raw/rtx5080_l2_tag_scaling_202607
 
 如右图所示，将左图各延迟曲线按实际访问的缓存行数量进行归一化后，各曲线呈现高度一致性。该结果表明，L2 缓存占用由实际访问所覆盖的缓存行数量决定，而非由已分配但未实际访问的地址空间大小决定。
 
-![](../figures/tag_scaling/l2_latency.png)
+![](img/tag_scaling.png)
 
 
 > **结论：** RTX 5080 的 L2 容量转折边界随实际访问的唯一 128 B 缓存行数量呈比例变化，而不随已分配但未访问的地址跨度变化。
@@ -221,7 +221,7 @@ python3 scripts/analyze_capacity_enhanced.py results/raw/rtx5080_l2_prefetch_gra
 
 在固定访问步长条件下，不同预取提示模式对应的延迟曲线具有相近的容量转折位置，未呈现随预取粒度增大而容量边界持续左移的趋势。相较之下，步长变化导致转折位置发生显著的比例性偏移。上述结果表明，本实验中容量边界仍由实际占用的唯一缓存行数量主导，预取粒度提示未改变 L2 的有效容量边界。
 
-![](../figures/prefetch_granularity/l2_latency.png)
+![](img/prefetch_granularity.png)
 
 
 > **结论：** 在本次 5080 GPU 实验中，PTX L2 预取粒度提示未引起可辨识的容量边界偏移；上述修饰符本质上仍为硬件提示，其实际效果受具体访问模式制约，不宜据此推断其普遍失效。
@@ -262,11 +262,11 @@ python3 scripts/analyze_retention.py results/raw/rtx5080_l2_retention_pilot_2026
 
 在热集规模固定、冷流规模递增的条件下，默认策略的延迟迅速跃升至较高平台，而 Persisting 策略的延迟在整个测试范围内始终接近低延迟基线。上述对照结果表明，当热集规模处于有效预留范围内时，Persisting 机制可有效抑制冷流引发的 L2 缓存逐出。
 
-![](../figures/retention_pilot/l2_retention.png)
+![](img/retention_pilot.png)
 
 在冷流污染强度固定的条件下，默认策略下热集探测延迟随热集规模扩大呈逐步上升趋势。启用 Persisting 后，较小规模热集仍维持接近无污染基线的低延迟，表明访问策略窗口确实增强了这些缓存行抵御后续容量污染的能力。当热集规模超出设备所允许的有效范围后，Persisting 策略与默认策略的延迟曲线趋于重合，其保护优势逐渐丧失。
 
-![](../figures/retention_hotset/l2_retention.png)
+![](img/retention_hotset.png)
 
 
 > **结论：** RTX 5080 的 Persisting L2 访问策略可在设备支持的预留容量范围内显著提升热集数据的驻留能力；一旦热集规模超出 L2 持久化缓存的物理容量上限，该保护机制即失效，热集数据同样面临逐出风险。
@@ -303,7 +303,7 @@ python3 scripts/analyze_saturation.py results/raw/rtx5080_roofline_saturation_20
 
 随着算术强度进一步增大，有效读写带宽显著下降，而计算吞吐率逐渐趋于饱和。此时，FMA 依赖链的延长占据了更多的执行周期，数据搬运不再主导总执行时间，kernel 随之转入计算受限（compute-bound）区域。
 
-![](../figures/saturation/roofline_saturation.png)
+![](img/roofline_saturation.png)
 
 
 > **结论：** 该可调算术强度微基准清晰呈现了从访存受限到计算受限的过渡特征，可用于标定 RTX 5080 GPU 的实际可达内存带宽与 FP32 计算强度。
@@ -371,7 +371,7 @@ $$
 
 此外，随机森林的 Top-5 识别准确率与二分类组准确率均达到 100%。该结果说明，模型的误分类主要集中于少数延迟特征相似的候选 SM 之间，而非在全部 SM 类别中随机分布。
 
-![](../figures/train_oracle/oracle_accuracy.png)
+![](img/oracle_accuracy.png)
 
 
 > **结论：** 
