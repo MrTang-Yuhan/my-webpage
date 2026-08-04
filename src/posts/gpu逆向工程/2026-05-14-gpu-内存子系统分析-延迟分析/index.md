@@ -8,6 +8,10 @@ description: 分析GPU 的 L1/Shared Memory，L2，DRAM 的访问延迟
 tags:
   - post
 ---
+# 代码和脚本
+
+[latency_profiler.zip](attach/latency_profiler.zip)
+
 # 延迟的定义
 
 延迟可以分为两种：
