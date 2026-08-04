@@ -436,8 +436,9 @@ lts__t_sector_hit_rate.pct \
 
 <a name="all-code"></a>
 
-[代码和脚本](attach/dram.zip)
+[dram.zip](attach/dram.zip)
 
+[bandwidth_profiler](attach/bandwidth_profiler.zip)
 
 
 
