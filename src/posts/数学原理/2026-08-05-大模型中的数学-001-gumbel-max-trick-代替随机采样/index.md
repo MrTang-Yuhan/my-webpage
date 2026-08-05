@@ -110,6 +110,8 @@ $$
 
 $$
 \tilde z_i=
+\operatorname{softmax}_j({\frac{a_i+g_i}{\tau})}=
+
 \frac{\exp(\frac{(a_i+g_i)}{\tau})}
 {\sum_j\exp(\frac{(a_j+g_j)}{\tau})}
 $$
