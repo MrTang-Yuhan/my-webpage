@@ -16,6 +16,8 @@ tags:
 ## 注释
 - [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html)：在指引 AI 进行编程时，可以要求遵循该规范。
 
+> 扩展：其他语言同样有 Goole xx-Language Style Guide。
+
 ## 安装
 - [可编辑安装](https://pip.pypa.io/en/stable/topics/local-project-installs/)：`pip install -e .`，改源码即时生效，适合开发期。
 
