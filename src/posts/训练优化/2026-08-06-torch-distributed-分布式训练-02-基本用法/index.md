@@ -90,34 +90,3 @@ $$
 \mathbf{g}_{\text{dp}} = \frac{1}{D} \sum_{k=1}^{D} \mathbf{g}_k = \mathbf{g}^\star
 $$
 
----
-
-### 3. 等价性总结
-
-| 场景 | 原始聚合结果 | 与真值关系 | 修正操作 | 修正后 |
-|------|------------|-----------|---------|--------|
-| 单卡大 batch | $\frac{1}{N}\sum_{i=1}^N \nabla \ell_i$ | $\mathbf{g}^\star$ | 无需修正 | $\mathbf{g}^\star$ |
-| 单卡梯度累加 ($M$ 份) | $\sum_{m=1}^M \mathbf{g}_m$ | $M \cdot \mathbf{g}^\star$ | $\div M$ | $\mathbf{g}^\star$ |
-| 多卡 DP ($D$ 份) | $\sum_{k=1}^D \mathbf{g}_k$ | $D \cdot \mathbf{g}^\star$ | $\div D$ | $\mathbf{g}^\star$ |
-
----
-
-### 4. 为什么代码中两者都需要 `div_`
-
-代码中的参考模型正是用**单卡串行模拟梯度累加**：
-
-```python
-for rank in range(group_size):
-    loss.backward()              # 得到 g_k
-    accumulated += grad          # 累加
-# accumulated = D * g^*
-```
-
-然后验证：
-
-```python
-parallel_grad = all_reduce(grad) / group_size   # D * g^* / D = g^*
-assert parallel_grad == accumulated / group_size  # g^* == g^*
-```
-
-因此，**`div_(group_size)` 不是人为工程选择，而是 `reduction='mean'` 损失函数下恢复基准梯度真值的数学必要步骤。**
