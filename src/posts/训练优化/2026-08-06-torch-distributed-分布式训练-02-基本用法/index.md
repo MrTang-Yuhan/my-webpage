@@ -11,4 +11,5 @@ tags:
 
 - 日志的使用
 
-- dist.dist.new_group ()子通信组可以直接组内通信
+- dist.dist.new_group() 子通信组可以直接组内通信
+- dist.init_process_group() 默认组包含所有进程
