@@ -13,3 +13,5 @@ tags:
 
 - dist.dist.new_group() 子通信组可以直接组内通信
 - dist.init_process_group() 默认组包含所有进程
+
+- apply的用法，以及里面的ctx。apply 是自定义 torch.autograd.Function 的标准调用方式
