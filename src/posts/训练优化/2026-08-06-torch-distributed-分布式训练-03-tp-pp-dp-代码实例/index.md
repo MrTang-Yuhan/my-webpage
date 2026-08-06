@@ -25,20 +25,7 @@ $$
 
 ## 1. 单独 TP
 
-```mermaid
-flowchart LR
-    X["复制输入 X<br/>[8,16,32]"]
-
-    X --> T0["TP rank 0<br/>W1_0: [32,32]<br/>W2_0: [32,32]"]
-    X --> T1["TP rank 1<br/>W1_1: [32,32]<br/>W2_1: [32,32]"]
-
-    T0 --> Y0["局部输出 Y₀<br/>[8,16,32]"]
-    T1 --> Y1["局部输出 Y₁<br/>[8,16,32]"]
-
-    Y0 --> R["TP all_reduce(SUM)"]
-    Y1 --> R
-    R --> Y["完整输出 Y = Y₀ + Y₁<br/>[8,16,32]"]
-```
+![](img/single-tp.png)
 
 输入张量在 TP rank 之间复制：
 
@@ -118,20 +105,7 @@ output = _ReduceFromTensorParallel.apply(
 
 ## 2. 单独 PP
 
-```mermaid
-flowchart LR
-    X["输入<br/>[8,16,32]"]
-    S0["PP stage 0<br/>L₀, L₁"]
-    S1["PP stage 1<br/>L₂, L₃"]
-    Loss["计算 loss"]
-
-    X --> S0
-    S0 -->|"发送激活<br/>[8,16,32]"| S1
-    S1 --> Loss
-
-    Loss -.->|"反向梯度"| S1
-    S1 -.->|"发送输入梯度<br/>[8,16,32]"| S0
-```
+![](img/single-pp.png)
 
 4 层网络平均划分到两个 stage：
 
@@ -201,19 +175,7 @@ stage_outputs.backward(output_gradient)
 
 ## 3. 单独 DP
 
-```mermaid
-flowchart LR
-    X0["数据 batch 0<br/>X₀"] --> D0["DP replica 0<br/>相同参数 θ"]
-    X1["数据 batch 1<br/>X₁"] --> D1["DP replica 1<br/>相同参数 θ"]
-
-    D0 --> G0["局部梯度 g₀"]
-    D1 --> G1["局部梯度 g₁"]
-
-    G0 --> R["DP all_reduce(SUM)"]
-    G1 --> R
-
-    R --> AVG["梯度平均<br/>g = (g₀ + g₁) / 2"]
-```
+![](img/single-dp.png)
 
 两个 DP 副本使用相同的模型参数，但处理不同的数据：
 
