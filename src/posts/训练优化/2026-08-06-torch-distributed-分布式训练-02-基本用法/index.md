@@ -11,6 +11,7 @@ tags:
 
 - 日志的使用
 
+- dist分布式整体流程
 - dist.dist.new_group() 子通信组可以直接组内通信
 - dist.init_process_group() 默认组包含所有进程
 
