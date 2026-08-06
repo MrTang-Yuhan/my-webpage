@@ -106,8 +106,6 @@ world_size = nnodes × nproc_per_node = 2 × 4 = 8
 hostname -I
 ```
 
-如果主节点有多个网卡，应选择其他节点能够访问的 IP，而不是 `127.0.0.1` 或仅本机可用的地址。
-
 启动训练后，可以在其他节点测试端口连通性：
 
 ```bash
@@ -231,7 +229,67 @@ def rank_log(message: str) -> None:
 
 `dist.get_rank()` 只有在 `dist.init_process_group()` 成功后才能调用；如果需要在初始化之前打印，应读取 `RANK` 环境变量或使用默认值。
 
+---
 
+# 3. `dist` 分布式操作流程
+
+分布式通信通常包括三个阶段：
+
+1. 初始化默认进程组；
+2. 执行集体通信操作；
+3. 任务结束后销毁进程组。
+
+```python
+import torch.distributed as dist
+
+# 1. 初始化默认进程组
+dist.init_process_group(backend="nccl")
+
+rank = dist.get_rank()
+world_size = dist.get_world_size()
+
+# 2. 默认进程组上的集体通信
+dist.all_reduce(tensor, op=dist.ReduceOp.SUM)
+dist.broadcast(tensor, src=0)
+dist.all_gather(tensor_list, tensor)
+dist.barrier()
+```
+
+所有参与通信的进程必须以相同顺序调用对应的 collective，否则可能导致阻塞或死锁。
+
+## 创建子通信组
+
+可以使用 `dist.new_group()` 将部分进程划分到独立的通信组中。例如，将 4 个进程划分为两个子组：
+
+```python
+group_01 = dist.new_group(ranks=[0, 1])
+group_23 = dist.new_group(ranks=[2, 3])
+
+if rank in (0, 1):
+    dist.all_reduce(tensor, group=group_01)
+elif rank in (2, 3):
+    dist.all_reduce(tensor, group=group_23)
+```
+
+注意：
+
+- 所有进程都必须调用 `dist.new_group()`；
+- 各进程创建通信组的顺序必须一致；
+- 只有通信组成员可以在该组上执行集体通信；
+- 使用 NCCL 时，通信张量必须位于对应的 CUDA 设备上。
+
+```python
+# 3. 销毁进程组
+dist.destroy_process_group()
+```
+
+如需显式释放子通信组，也可以调用：
+
+```python
+dist.destroy_process_group(group_01)
+dist.destroy_process_group(group_23)
+dist.destroy_process_group()
+```
 
 
 
