@@ -11,4 +11,4 @@ tags:
 
 - 日志的使用
 
-- 
+- dist.dist.new_group ()子通信组可以直接组内通信
