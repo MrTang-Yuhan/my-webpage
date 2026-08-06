@@ -18,3 +18,5 @@ tags:
 - apply的用法，以及里面的ctx。apply 是自定义 torch.autograd.Function 的标准调用方式
 
 - tp,pp,dp三种的结果图
+
+- dp中functional.mse_loss(...)，其默认行为是 reduction='mean'，导致梯度必须要缩放
