@@ -7,10 +7,462 @@ date: 2026-08-06
 tags:
   - post
 ---
+# TP、PP、DP 并行划分与通信
+
+以下均以：
+
+$$
+TP=2,\qquad PP=2,\qquad DP=2
+$$
+
+为例。测试代码中的主要维度为：
+
+$$
+B=8,\qquad S=16,\qquad H=32,\qquad I=64,\qquad L=4
+$$
+
+其中 $B$ 为 batch size，$S$ 为序列长度，$H$ 为 hidden size，$I$ 为 intermediate size，$L$ 为层数。
+
+## 1. 单独 TP
+
+```mermaid
+flowchart LR
+    X["复制输入 X<br/>[8,16,32]"]
+
+    X --> T0["TP rank 0<br/>W1_0: [32,32]<br/>W2_0: [32,32]"]
+    X --> T1["TP rank 1<br/>W1_1: [32,32]<br/>W2_1: [32,32]"]
+
+    T0 --> Y0["局部输出 Y₀<br/>[8,16,32]"]
+    T1 --> Y1["局部输出 Y₁<br/>[8,16,32]"]
+
+    Y0 --> R["TP all_reduce(SUM)"]
+    Y1 --> R
+    R --> Y["完整输出 Y = Y₀ + Y₁<br/>[8,16,32]"]
+```
+
+输入张量在 TP rank 之间复制：
+
+$$
+X\in\mathbb{R}^{B\times S\times H}
+=\mathbb{R}^{8\times16\times32}
+$$
+
+第一层权重按输出维切分：
+
+$$
+W_1\in\mathbb{R}^{I\times H}
+=\mathbb{R}^{64\times32}
+$$
+
+$$
+W_{1,t}\in\mathbb{R}^{I/TP\times H}
+=\mathbb{R}^{32\times32}
+$$
+
+第二层权重按输入维切分：
+
+$$
+W_2\in\mathbb{R}^{H\times I}
+=\mathbb{R}^{32\times64}
+$$
+
+$$
+W_{2,t}\in\mathbb{R}^{H\times I/TP}
+=\mathbb{R}^{32\times32}
+$$
+
+每个 TP rank 计算局部输出：
+
+$$
+Y_t\in\mathbb{R}^{B\times S\times H}
+=\mathbb{R}^{8\times16\times32}
+$$
+
+然后通过 `all_reduce(SUM)` 得到完整输出：
+
+$$
+Y=\sum_{t=0}^{TP-1}Y_t
+$$
+
+对应代码：
+
+```python
+local_intermediate = intermediate_size // tp_size
+
+column_weight = weight_1[
+    group_rank * local_intermediate:
+    (group_rank + 1) * local_intermediate
+]
+
+row_weight = weight_2[
+    :,
+    group_rank * local_intermediate:
+    (group_rank + 1) * local_intermediate
+]
+
+local_output = functional.linear(
+    local_activation,
+    row_weight,
+)
+
+output = _ReduceFromTensorParallel.apply(
+    local_output,
+    tensor_parallel_group,
+    communication,
+)
+```
+
+- `test_tensor_parallel()` 验证独立 TP；
+- `_ReduceFromTensorParallel` 在前向执行 TP `all_reduce`；
+- `_CopyToTensorParallel` 在反向汇总输入梯度。
+
+## 2. 单独 PP
+
+```mermaid
+flowchart LR
+    X["输入<br/>[8,16,32]"]
+    S0["PP stage 0<br/>L₀, L₁"]
+    S1["PP stage 1<br/>L₂, L₃"]
+    Loss["计算 loss"]
+
+    X --> S0
+    S0 -->|"发送激活<br/>[8,16,32]"| S1
+    S1 --> Loss
+
+    Loss -.->|"反向梯度"| S1
+    S1 -.->|"发送输入梯度<br/>[8,16,32]"| S0
+```
+
+4 层网络平均划分到两个 stage：
+
+$$
+\text{stage}_0=\{L_0,L_1\}
+$$
+
+$$
+\text{stage}_1=\{L_2,L_3\}
+$$
+
+每个 stage 保存：
+
+$$
+L/PP=4/2=2
+$$
+
+stage 之间传递的激活形状保持不变：
+
+$$
+A\in\mathbb{R}^{B\times S\times H}
+=\mathbb{R}^{8\times16\times32}
+$$
+
+对应代码：
+
+```python
+layers_per_stage = layer_count // pp_size
+
+local_parameters = [
+    parameter
+    for layer in layers[
+        group_rank * layers_per_stage:
+        (group_rank + 1) * layers_per_stage
+    ]
+    for parameter in layer
+]
+```
+
+前向发送激活：
+
+```python
+communication.send(
+    stage_outputs.detach(),
+    next_stage_rank,
+    pipeline_parallel_group,
+)
+```
+
+反向接收梯度：
+
+```python
+output_gradient = communication.receive(
+    stage_outputs.shape,
+    stage_outputs.dtype,
+    next_stage_rank,
+    pipeline_parallel_group,
+)
+
+stage_outputs.backward(output_gradient)
+```
+
+- `test_pipeline_parallel()` 验证独立 PP；
+- PP 使用点对点 `send/receive`；
+- 最后一个 stage 负责计算 loss；
+- 梯度沿相反方向返回前面的 stage。
+
+## 3. 单独 DP
+
+```mermaid
+flowchart LR
+    X0["数据 batch 0<br/>X₀"] --> D0["DP replica 0<br/>相同参数 θ"]
+    X1["数据 batch 1<br/>X₁"] --> D1["DP replica 1<br/>相同参数 θ"]
+
+    D0 --> G0["局部梯度 g₀"]
+    D1 --> G1["局部梯度 g₁"]
+
+    G0 --> R["DP all_reduce(SUM)"]
+    G1 --> R
+
+    R --> AVG["梯度平均<br/>g = (g₀ + g₁) / 2"]
+```
+
+两个 DP 副本使用相同的模型参数，但处理不同的数据：
+
+$$
+X_0\ne X_1
+$$
+
+每个副本的局部 batch 为：
+
+$$
+B_{\text{local}}=8
+$$
+
+全局有效 batch 为：
+
+$$
+B_{\text{effective}}
+=DP\times B_{\text{local}}
+=2\times8=16
+$$
+
+每个副本得到局部梯度 $g_d$，DP 组内求和后取平均：
+
+$$
+g=\frac{1}{DP}\sum_{d=0}^{DP-1}g_d
+$$
+
+对应代码：
+
+```python
+local_loss = functional.mse_loss(
+    forward(local_inputs, parallel_parameters),
+    local_targets,
+)
+
+local_loss.backward()
+
+for parameter in parallel_parameters:
+    communication.all_reduce(
+        parameter.grad,
+        group=data_parallel_group,
+    )
+    parameter.grad.div_(dp_size)
+```
+
+- `test_data_parallel()` 验证独立 DP；
+- DP 只同步梯度，不传输激活；
+- 所有 DP 副本从相同初始参数开始。
+
+## 4. TP、PP、DP 联合并行
+
+总进程数为：
+
+$$
+WORLD\_SIZE=TP\times PP\times DP
+=2\times2\times2=8
+$$
+
+全局 rank 映射为：
+
+$$
+\mathrm{rank}
+=d(PP\times TP)+p\times TP+t
+$$
+
+其中：
+
+- $d$：数据并行坐标；
+- $p$：流水线 stage 坐标；
+- $t$：张量并行坐标。
+
+```mermaid
+flowchart TB
+    subgraph D0["数据副本 d=0"]
+        A0["rank 0<br/>(p=0,t=0)"] <-->|"TP"| A1["rank 1<br/>(p=0,t=1)"]
+        B0["rank 2<br/>(p=1,t=0)"] <-->|"TP"| B1["rank 3<br/>(p=1,t=1)"]
+
+        A0 -->|"PP 激活"| B0
+        A1 -->|"PP 激活"| B1
+        B0 -.->|"PP 梯度"| A0
+        B1 -.->|"PP 梯度"| A1
+    end
+
+    subgraph D1["数据副本 d=1"]
+        C0["rank 4<br/>(p=0,t=0)"] <-->|"TP"| C1["rank 5<br/>(p=0,t=1)"]
+        E0["rank 6<br/>(p=1,t=0)"] <-->|"TP"| E1["rank 7<br/>(p=1,t=1)"]
+
+        C0 -->|"PP 激活"| E0
+        C1 -->|"PP 激活"| E1
+        E0 -.->|"PP 梯度"| C0
+        E1 -.->|"PP 梯度"| C1
+    end
+
+    A0 <-->|"DP 梯度"| C0
+    A1 <-->|"DP 梯度"| C1
+    B0 <-->|"DP 梯度"| E0
+    B1 <-->|"DP 梯度"| E1
+```
+
+三类通信组分别为：
+
+$$
+\begin{aligned}
+TP &: \text{固定 }(d,p)，改变 t\\
+PP &: \text{固定 }(d,t)，改变 p\\
+DP &: \text{固定 }(p,t)，改变 d
+\end{aligned}
+$$
+
+对应 rank 分组：
+
+```text
+TP: (0,1), (2,3), (4,5), (6,7)
+PP: (0,2), (1,3), (4,6), (5,7)
+DP: (0,4), (1,5), (2,6), (3,7)
+```
+
+### 进程组创建
+
+```python
+# TP：固定 (d, p)，改变 t
+for d in range(dp_size):
+    for p in range(pp_size):
+        ranks = [
+            d * pp_size * tp_size
+            + p * tp_size
+            + t
+            for t in range(tp_size)
+        ]
+
+        group = dist.new_group(ranks)
+
+        if global_rank in ranks:
+            tensor_parallel_group = group
+```
+
+```python
+# PP：固定 (d, t)，改变 p
+for d in range(dp_size):
+    for t in range(tp_size):
+        ranks = [
+            d * pp_size * tp_size
+            + p * tp_size
+            + t
+            for p in range(pp_size)
+        ]
+
+        group = dist.new_group(ranks)
+
+        if global_rank in ranks:
+            pipeline_parallel_group = group
+            pipeline_parallel_global_ranks = tuple(ranks)
+```
+
+```python
+# DP：固定 (p, t)，改变 d
+for p in range(pp_size):
+    for t in range(tp_size):
+        ranks = [
+            d * pp_size * tp_size
+            + p * tp_size
+            + t
+            for d in range(dp_size)
+        ]
+
+        group = dist.new_group(ranks)
+
+        if global_rank in ranks:
+            data_parallel_group = group
+```
+
+所有 rank 必须以相同顺序创建这些通信组。
+
+### 联合计算与通信
+
+```python
+# TP：复制输入，并在反向时汇总输入梯度
+tensor = _CopyToTensorParallel.apply(
+    tensor,
+    groups.tensor_parallel_group,
+    communication,
+)
+
+# 当前 TP rank 计算局部参数分片
+local_output = functional.linear(
+    local_intermediate_output,
+    row_weight,
+)
+
+# TP：合并局部输出
+tensor = _ReduceFromTensorParallel.apply(
+    local_output,
+    groups.tensor_parallel_group,
+    communication,
+) + bias_2
+```
+
+PP 传递激活和梯度：
+
+```python
+communication.send(
+    stage_outputs.detach(),
+    next_stage_rank,
+    groups.pipeline_parallel_group,
+)
+
+output_gradient = communication.receive(
+    stage_outputs.shape,
+    stage_outputs.dtype,
+    next_stage_rank,
+    groups.pipeline_parallel_group,
+)
+```
+
+DP 同步相同参数分片的梯度：
+
+```python
+for parameter in local_parameters:
+    communication.all_reduce(
+        parameter.grad,
+        group=groups.data_parallel_group,
+    )
+    parameter.grad.div_(dp_size)
+```
+
+联合通信流程为：
+
+$$
+\text{TP 局部计算}
+\rightarrow
+\text{TP 输出归约}
+\rightarrow
+\text{PP 激活传递}
+\rightarrow
+\text{PP 梯度传递}
+\rightarrow
+\text{TP 输入梯度归约}
+\rightarrow
+\text{DP 梯度平均}
+$$
+
+其中：
+
+- TP 负责切分同一层的参数和计算；
+- PP 负责切分不同层，并传递中间激活；
+- DP 负责复制模型分片，并同步不同数据 batch 产生的梯度。
 
 
-
-
+---
 
 # 实例代码
 
