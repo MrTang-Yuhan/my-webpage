@@ -72,7 +72,7 @@ Host my_device2
 
 # Pycharm SSH 远程连接
 
-**注意只有 Pycharm 专业版才能进行 SSH 远程连接**。
+**注意只有 Pycharm 专业版才能进行 SSH 远程连接，学生可以免费认证**。
 
 首先，配置相应的 config 文件，即前面说的 **vscode config**：
 
@@ -99,6 +99,27 @@ Host remote-150-pycharm
 ![](img/pycharm-ssh.png)
 
 即可远程连接。
+
+正常情况下，**部署相关操作应该是全亮的**：
+
+![](img/deploy-1.png)
+
+如果没有，则按照以下三步：
+
+1. 首先检查路径映射是否正确：
+
+![](img/deploy-2.png)
+
+![](img/deploy-3.png)
+
+如果还没亮，进行第 2 步。
+
+2. 重启 pycharm
+
+如果还没亮，进行第 3 步。
+
+3. 更新 pycharm
+
 
 # PyCharm 连接 WSL
 
