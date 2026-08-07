@@ -55,6 +55,8 @@ rm /dev/shm/*
 
 # docker 环境配置
 
+## 创建容器
+
 ```bash
 docker run -itd --gpus all --ipc=host --runtime=nvidia  --ulimit memlock=-1 --ulimit stack=67108864   -v /home/tangyuhan/workpath/docker-data/infra:/root --name tangyuhan-infra-tech nvcr.io/nvidia/pytorch:26.01-py3 /bin/bash
 ```
@@ -68,5 +70,17 @@ docker run -itd --gpus all --ipc=host --runtime=nvidia  --ulimit memlock=-1 --ul
 - `-v /home/tangyuhan/workpath/docker-data/infra:/root`: 将主机路径挂载到容器内的 /root 目录。
 
 **注**：
-可以加上 `--rm`，当容器 stop 时，会自动删除容器。
+- 可以加上 `--rm`，当容器 stop 时，会自动删除容器。
 
+## 启动容器
+
+一般启动：
+```bash
+docker exec -it tangyuhan-network /bin/bash
+```
+
+启动时**指定工作目录**：
+
+```bash
+`docker exec -w /workspace -it tangyuhan-network /bin/bash`
+```
