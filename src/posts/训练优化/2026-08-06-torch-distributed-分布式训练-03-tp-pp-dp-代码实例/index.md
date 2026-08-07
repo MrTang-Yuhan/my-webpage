@@ -45,21 +45,7 @@ $$
 
 张量并行将同一层的参数切分到多个 TP rank。每个 rank 使用相同输入，但只计算自己负责的参数分片。
 
-```mermaid
-flowchart LR
-    X["完整输入 X<br/>[8,16,32]"]
-
-    X --> T0["TP rank 0<br/>W1_0: [32,32]<br/>W2_0: [32,32]"]
-    X --> T1["TP rank 1<br/>W1_1: [32,32]<br/>W2_1: [32,32]"]
-
-    T0 --> Y0["局部输出 Y₀<br/>[8,16,32]"]
-    T1 --> Y1["局部输出 Y₁<br/>[8,16,32]"]
-
-    Y0 --> R["TP all_reduce(SUM)"]
-    Y1 --> R
-
-    R --> Y["完整输出 Y=Y₀+Y₁<br/>[8,16,32]"]
-```
+![](img/tp-1.png)
 
 ## 1.2 参数切分
 
@@ -216,20 +202,8 @@ $$
 L/PP=4/2=2
 $$
 
-```mermaid
-flowchart LR
-    X["输入<br/>[8,16,32]"]
-    S0["PP stage 0<br/>L₀, L₁"]
-    S1["PP stage 1<br/>L₂, L₃"]
-    LOSS["计算 loss"]
+![](img/pp-1.png)
 
-    X --> S0
-    S0 -->|"send 激活<br/>[8,16,32]"| S1
-    S1 --> LOSS
-
-    LOSS -.->|"反向梯度<br/>[8,16,32]"| S1
-    S1 -.->|"send 输入梯度<br/>[8,16,32]"| S0
-```
 
 ## 2.2 激活和梯度维度
 
@@ -358,19 +332,7 @@ communication.all_reduce(
 
 数据并行创建多个模型副本。每个副本保存相同参数，但处理不同数据。
 
-```mermaid
-flowchart LR
-    X0["数据 batch 0<br/>X₀"] --> D0["DP replica 0<br/>参数 θ"]
-    X1["数据 batch 1<br/>X₁"] --> D1["DP replica 1<br/>参数 θ"]
-
-    D0 --> G0["局部梯度 g₀"]
-    D1 --> G1["局部梯度 g₁"]
-
-    G0 --> R["DP all_reduce(SUM)"]
-    G1 --> R
-
-    R --> AVG["梯度平均<br/>g=(g₀+g₁)/2"]
-```
+![](img/dp-1.png)
 
 DP 副本使用不同输入：
 
@@ -553,33 +515,7 @@ PP: (0,2), (1,3), (4,6), (5,7)
 DP: (0,4), (1,5), (2,6), (3,7)
 ```
 
-```mermaid
-flowchart TB
-    subgraph D0["DP 副本 d=0"]
-        R0["rank 0<br/>(p=0,t=0)"] <-->|"TP"| R1["rank 1<br/>(p=0,t=1)"]
-        R2["rank 2<br/>(p=1,t=0)"] <-->|"TP"| R3["rank 3<br/>(p=1,t=1)"]
-
-        R0 -->|"PP 激活"| R2
-        R1 -->|"PP 激活"| R3
-        R2 -.->|"PP 梯度"| R0
-        R3 -.->|"PP 梯度"| R1
-    end
-
-    subgraph D1["DP 副本 d=1"]
-        R4["rank 4<br/>(p=0,t=0)"] <-->|"TP"| R5["rank 5<br/>(p=0,t=1)"]
-        R6["rank 6<br/>(p=1,t=0)"] <-->|"TP"| R7["rank 7<br/>(p=1,t=1)"]
-
-        R4 -->|"PP 激活"| R6
-        R5 -->|"PP 激活"| R7
-        R6 -.->|"PP 梯度"| R4
-        R7 -.->|"PP 梯度"| R5
-    end
-
-    R0 <-->|"DP 梯度"| R4
-    R1 <-->|"DP 梯度"| R5
-    R2 <-->|"DP 梯度"| R6
-    R3 <-->|"DP 梯度"| R7
-```
+![](img/tp-dp-pp-1.png)
 
 ---
 
@@ -604,28 +540,9 @@ $$
 W_{2,t}\in\mathbb{R}^{32\times32}
 $$
 
-```mermaid
-flowchart LR
-    X0["TP rank 0<br/>X₀: [8,16,32]"]
-    X1["TP rank 1<br/>X₁: [8,16,32]"]
 
-    X0 --> W10["W1_0<br/>[32,32]"]
-    X1 --> W11["W1_1<br/>[32,32]"]
+![](img/pp-tp-1.png)
 
-    W10 --> A0["A₀=GELU(...)<br/>[8,16,32]"]
-    W11 --> A1["A₁=GELU(...)<br/>[8,16,32]"]
-
-    A0 --> W20["W2_0<br/>[32,32]"]
-    A1 --> W21["W2_1<br/>[32,32]"]
-
-    W20 --> Y0["Y₀<br/>[8,16,32]"]
-    W21 --> Y1["Y₁<br/>[8,16,32]"]
-
-    Y0 --> AR["TP all_reduce(SUM)"]
-    Y1 --> AR
-
-    AR --> Y["完整层输出<br/>Y=Y₀+Y₁<br/>[8,16,32]"]
-```
 
 局部计算为：
 
@@ -700,20 +617,9 @@ tensor = _ReduceFromTensorParallel.apply(
 
 以 DP 副本 $d=0$ 为例：
 
-```mermaid
-flowchart LR
-    A0["rank 0<br/>d=0,p=0,t=0<br/>输出 [8,16,32]"]
-    A1["rank 1<br/>d=0,p=0,t=1<br/>输出 [8,16,32]"]
+![](img/pp-2.png)
 
-    B0["rank 2<br/>d=0,p=1,t=0<br/>输入 [8,16,32]"]
-    B1["rank 3<br/>d=0,p=1,t=1<br/>输入 [8,16,32]"]
 
-    A0 -->|"send：0 → 2<br/>激活 [8,16,32]"| B0
-    A1 -->|"send：1 → 3<br/>激活 [8,16,32]"| B1
-
-    B0 -.->|"send：2 → 0<br/>梯度 [8,16,32]"| A0
-    B1 -.->|"send：3 → 1<br/>梯度 [8,16,32]"| A1
-```
 
 PP 前向：
 
@@ -775,21 +681,9 @@ $$
 
 每个 DP 副本独立执行完整的 TP+PP 前向和反向：
 
-```mermaid
-flowchart LR
-    X0["DP 副本 0<br/>X₀: [8,16,32]"] --> C0["本地 TP+PP 前向"]
-    C0 --> L0["loss₀"]
-    L0 --> G0["本地反向梯度 g₀"]
+![](img/tp-dp-pp-2.png)
 
-    X1["DP 副本 1<br/>X₁: [8,16,32]"] --> C1["本地 TP+PP 前向"]
-    C1 --> L1["loss₁"]
-    L1 --> G1["本地反向梯度 g₁"]
 
-    G0 --> AR["DP all_reduce(SUM)<br/>相同 (p,t) 参数分片"]
-    G1 --> AR
-
-    AR --> AVG["除以 dp_size=2<br/>g=(g₀+g₁)/2"]
-```
 
 对于固定的 PP stage $p$ 和 TP rank $t$，参数梯度为：
 
@@ -845,21 +739,9 @@ DP 不同步激活，也不参与 PP 的点对点传输。
 
 ### 前向
 
-```mermaid
-flowchart LR
-    X["每个 DP 副本的输入<br/>X_d: [8,16,32]"]
-    TP["TP 局部参数计算<br/>W1_t/W2_t"]
-    TAR["TP all_reduce(SUM)<br/>Y_d,p: [8,16,32]"]
-    PPS["PP send<br/>激活 [8,16,32]"]
-    NEXT["下一 PP stage"]
-    LOSS["末 stage 计算 loss_d"]
+![](img/forward-1.png)
 
-    X --> TP
-    TP --> TAR
-    TAR --> PPS
-    PPS --> NEXT
-    NEXT --> LOSS
-```
+
 
 数学形式：
 
@@ -882,21 +764,7 @@ $$
 
 ### 反向
 
-```mermaid
-flowchart LR
-    LOSS["loss_d"]
-    DY["输出梯度<br/>dL_d/dY_d<br/>[8,16,32]"]
-    TPLOCAL["各 TP rank 计算局部梯度"]
-    TAR["TP all_reduce(SUM)<br/>完整 dL_d/dX<br/>[8,16,32]"]
-    PPS["PP send<br/>传给前一 stage"]
-    DP["DP all_reduce(SUM)<br/>参数梯度平均"]
-
-    LOSS --> DY
-    DY --> TPLOCAL
-    TPLOCAL --> TAR
-    TAR --> PPS
-    TPLOCAL --> DP
-```
+![](img/backward-1)
 
 联合反向可以写为：
 
