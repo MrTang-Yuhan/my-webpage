@@ -7,6 +7,10 @@ date: 2026-08-06
 tags:
   - post
 ---
+# 代码
+
+[parallel_all_in_one_test.py](attach/parallel_all_in_one_test.py)
+
 # TP、PP、DP 并行通信笔记
 
 示例配置为：
