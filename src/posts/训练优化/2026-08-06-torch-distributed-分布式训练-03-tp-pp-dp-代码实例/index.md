@@ -617,65 +617,7 @@ tensor = _ReduceFromTensorParallel.apply(
 
 ---
 
-## 4.3 PP stage 间的激活和梯度
-
-以 DP 副本 $d=0$ 为例：
-
-![](img/pp-2.png)
-
-
-
-PP 前向：
-
-$$
-A_{d,p,t}
-\in\mathbb{R}^{8\times16\times32}
-\rightarrow
-A_{d,p+1,t}
-\in\mathbb{R}^{8\times16\times32}
-$$
-
-PP 反向：
-
-$$
-\frac{\partial L_d}{\partial A_{d,p+1,t}}
-\in\mathbb{R}^{8\times16\times32}
-\rightarrow
-\frac{\partial L_d}{\partial A_{d,p,t}}
-\in\mathbb{R}^{8\times16\times32}
-$$
-
-对应代码：
-
-```python
-communication.send(
-    stage_outputs.detach(),
-    groups.pipeline_parallel_global_ranks[pipeline_rank + 1],
-    groups.pipeline_parallel_group,
-)
-```
-
-```python
-output_gradient = communication.receive(
-    stage_outputs.shape,
-    stage_outputs.dtype,
-    groups.pipeline_parallel_global_ranks[pipeline_rank + 1],
-    groups.pipeline_parallel_group,
-)
-```
-
-PP 只连接相同 $(d,t)$ 的相邻 stage：
-
-```text
-(d=0,t=0): rank 0 → rank 2
-(d=0,t=1): rank 1 → rank 3
-(d=1,t=0): rank 4 → rank 6
-(d=1,t=1): rank 5 → rank 7
-```
-
----
-
-## 4.4 DP 副本的独立计算和梯度同步
+## 4.3 DP 副本的独立计算和梯度同步
 
 两个 DP 副本分别使用不同输入：
 
@@ -739,7 +681,7 @@ DP 不同步激活，也不参与 PP 的点对点传输。
 
 ---
 
-## 4.5 联合前向和反向的完整顺序
+## 4.4 联合前向和反向的完整顺序
 
 ### 前向
 
