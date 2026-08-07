@@ -1,0 +1,78 @@
+---
+layout: post.njk
+post_id: 2026-08-07-大模型中的数学-002-dp-中的梯度缩放
+archive: 数学原理
+title: 大模型中的数学（002）：DP 中的梯度缩放
+date: 2026-08-07
+tags:
+  - post
+---
+# 使用数据并行的梯度
+
+使用数据并行后，尽管多个micro-batch的梯度累加在数学上和整个batch集中计算梯度是恒等的，但是需要进行梯度缩放：
+
+一个完整的 batch 的**全局目标损失函数**为：
+
+$$
+L(\mathbf{W}) = \frac{1}{N} \sum_{i=1}^{N} \ell_i(\mathbf{W})
+$$
+
+其梯度为基准真值：
+
+$$
+\mathbf{g}^\star = \nabla L(\mathbf{W}) = \frac{1}{N} \sum_{i=1}^{N} \nabla \ell_i(\mathbf{W}) \tag{1}
+$$
+
+### 1. 单卡梯度累加（Gradient Accumulation）
+
+将 $\mathcal{B}$ 拆分为 $M$ 个 micro-batch，每份大小 $B = N/M$。对第 $m$ 份 $\mathcal{B}_m$ 计算局部损失（mean reduction）：
+
+$$
+L_m(\mathbf{W}) = \frac{1}{|\mathcal{B}_m|} \sum_{i \in \mathcal{B}_m} \ell_i(\mathbf{W}) = \frac{M}{N} \sum_{i \in \mathcal{B}_m} \ell_i(\mathbf{W})
+$$
+
+反向传播得到局部梯度：
+
+$$
+\mathbf{g}_m = \nabla L_m(\mathbf{W}) = \frac{M}{N} \sum_{i \in \mathcal{B}_m} \nabla \ell_i(\mathbf{W})
+$$
+
+累加 $M$ 个 micro-batch 的梯度：
+
+$$
+\sum_{m=1}^{M} \mathbf{g}_m = \sum_{m=1}^{M} \frac{M}{N} \sum_{i \in \mathcal{B}_m} \nabla \ell_i(\mathbf{W}) = \frac{M}{N} \sum_{i=1}^{N} \nabla \ell_i(\mathbf{W}) = M \cdot \mathbf{g}^\star \tag{2}
+$$
+
+**结论**：累加后的梯度是基准真值的 $M$ 倍。必须执行 **缩放**：
+
+$$
+\mathbf{g}_{\text{acc}} = \frac{1}{M} \sum_{m=1}^{M} \mathbf{g}_m = \mathbf{g}^\star
+$$
+
+---
+
+### 2. 多卡数据并行（Data Parallel）
+
+将 $\mathcal{B}$ 拆分为 $D$ 份（$D =$ DP size），卡 $k$ 持有 $\mathcal{B}_k$，$|\mathcal{B}_k| = N/D$。卡 $k$ 的局部损失：
+
+$$
+L_k(\mathbf{W}) = \frac{1}{|\mathcal{B}_k|} \sum_{i \in \mathcal{B}_k} \ell_i(\mathbf{W}) = \frac{D}{N} \sum_{i \in \mathcal{B}_k} \ell_i(\mathbf{W})
+$$
+
+局部梯度：
+
+$$
+\mathbf{g}_k = \nabla L_k(\mathbf{W}) = \frac{D}{N} \sum_{i \in \mathcal{B}_k} \nabla \ell_i(\mathbf{W})
+$$
+
+执行 `all_reduce` 求和（SUM）：
+
+$$
+\mathbf{g}_{\text{sum}} = \sum_{k=1}^{D} \mathbf{g}_k = \sum_{k=1}^{D} \frac{D}{N} \sum_{i \in \mathcal{B}_k} \nabla \ell_i(\mathbf{W}) = \frac{D}{N} \sum_{i=1}^{N} \nabla \ell_i(\mathbf{W}) = D \cdot \mathbf{g}^\star \tag{3}
+$$
+
+**结论**：all-reduce SUM 后的梯度是基准真值的 $D$ 倍。必须执行 **平均**：
+
+$$
+\mathbf{g}_{\text{dp}} = \frac{1}{D} \sum_{k=1}^{D} \mathbf{g}_k = \mathbf{g}^\star
+$$
