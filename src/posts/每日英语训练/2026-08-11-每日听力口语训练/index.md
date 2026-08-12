@@ -39,43 +39,47 @@ A stable life, continuous self‑improvement and a peaceful heart are the best a
 
 
 ---
+## 002. 拿捏口语的关键是活人感
 
-
+[全英｜拿捏口语的关键是活人感](https://www.bilibili.com/video/BV1TBNg6dEYa/?spm_id_from=333.1007.0.0&vd_source=e98b669ccbafff4b5aa59dd6303b722f)
  
 Most people fail at spoken English, not because their grammar is bad or they don’t have enough vocabulary.
 The real problem is that they sound like a textbook.
 If you’ve ever practiced thousands of sentences, memorized tons of words, and still feel awkward when speaking English, this video is for you.
 The key to mastering spoken English is simple: sound human, not perfectly grammatical.
-A genuine human feel is the core of real communication.
-Textbook English is rigid, scripted and mechanical. That’s why when you speak like this, people feel you are reciting, not talking.
+A genuine human vibe is the core of real communication.
+Textbook English is rigid, scripted and mechanical, it's clean, correct but lifeless. That’s why when you speak like this, people feel you are reciting, not talking. 
 Real human conversation is flexible, a little imprecise, natural and emotional.
 Native speakers don’t speak perfectly. They use filler words, pause, hesitate, simplify sentences, and even make mistakes. But they sound real and alive.
 That’s exactly what makes communication smooth.
 Let me give you an example. A textbook-style answer would be, "I think it's a very interesting and meaningful activity." But a real person would just say, "It's super fun. I really like it."
-A lot of English learners trap themselves in perfection anxiety. They wait for the grammatically 100% correct sentence before opening their mouths. They fear mistakes, stuttering, and sounding unprofessional.
+A lot of English learners trap themselves in perfection anxiety. They wait for the grammatically 100% correct sentence before opening their mouths. They fear mistakes, stuttering, and sounding unprofessional. But in real life communication, people don't care about your tiny grammar mistakes. They care about your logic, your expression, your attitude and your emotion. Spoken English is not an exam, it's a connection between two people.
 
-But in real life communication, people don't care about your tiny grammar mistakes. They care about your logic, your expression, your attitude and your emotion. Spoken English is not an exam, it's a connection between two people.
+So, how do you build this human vibe in your spoken English? First, stop reciting, start paraphrasing. Don't memorize fixed sentences, learn to express one meaning in several simple ways. Use easy words to express complex thoughts, that's real fluency. Second, add natural fillers and pauses. fillers like, well, actually, I guess, honestly, make your speech sound spontaneous, not rehearsed. Pauses give your speech rhythm, and make you sound calm and confident. Third, speak with intonation and emotion. Flat tone equals robot tone. Native speakers change their pitch when they're happy, surprised or doubtful. Intonation carries more information than words sometimes. Fourth, accept small imperfection. Mistakes are normal in real time speaking. Don't correct yourself all the time. Keep the conversation going. Fluency always beats accuracy in oral communication. 
 
-So, how do you build this human vibe in your spoken English? First, stop reciting, start paraphrasing. Don't memorize fixed sentences, learn to express one meaning in several simple ways. Use easy words to express complex thoughts, that's real fluency. Second, add natural fillers and pauses. Others like, well, actually, I guess, honestly, make your speech sound spontaneous, not rehearsed. Pauses give your speech rhythm, and make you sound calm and confident. Third, speak with intonation and emotion. Flat tone equals robot tone. Native speakers change their pitch when they're happy, surprised or doubtful. Intonation carries more information than words sometimes. Fourth, accept small imperfection. Mistakes are normal in real time speaking. Don't correct yourself all the time. Keep the conversation going. Fluency always beats accuracy in oral communication. If you want to level up your oral English, stop chasing perfection, start speaking like a living person, not a walking Casper. If this makes sense, remember to like and follow me. Let's build natural, fluent, real human English together.
+大多数人英语口语失败，并非因为他们的语法不好，或者他们没有足够的词汇量。真正的问题在于他们听起来像一本教科书。如果你曾经练习过成千上万的句子，背诵了大量的单词，在说英语时仍然感到尴尬，这段视频就是为你准备的。掌握英语口语的关键很简单：听起来像人，而不是语法完美。真实的人情味是真实交流的核心。教科书英语是僵硬的、照本宣科的且机械的, 它很干净、正确但是没有生命。这就是为什么当你像这样说话时，人们感觉你在背诵，而不是在交谈。真实的人类对话是灵活的、有点不精确的、自然的且富有情感的。母语者说话并不完美。他们使用填充词，停顿，犹豫，简化句子，甚至犯错。但他们听起来真实且生动。这正是让交流顺畅的原因。让我给你举个例子。教科书式的回答会是："我认为这是一项非常有趣且有意义的活动。"但一个真实的人只会说："这超级好玩。我真的很喜欢它。"许多英语学习者将自己困在完美焦虑中。他们在开口之前等待语法上100%正确的句子。他们害怕错误、结巴和听起来不专业。但在真实生活交流中，人们并不在意你的微小语法错误。他们在意你的逻辑、你的表达、你的态度和你的情感。英语口语不是一场考试，它是两个人之间的连接。
 
-大多数人英语口语失败，并非因为语法不好或词汇量不足。真正的问题在于，他们说英语时听起来像教科书。如果你曾练习过成千上万的句子，背诵了大量单词，但开口说英语时仍然感到不自然，那么这段视频就是为你准备的。
+那么，你如何在你的英语口语中建立这种人情味呢？首先，停止背诵，开始转述。不要背诵固定的句子，学会用几种简单的方式表达一个意思。用简单的词表达复杂的想法，这才是真正的流利。第二，添加自然的填充词和停顿。像 well、actually、I guess、honestly 这样的填充词，让你的讲话听起来是自发的，不是排练过的。停顿给你的讲话节奏，让你听起来平静且自信。第三，用语调和情感说话。平淡的语调等于机器人的语调。母语者在开心、惊讶或怀疑时会改变他们的音调。语调有时比词汇承载更多信息。第四，接受小的不完美。在实时说话中，错误是正常的。不要一直纠正自己。让对话继续下去。在口头交流中，流利度总是胜过准确性。
 
-掌握英语口语的关键其实很简单：人情味，而非完美语法。真实的人类情感才是真实交流的核心。
 
-教科书英语过于僵硬、程式化且机械。虽然它整洁、正确，却缺乏生气。这就是为什么当你开口时，人们会觉得你在背诵，而非在交谈。真实的对话则灵活多变，略显不精准，自然且充满情感。母语者并不完美——他们使用简单词汇，会停顿，会犹豫，会简化句子，甚至会出错。但他们听起来真实，充满生命力。这正是让交流顺畅的原因。
+---
 
-让我举例说明。教科书式的回答会是：「我认为这是一项非常有趣且有意义的活动。」但真实的人会说：「超级好玩，我真的很喜欢。」
+## 003. 独立英语老师从来不愁招生，全靠这几招
 
-许多英语学习者陷入焦虑，他们非要等到句子完美无瑕才肯开口，害怕犯错，害怕结巴，害怕显得不专业。但在真实的交流中，人们并不介意小的语法错误。他们在意的是你的逻辑、表达方式、态度和情感。英语口语不是考试，而是人与人的连接。
+[独立英语老师从来不愁招生，全靠这几招](https://www.bilibili.com/video/BV1aNTy6AE22/?spm_id_from=333.1387.homepage.video_card.click&vd_source=e98b669ccbafff4b5aa59dd6303b722f)
 
-那么，如何在口语中营造这种「人情味」呢？
+First, make good use of your personal connections and word-of-mouth referrals. When I first started tutoring, all my earliest students came from friends and acquaintances around me. Don't just vaguely tell others that you teach English. You can focus on Daily Oral English for Kids, Daily Conversation for Adults, or Job Interview English. Make sure everyone clearly understands your professional strengths. I offer a simple referral reward: any existing student who introduces a new learner will get a free one-on-one oral lesson. Word-of-mouth is the most reliable and steady way for private teachers to get long-term students.
+Second, create short videos to attract a steady stream of local students. Make content that parents and learners really care about. You can share common pronunciation errors, natural daily English phrases, and simple speaking tips. Remember to tag your location in every video to precisely attract local students.
+Third, convert potential clients through trial lessons. A lot of tutors lose clients because they mention prices too early. My 30-minute trial class is full of interactive conversations. I can quickly figure out each student's weak points: being too shy to speak, having bad pronunciation, using incomplete sentences, or lacking fluency. After class, I give a targeted, personalized improvement plan.
+Last but not least, focus on retaining existing students. If you can keep students long-term, you won't have to spend all your energy looking for new students constantly. I send regular study feedback and an oral progress report to every student. When students see their clear progress step by step, they will actively recommend me to their relatives and friends, bringing in a steady stream of new students at no extra cost.
+To sum up, my whole set of business strategies includes four parts: word-of-mouth referrals, local short-video marketing, trial-lesson conversion, and long-term student maintenance. If you have any questions, leave a comment below, and remember to like and subscribe to my channel. See you next time.
 
-首先，停止背诵，开始转述。 不要死记固定句式，学会用多种简单方式表达同一个意思。用简单词汇表达复杂思想——这才是真正的流利。
+首先，好好利用你的人脉和口碑推荐。当我刚开始做家教时，我最早的所有学生都来自我身边的朋友和熟人。不要只是含糊地告诉别人你教英语。你可以专注于儿童日常英语口语、成人日常对话或求职面试英语。确保每个人都清楚了解你的专业优势。我提供一个简单的推荐奖励：任何介绍新学员的现有学生都将获得一节免费的一对一口语课。口碑对私人教师来说是最可靠且最稳定的方式去获得长期学生。
 
-第二步，添加自然的停顿和语气词。像「老实说」「嗯」「你知道的」这样的表达，能让讲话显得自然流畅，不要像背稿子。停顿赋予讲话节奏感，让你的声音显得从容自信。
+第二，制作短视频以吸引源源不断的本地学生。制作家长和学习者真正关心的内容。你可以分享常见的发音错误、自然的日常英语短语和简单的口语技巧。记得在每个视频中标记你的位置，以精准吸引本地学生。
 
-第三步，运用语调和情感。 平淡的语调等于机器腔。母语者在开心、惊讶或怀疑时，会自然地调整语调。语气传递的信息有时比词汇更多。
+第三，通过试听课转化潜在客户。很多家教因为过早提及价格而失去客户。我的30分钟试听课充满了互动对话。我能快速找出每个学生的弱点：太害羞不敢开口、发音不好、使用不完整的句子或缺乏流利度。课后，我给出一份有针对性的、个性化的改进计划。
 
-接受小瑕疵。 错误是正常的，在实时交流中不要自我纠正，保持对话继续进行。在口语交流中，流畅度优先于准确性。
+最后但同样重要的是，专注于留住现有学生。如果你能长期留住学生，你就不必花费所有精力不停地寻找新学生。我定期发送学习反馈和一份口语进度报告给每个学生。当学生们一步步看到他们明显的进步时，他们会主动把我推荐给他们的亲友，以零额外成本带来源源不断的新学生。
 
-如果你想真正提升口语水平，请停止追求完美，开始像真人一样说话。英语口语不是考试，而是真实的交流。如果这段话对你有帮助，记得点赞并关注我。让我们一起构建自然、流利、真实的英语口语。
+总之，我的一整套商业策略包括四个部分：口碑推荐、本地短视频营销、试听课转化和长期学生维护。如果你有任何问题，在下方评论区留言，并记得点赞和订阅我的频道。下次见。
