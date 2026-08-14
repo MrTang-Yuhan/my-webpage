@@ -9,6 +9,8 @@ tags:
 ---
 > 所有测试脚本和代码：[l2c-test-tangyuhan.zip](attach/l2c-test-tangyuhan.zip)
 
+> 演示 PPT: [rtx5080_gpu_memory_subsystem_analysis_structured.pptx](attach/rtx5080_gpu_memory_subsystem_analysis_structured.pptx)
+
 
 # NVIDIA RTX 5080 L2 缓存微体系结构测量
 
