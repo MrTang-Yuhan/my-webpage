@@ -106,6 +106,7 @@ The first lesson is that progress is more important than perfection. Most people
 The second lesson is that consistency always beats intensity. Many people study crazily for one or two days, then stop for weeks. They expect quick results and feel disappointed when they see no improvement. But English never works that way. It doesn't depend on how hard you study in a single day. It depends on how steadily you keep going. Ten minutes of daily practice is more powerful than three hours of temporary passion. Slow, consistent effort is the key to mastering English.
 
 The third lesson is that English should be used, not just memorized. We spend so much time memorizing words, reciting texts, and learning grammar rules. Yet we still feel awkward when we need to speak or listen. That is because we only store knowledge in our brains but never use it. Real English learning happens when you start applying what you have learned: read a short passage, listen to a simple podcast, speak a simple sentence, and try to think in English. Only when you start using it does it truly become yours.
+
 Learning English is never easy, but it's always worthwhile. It doesn't require talent; it requires patience, persistence, and courage. If you keep practicing steadily, trust me, one day you will find that all your efforts have paid off.
 
 学了很长时间的英语之后，我终于明白，英语不仅仅是一门用来应付考试的学科。它是一种技能，一种习惯，一种看待世界的方式。今天，我想和大家分享我在这个过程中学到的三个道理。
