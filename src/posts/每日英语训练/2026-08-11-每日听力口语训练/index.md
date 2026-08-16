@@ -100,8 +100,11 @@ If you're learning English or working as an English tutor wanting to make steady
 [月入过万独立英语教师，总结的三点经验](https://www.bilibili.com/video/BV18QLX6GEvs/?spm_id_from=333.1387.homepage.video_card.click&vd_source=e98b669ccbafff4b5aa59dd6303b722f)
 
 After learning English for a long time, I finally understand that English is not just a subject to study for exams. It's a skill, a habit, a way to see the world. Today, I want to share with you three lessons that I've learned on this journey.
+
 The first lesson is that progress is more important than perfection. Most people give up learning English because they're afraid of making mistakes. They worry about their pronunciation, their grammar, and whether they sound good enough. But the truth is, no one speaks perfect English at the beginning. Learning a language is a process of constant trial and error. You don't need to be flawless; you just need to be better than you were yesterday. Small progress every day will eventually lead to huge changes.
+
 The second lesson is that consistency always beats intensity. Many people study crazily for one or two days, then stop for weeks. They expect quick results and feel disappointed when they see no improvement. But English never works that way. It doesn't depend on how hard you study in a single day. It depends on how steadily you keep going. Ten minutes of daily practice is more powerful than three hours of temporary passion. Slow, consistent effort is the key to mastering English.
+
 The third lesson is that English should be used, not just memorized. We spend so much time memorizing words, reciting texts, and learning grammar rules. Yet we still feel awkward when we need to speak or listen. That is because we only store knowledge in our brains but never use it. Real English learning happens when you start applying what you have learned: read a short passage, listen to a simple podcast, speak a simple sentence, and try to think in English. Only when you start using it does it truly become yours.
 Learning English is never easy, but it's always worthwhile. It doesn't require talent; it requires patience, persistence, and courage. If you keep practicing steadily, trust me, one day you will find that all your efforts have paid off.
 
