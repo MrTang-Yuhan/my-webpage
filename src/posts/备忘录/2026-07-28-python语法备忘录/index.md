@@ -25,6 +25,8 @@ tags:
 
 ## 使用
 - [CUDA Graph](https://docs.nvidia.com/dl-cuda-graph/torch-cuda-graph/torch-integration.html)：将一连串 kernel 启动录制为图，replay 一次提交，消除逐 kernel 的 CPU 启动开销；输入需 `copy_` 进静态 buffer，decode 场景收益明显。
+- [Pytorch 计算图和自定义自动微分函数](https://zhuanlan.zhihu.com/p/676009630)：计算图的原理，以及使用 `torch.autograd.Function` 自定义自动微分函数。
+
 
 ## 载入 LLM 模型
 - 国内可用 [魔塔 ModelScope](https://www.modelscope.cn/models) 下载模型，平替 HuggingFace Hub；也可作为 transformers 库的平替（如果模型有的话）。
