@@ -118,3 +118,20 @@ Learning English is never easy, but it's always worthwhile. It doesn't require t
 第三个道理是，英语应该被使用，而不只是被记住。我们花了那么多时间背单词、背课文、学语法规则。可到了需要说或听的时候，我们仍然感到别扭。那是因为我们只把知识存在脑子里，却从不使用它。真正的英语学习，发生在你开始运用所学的时候：读一篇短文，听一个简单的播客，说一句简单的句子，试着用英语思考。只有当你开始使用它，它才真正属于你。
 
 学英语从来都不容易，但它永远值得。它不需要天赋，需要的是耐心、坚持和勇气。如果你一直稳步练习，相信我，总有一天你会发现，所有的努力都有了回报。
+
+---
+## 006. 全英｜讨好型人格到大女主剧本，前提是变得清晰
+
+[全英｜讨好型人格到大女主剧本，前提是变得清晰](https://www.bilibili.com/video/BV12bbC6VErz/?spm_id_from=333.337.search-card.all.click&vd_source=e98b669ccbafff4b5aa59dd6303b722f)
+
+I used to be a total people pleaser. In the past, I always lived for others' opinions. I would compromise my own needs, sacrifice my time, and tolerate unfair treatment just to keep everyone happy. But instead of gaining respect, I only got endless exhaustion, imbalance, and the feeling of being taken for granted.
+
+When I started my career as an independent teacher, I began to rebuild myself completely. As an educator facing dozens of students and different parents every day, I had no choice but to become clear about my boundaries. I set clear teaching standards, clear learning rules, and clear personal boundaries. Now I know what to tolerate and what to reject. I do not over-explain myself, nor do I try to please, cater to, or cling to others. That is how I maintain clear boundaries. I know my strengths as an English teacher, recognize my professional values, and never doubt myself because of others' casual comments. That is a clear sense of self. All my efforts are dedicated to self-improvement, better teaching outcomes, and a brighter future, rather than seeking approval from others. Those are clear goals.
+
+I used to think that being nice makes people love you, but life has taught me that being clear makes you respected. If you're still trapped in people-pleasing and feel tired, unvalued, and powerless, please remember this: When your mind is clear, your words are firm, and your actions are decisive, your life will definitely get better and better. Thank you for watching. See you in the next video.
+
+我曾经是一个彻头彻尾的讨好者。在过去，我总是为了别人的看法而活。我会妥协自己的需求，牺牲自己的时间，忍受不公平的对待，只为让所有人开心。但结果我没有得到尊重，只得到了无尽的疲惫、失衡，以及被当作理所当然的感觉。
+
+当我开始作为一名独立教师的职业生涯时，我开始完全重建自己。作为一名每天面对几十个学生和不同家长的教育者，我别无选择，只能明确自己的边界。我设定了明确的教学标准、明确的学习规则，以及明确的个人边界。现在我知道什么可以容忍，什么应该拒绝。我不会过度解释自己，也不会试图讨好、迎合或依附他人。这就是我维持清晰边界的方式。我知道自己作为英语老师的优势，认可自己的职业价值，从不因为他人的随意评论而怀疑自己。那是一种清晰的自我认知。我所有的努力都致力于自我提升、更好的教学成果，以及更光明的未来，而不是寻求他人的认可。那些是明确的目标。
+
+我曾经以为友善会让人爱你，但生活教会我，清晰明确会让你获得尊重。如果你仍然被困在讨好模式中，感到疲惫、不被重视和无力，请记住这一点：当你的头脑清晰，你的话语坚定，你的行动果断，你的生活一定会越来越好。感谢观看。下个视频见。
