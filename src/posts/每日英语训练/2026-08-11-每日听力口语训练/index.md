@@ -118,3 +118,16 @@ Learning English is never easy, but it's always worthwhile. It doesn't require t
 第三个道理是，英语应该被使用，而不只是被记住。我们花了那么多时间背单词、背课文、学语法规则。可到了需要说或听的时候，我们仍然感到别扭。那是因为我们只把知识存在脑子里，却从不使用它。真正的英语学习，发生在你开始运用所学的时候：读一篇短文，听一个简单的播客，说一句简单的句子，试着用英语思考。只有当你开始使用它，它才真正属于你。
 
 学英语从来都不容易，但它永远值得。它不需要天赋，需要的是耐心、坚持和勇气。如果你一直稳步练习，相信我，总有一天你会发现，所有的努力都有了回报。
+
+---
+## 006. 全英｜讨好型人格到大女主剧本，前提是变得清晰
+
+[全英｜讨好型人格到大女主剧本，前提是变得清晰](https://www.bilibili.com/video/BV12bbC6VErz/?spm_id_from=333.337.search-card.all.click&vd_source=e98b669ccbafff4b5aa59dd6303b722f)
+
+I used to be a total people pleaser. In the past, I always lived for others' opinions. I would compromise my own needs, sacrifice my time, and tolerate unfair treatment just to keep everyone happy. But instead of gaining respect, I only got endless exhaustion, imbalance, and the feeling of being taken for granted.
+
+When I started my career as an independent teacher, I began to rebuild myself completely. As an educator facing dozens of students and different parents every day, I had no choice but to become clear about my boundaries. I set clear teaching standards, clear learning rules, and clear personal boundaries. Now I know what to tolerate and what to reject. I do not over-explain myself, nor do I try to please, cater to, or cling to others. That is how I maintain clear boundaries. I know my strengths as an English teacher, recognize my professional values, and never doubt myself because of others' casual comments. That is a clear sense of self. All my efforts are dedicated to self-improvement, better teaching outcomes, and a brighter future, rather than seeking approval from others. Those are clear goals.
+
+I used to think that being nice makes people love you, but life has taught me that being clear makes you respected. If you're still trapped in people-pleasing and feel tired, unvalued, and powerless, please remember this: When your mind is clear, your words are firm, and your actions are decisive, your life will definitely get better and better. Thank you for watching. See you in the next video.
+
+
