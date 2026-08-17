@@ -130,4 +130,8 @@ When I started my career as an independent teacher, I began to rebuild myself co
 
 I used to think that being nice makes people love you, but life has taught me that being clear makes you respected. If you're still trapped in people-pleasing and feel tired, unvalued, and powerless, please remember this: When your mind is clear, your words are firm, and your actions are decisive, your life will definitely get better and better. Thank you for watching. See you in the next video.
 
+我曾经是一个彻头彻尾的讨好者。在过去，我总是为了别人的看法而活。我会妥协自己的需求，牺牲自己的时间，忍受不公平的对待，只为让所有人开心。但结果我没有得到尊重，只得到了无尽的疲惫、失衡，以及被当作理所当然的感觉。
 
+当我开始作为一名独立教师的职业生涯时，我开始完全重建自己。作为一名每天面对几十个学生和不同家长的教育者，我别无选择，只能明确自己的边界。我设定了明确的教学标准、明确的学习规则，以及明确的个人边界。现在我知道什么可以容忍，什么应该拒绝。我不会过度解释自己，也不会试图讨好、迎合或依附他人。这就是我维持清晰边界的方式。我知道自己作为英语老师的优势，认可自己的职业价值，从不因为他人的随意评论而怀疑自己。那是一种清晰的自我认知。我所有的努力都致力于自我提升、更好的教学成果，以及更光明的未来，而不是寻求他人的认可。那些是明确的目标。
+
+我曾经以为友善会让人爱你，但生活教会我，清晰明确会让你获得尊重。如果你仍然被困在讨好模式中，感到疲惫、不被重视和无力，请记住这一点：当你的头脑清晰，你的话语坚定，你的行动果断，你的生活一定会越来越好。感谢观看。下个视频见。
