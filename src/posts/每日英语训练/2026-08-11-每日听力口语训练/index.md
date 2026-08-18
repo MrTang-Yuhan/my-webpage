@@ -11,9 +11,6 @@ tags:
 
 [全英｜小镇英语老师经济独立，为何不混任何圈子](https://www.bilibili.com/video/BV1Hyuy6WEpc/?spm_id_from=333.1007.top_right_bar_window_history.content.click&vd_source=e98b669ccbafff4b5aa59dd6303b722f)
 
-### 中英文
-
-
 I'm a young independent English teacher. At a young age, I've achieved financial independence and have complete control over my life and time.
  
 I used to believe that social circles mean opportunities, resources and connections.
