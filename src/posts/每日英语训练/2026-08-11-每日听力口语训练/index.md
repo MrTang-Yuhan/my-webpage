@@ -135,3 +135,25 @@ I used to think that being nice makes people love you, but life has taught me th
 当我开始作为一名独立教师的职业生涯时，我开始完全重建自己。作为一名每天面对几十个学生和不同家长的教育者，我别无选择，只能明确自己的边界。我设定了明确的教学标准、明确的学习规则，以及明确的个人边界。现在我知道什么可以容忍，什么应该拒绝。我不会过度解释自己，也不会试图讨好、迎合或依附他人。这就是我维持清晰边界的方式。我知道自己作为英语老师的优势，认可自己的职业价值，从不因为他人的随意评论而怀疑自己。那是一种清晰的自我认知。我所有的努力都致力于自我提升、更好的教学成果，以及更光明的未来，而不是寻求他人的认可。那些是明确的目标。
 
 我曾经以为友善会让人爱你，但生活教会我，清晰明确会让你获得尊重。如果你仍然被困在讨好模式中，感到疲惫、不被重视和无力，请记住这一点：当你的头脑清晰，你的话语坚定，你的行动果断，你的生活一定会越来越好。感谢观看。下个视频见。
+
+---
+
+## 007. 听力阅读厉害，但口语写作……
+
+[听力阅读厉害，但口语写作……](https://www.bilibili.com/video/BV1K5Vm6jEFP/?spm_id_from=333.1387.upload.video_card.click&vd_source=e98b669ccbafff4b5aa59dd6303b722f)
+
+My reading and listening skills are awesome, but my speaking and writing skills are terrible. What can I do?
+
+Number one: Use AI to practice your output. Doubao has a free calling function which allows you to talk with it in English whenever you want. Ask it to correct and improve your words. You don't have to worry about its feelings because it's not a real human, and you can send your compositions to it and receive detailed feedback immediately.
+
+Number two: Whenever you meet a new expression while studying English material, try to make a sentence with it. You can say the sentence out loud, say it to yourself, or write it down—however you like. The aim is to practice using the expression on your own instead of just recognizing it. In this way, it will become part of your active vocabulary.
+
+Number three: Be aware of the importance of consistency. Even fluent speakers need to keep training, or their speaking skills will soon get rusty. You need to put the training task on your agenda and develop it into a habit.
+
+我的阅读和听力技能很棒，但我的口语和写作技能很糟糕。我能做什么？
+
+第一：使用AI来练习你的输出。豆包有一个免费的通话功能，让你可以随时用英语和它交谈。让它纠正并改进你的用词。你不用担心它的感受，因为它不是真人，而且你可以把你的作文发给它，立即收到详细的反馈。
+
+第二：每当你在英语学习材料中遇到一个新的表达时，试着用它造一个句子。你可以大声说出这个句子，自言自语，或者写下来——随你喜欢。目的是自己练习使用这个表达，而不是仅仅识别它。这样，它会成为你主动词汇的一部分。
+
+第三：意识到坚持的重要性。即使是流利的说话者也需要持续训练，否则他们的口语技能很快就会生疏。你需要把训练任务列入日程，并把它培养成一种习惯。
