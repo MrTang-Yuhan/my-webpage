@@ -161,3 +161,19 @@ Number three: Be aware of the importance of consistency. Even fluent speakers ne
 
 [英语环境没有那么有用](https://www.bilibili.com/video/BV1nmVN6XEBn/?spm_id_from=333.1387.upload.video_card.click&vd_source=e98b669ccbafff4b5aa59dd6303b722f)
 
+How do you create an English environment? By playing English audio in the background nonstop? By changing your phone language to English? Actually, it's not as useful as you think. So you seize every spare moment to listen to English materials, and switch all the content you see to English as much as possible, trying to create something resembling an English environment. 
+
+How much time can you spend studying English with full concentration? Exposing yourself to English doesn't mean you're learning English. Effective acquisition requires active involvement. In other words, you have to proactively absorb new words, phrases, sentence structures, grammar rules, and such, without doing anything else. Otherwise, you're not truly learning English. 
+
+Creating an English environment is a persistent myth that allows you to slack off, where you don't have to use your mind, and knowledge just sinks in effortlessly. If you really want to improve your English proficiency, just spend a couple of hours per day focusing on learning it. Following a systematic plan is much more efficient and effective than creating an English environment. 
+
+By the way, those who have studied abroad for years aren't necessarily good at English. I've met a college student who had lived in America—a real English environment—for two years, and came back with English at only a primary school level.
+
+你怎样营造英语环境？靠不停地在后台播放英语音频？靠把手机语言改成英语？其实，这并没有你想的那么有用。于是你抓紧每一个空闲时刻去听英语材料，把看到的所有内容都尽可能切换成英语版本，试图营造出一个类似英语环境的东西。
+
+你能花多少时间全神贯注地学习英语？让自己浸泡在英语里并不等于你在学英语。有效的习得需要主动参与。换句话说，你必须主动地去吸收新单词、短语、句型、语法规则等等，而且不能做别的事情。否则，你并不是在真正学英语。
+
+营造英语环境是一个根深蒂固的迷思，它让你可以偷懒——在这种迷思里，你不必动脑，知识就会毫不费力地渗透进你的大脑。如果你真的想提高英语水平，每天只需花几个小时专心学习这门语言就行。遵循一个系统化的计划，比营造英语环境要高效得多、有效得多。
+
+顺便说一句，那些在国外待了好几年的人，英语未必就好。我认识一个大学生，他在美国——一个真正的英语环境——待了两年，回来后的英语水平却只有小学水平。
+
