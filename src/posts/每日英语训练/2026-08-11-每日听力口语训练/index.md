@@ -154,3 +154,9 @@ Number three: Be aware of the importance of consistency. Even fluent speakers ne
 第二：每当你在英语学习材料中遇到一个新的表达时，试着用它造一个句子。你可以大声说出这个句子，自言自语，或者写下来——随你喜欢。目的是自己练习使用这个表达，而不是仅仅识别它。这样，它会成为你主动词汇的一部分。
 
 第三：意识到坚持的重要性。即使是流利的说话者也需要持续训练，否则他们的口语技能很快就会生疏。你需要把训练任务列入日程，并把它培养成一种习惯。
+
+---
+
+## 008. 英语环境没有那么有用
+
+[英语环境没有那么有用](https://www.bilibili.com/video/BV1nmVN6XEBn/?spm_id_from=333.1387.upload.video_card.click&vd_source=e98b669ccbafff4b5aa59dd6303b722f)
