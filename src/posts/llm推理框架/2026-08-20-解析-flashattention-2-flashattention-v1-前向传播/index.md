@@ -7,6 +7,10 @@ date: 2026-08-20
 tags:
   - post
 ---
+> 上一篇：[解析 FlashAttention（1）：从标准 Attention 讲起](https://my-webpage-adu.pages.dev/posts/llm%E6%8E%A8%E7%90%86%E6%A1%86%E6%9E%B6/2026-08-20-%E8%A7%A3%E6%9E%90-flashattention-1-%E4%BB%8E%E6%A0%87%E5%87%86-attention-%E8%AE%B2%E8%B5%B7/)
+>
+> 参考：[万字长文详解FlashAttention v1/v2](https://zhuanlan.zhihu.com/p/642962397)
+
 ## 1. 背景 & 动机
 
 ### 1.1 标准 Attention 的核心矛盾
@@ -262,7 +266,13 @@ Algorithm 1 的输入为 $\mathbf{Q}, \mathbf{K}, \mathbf{V} \in \mathbb{R}^{N \
 
 $$B_c = \left\lceil \frac{M}{4d} \right\rceil, \quad B_r = \min\left(\left\lceil \frac{M}{4d} \right\rceil,\ d\right)$$
 
-这里分母取 $4d$ 是因为 SRAM 需要同时容纳 $\mathbf{K}_j$（$B_c \times d$）、$\mathbf{V}_j$（$B_c \times d$）、$\mathbf{Q}_i$（$B_r \times d$）、$\mathbf{O}_i$（$B_r \times d$）以及 $\mathbf{S}_{ij}$（$B_r \times B_c$），总共约 $2B_c d + 2B_r d + B_r B_c \leq M$。当 $B_r = B_c = M/(4d)$ 时，上述各项之和近似等于 $M$，因此该设置是保守且安全的上界。
+这里分母取 $4d$ 是因为 SRAM 需要同时容纳 $\mathbf{K}_j$（$B_c \times d$）、$\mathbf{V}_j$（$B_c \times d$）、$\mathbf{Q}_i$（$B_r \times d$）、$\mathbf{O}_i$（$B_r \times d$）以及 $\mathbf{S}_{ij}$（$B_r \times B_c$），元素个数总共为 $2B_c d + 2B_r d + B_r B_c$。我们限制：
+
+$$
+2B_c d + 2B_r d + B_r B_c \leq M
+$$
+
+然而，实际上代入 $B_c$ 和 $B_r$ 的值会发现 $2B_c d + 2B_r d + B_r B_c$ 略大于 $M$，所以论文中设置的 $B_c$ 和 $B_r$ 值只是工程上的启发式方法，并不是严格的。
 
 **第 2 行**：初始化输出与全局统计量
 
@@ -276,7 +286,18 @@ $$\mathbf{O} = \mathbf{0}_{N \times d} \in \mathbb{R}^{N \times d}, \quad \bolds
 
 **第 4 行**：输出与统计量分块
 
-将 $\mathbf{O}$ 沿行方向分为 $T_r$ 块 $\mathbf{O}_1, \dots, \mathbf{O}_{T_r}$，每块 $B_r \times d$。将 $\boldsymbol{\ell}$ 分为 $T_r$ 块 $\ell_1, \dots, \ell_{T_r}$，每块 $B_r$。将 $\mathbf{m}$ 分为 $T_r$ 块 $m_1, \dots, m_{T_r}$，每块 $B_r$。这些分块与 $\mathbf{Q}$ 的分块一一对应，便于逐块加载到 SRAM。
+将 $\mathbf{O}$ 沿行方向分为 $T_r$ 块 $\mathbf{O}_1, \dots, \mathbf{O}_{T_r}$，每块尺寸 $B_r \times d$。将 $\boldsymbol{\ell}$ 分为 $T_r$ 块 $\ell_1, \dots, \ell_{T_r}$，每块尺寸 $B_r \times 1$。将 $\mathbf{m}$ 分为 $T_r$ 块 $m_1, \dots, m_{T_r}$，每块尺寸 $B_r\times 1$。这些分块与 $\mathbf{Q}$ 的分块一一对应，便于逐块加载到 SRAM。
+
+下图展示了各个分块的切分和维度：
+
+![](img/flash-atten-2.png)
+
+**关键点是：**
+1. $K$ 和 $V$ 的切分相同。
+2. $Q$ 和 $O$ 的切分相同。
+3. $Q$ 有多少行，则 $l$ 和 $m$ 的维度就是多少。因为它们对应 $Q$ 每一行的 online softmax 统计量。
+
+如果还是没看懂，则参看 [解析 FlashAttention（1）：从标准 Attention 讲起](https://my-webpage-adu.pages.dev/posts/llm%E6%8E%A8%E7%90%86%E6%A1%86%E6%9E%B6/2026-08-20-%E8%A7%A3%E6%9E%90-flashattention-1-%E4%BB%8E%E6%A0%87%E5%87%86-attention-%E8%AE%B2%E8%B5%B7/) 详细了解 Attention 计算过程的含义。
 
 **第 5 行**：外层循环开始
 
