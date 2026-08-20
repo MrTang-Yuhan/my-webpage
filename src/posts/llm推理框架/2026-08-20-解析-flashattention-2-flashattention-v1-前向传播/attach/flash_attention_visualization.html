@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlashAttention 分块运算可视化</title>
+<style>
+  :root {
+    --kimi-font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --kimi-font-mono: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+    --kimi-color-text-primary: #1a1a1a;
+    --kimi-color-text-secondary: #666666;
+    --kimi-color-text-tertiary: #999999;
+    --kimi-color-text-quaternary: #bbbbbb;
+    --kimi-color-border: #e5e5e5;
+    --kimi-color-surface: #ffffff;
+    --kimi-color-surface-raised: #f5f5f5;
+    --kimi-color-surface-muted: #eeeeee;
+    --kimi-color-accent: #2563eb;
+    --kimi-color-positive: #22c55e;
+    --kimi-chart-1: #3b82f6;
+    --kimi-chart-2: #ef4444;
+    --kimi-chart-3: #10b981;
+    --kimi-chart-4: #8b5cf6;
+    --kimi-chart-5: #f59e0b;
+  }
+  body {
+    font-family: var(--kimi-font-sans);
+    background: var(--kimi-color-surface);
+    color: var(--kimi-color-text-primary);
+    margin: 0;
+    padding: 20px;
+  }
+  .fa-wrap { display: flex; flex-direction: column; gap: 10px; max-width: 960px; margin: 0 auto; }
+  .fa-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .fa-title { font-size: 17px; font-weight: 500; }
+  .fa-btns { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .fa-btn {
+    padding: 5px 12px; border: 1px solid var(--kimi-color-border); border-radius: 8px;
+    background: transparent; cursor: pointer; font-size: 13px; color: var(--kimi-color-text-primary);
+    transition: all .15s ease-out;
+  }
+  .fa-btn:hover { background: var(--kimi-color-surface-raised); }
+  .fa-btn.primary { background: var(--kimi-color-text-primary); color: var(--kimi-color-surface); border-color: var(--kimi-color-text-primary); }
+  .fa-btn:disabled { opacity: .35; cursor: not-allowed; }
+  .fa-info { font-size: 13px; color: var(--kimi-color-text-secondary); min-width: 140px; text-align: right; }
+
+  .fa-stage {
+    background: rgba(37, 99, 235, 0.06);
+    border: 1px solid rgba(37, 99, 235, 0.18);
+    border-radius: 10px; padding: 10px 14px; font-size: 13.5px; line-height: 1.6;
+  }
+  .fa-stage b { font-weight: 500; color: var(--kimi-color-text-primary); }
+  .fa-stage .tag {
+    display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 12px; margin: 0 2px;
+    font-family: var(--kimi-font-mono);
+  }
+  .tag-q { background: rgba(59, 130, 246, 0.18); color: var(--kimi-chart-1); }
+  .tag-k { background: rgba(239, 68, 68, 0.18); color: var(--kimi-chart-2); }
+  .tag-v { background: rgba(16, 185, 129, 0.18); color: var(--kimi-chart-3); }
+  .tag-o { background: rgba(139, 92, 246, 0.18); color: var(--kimi-chart-4); }
+  .tag-s { background: rgba(37, 99, 235, 0.18); color: var(--kimi-color-accent); }
+
+  .fa-top { display: flex; gap: 16px; justify-content: space-between; flex-wrap: wrap; }
+  .fa-mats { display: flex; gap: 14px; flex-wrap: wrap; }
+  .fa-col { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+  .fa-lbl { font-size: 12px; color: var(--kimi-color-text-secondary); font-weight: 500; }
+  .fa-grid {
+    display: grid; gap: 2px; padding: 4px; border: 1px solid var(--kimi-color-border); border-radius: 8px;
+  }
+  .fa-cell {
+    width: 16px; height: 16px; border-radius: 3px; display: flex; align-items: center; justify-content: center;
+    font-size: 8.5px; font-variant-numeric: tabular-nums; transition: all .2s ease-out; border: 1px solid transparent;
+  }
+  .fa-cell.cq { background: rgba(59, 130, 246, 0.16); color: var(--kimi-chart-1); }
+  .fa-cell.ck { background: rgba(239, 68, 68, 0.16); color: var(--kimi-chart-2); }
+  .fa-cell.cv { background: rgba(16, 185, 129, 0.16); color: var(--kimi-chart-3); }
+  .fa-cell.co { background: rgba(139, 92, 246, 0.16); color: var(--kimi-chart-4); }
+  .fa-cell.on { border-color: var(--kimi-color-text-primary); box-shadow: 0 0 0 1px var(--kimi-color-text-primary); z-index: 2; }
+  .fa-cell.off { opacity: .25; }
+  .fa-cell.cs { background: rgba(37, 99, 235, 0.25); }
+  .fa-cell.cs.on { background: rgba(37, 99, 235, 0.55); border-color: var(--kimi-color-text-primary); }
+
+  .fa-vecs { display: flex; flex-direction: column; gap: 10px; }
+  .fa-vec-wrap { display: flex; flex-direction: column; gap: 3px; }
+  .fa-vec-lbl { font-size: 11px; color: var(--kimi-color-text-secondary); }
+  .fa-vec-row { display: flex; gap: 6px; align-items: flex-start; }
+  .fa-vec-grp { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .fa-vec-grp-lbl { font-size: 10px; color: var(--kimi-color-text-tertiary); font-family: var(--kimi-font-mono); }
+  .fa-vec-grid { display: grid; gap: 2px; }
+  .fa-vcell {
+    width: 22px; height: 18px; border-radius: 3px; display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-variant-numeric: tabular-nums; transition: all .2s ease-out; border: 1px solid transparent;
+    background: rgba(245, 158, 11, 0.12); color: var(--kimi-color-text-secondary);
+  }
+  .fa-vcell.on { border-color: var(--kimi-color-text-primary); box-shadow: 0 0 0 1px var(--kimi-color-text-primary); background: rgba(245, 158, 11, 0.30); color: var(--kimi-color-text-primary); }
+  .fa-vcell.off { opacity: .25; }
+
+  .fa-sram-wrap {
+    border: 2px dashed var(--kimi-color-border); border-radius: 12px; padding: 12px 14px;
+    display: flex; flex-direction: column; gap: 10px; align-items: center;
+  }
+  .fa-sram-title {
+    font-size: 13px; font-weight: 500; color: var(--kimi-color-text-secondary);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .fa-sram-title::before {
+    content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--kimi-color-positive);
+  }
+  .fa-flow {
+    display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;
+  }
+  .fa-fbox {
+    padding: 6px 10px; border-radius: 8px; font-size: 12px; font-family: var(--kimi-font-mono); text-align: center;
+    min-width: 56px;
+  }
+  .fa-fbox.q { background: rgba(59, 130, 246, 0.18); color: var(--kimi-chart-1); border: 1px solid rgba(59, 130, 246, 0.40); }
+  .fa-fbox.k { background: rgba(239, 68, 68, 0.18); color: var(--kimi-chart-2); border: 1px solid rgba(239, 68, 68, 0.40); }
+  .fa-fbox.v { background: rgba(16, 185, 129, 0.18); color: var(--kimi-chart-3); border: 1px solid rgba(16, 185, 129, 0.40); }
+  .fa-fbox.o { background: rgba(139, 92, 246, 0.18); color: var(--kimi-chart-4); border: 1px solid rgba(139, 92, 246, 0.40); }
+  .fa-fbox.s { background: rgba(37, 99, 235, 0.18); color: var(--kimi-color-accent); border: 1px solid rgba(37, 99, 235, 0.40); }
+  .fa-farr { font-size: 16px; color: var(--kimi-color-text-quaternary); }
+  .fa-farr.hl { color: var(--kimi-color-text-primary); }
+
+  .fa-formula-panel {
+    width: 100%; background: var(--kimi-color-surface-raised); border-radius: 10px; padding: 10px 14px;
+    font-family: var(--kimi-font-mono); font-size: 11.5px; line-height: 1.6; color: var(--kimi-color-text-secondary);
+  }
+  .fa-fstep { padding: 5px 0; border-left: 3px solid transparent; padding-left: 8px; margin: 3px 0; }
+  .fa-fstep.on { border-left-color: var(--kimi-color-accent); background: rgba(37, 99, 235, 0.06); border-radius: 0 6px 6px 0; }
+  .fa-fstep-title { font-weight: 500; color: var(--kimi-color-text-primary); font-size: 12px; margin-bottom: 3px; }
+  .fa-fstep-body { color: var(--kimi-color-text-secondary); }
+  .fa-fline { margin: 2px 0; }
+  .mini-mat { border-collapse: collapse; display: inline-block; vertical-align: middle; margin: 0 3px; }
+  .mini-mat td { padding: 1px 4px; text-align: center; border: 1px solid var(--kimi-color-border); font-size: 10px; font-family: var(--kimi-font-mono); }
+  .mini-vec { display: inline-block; font-family: var(--kimi-font-mono); font-size: 10.5px; margin: 0 3px; }
+  .kw { color: var(--kimi-color-text-primary); font-weight: 500; }
+  .val { color: var(--kimi-color-accent); font-weight: 500; }
+
+  .fa-bottom { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 4px; }
+  .fa-sgrid {
+    display: grid; gap: 1px; padding: 4px; border: 1px solid var(--kimi-color-border); border-radius: 8px;
+  }
+  .fa-scell {
+    width: 22px; height: 22px; border-radius: 2px; 
+    display: flex; align-items: center; justify-content: center;
+    font-size: 8px; font-variant-numeric: tabular-nums;
+    transition: all .2s ease-out; border: 1px solid transparent;
+  }
+  .fa-scell.done { background: rgba(37, 99, 235, 0.50); }
+  .fa-scell.curr { background: rgba(37, 99, 235, 0.80); border-color: var(--kimi-color-text-primary); box-shadow: 0 0 0 1px var(--kimi-color-text-primary); }
+  .fa-scell.pnd { background: rgba(238, 238, 238, 0.60); color: var(--kimi-color-text-quaternary); }
+  .fa-slegend { display: flex; gap: 12px; font-size: 11px; color: var(--kimi-color-text-secondary); margin-top: 4px; flex-wrap: wrap; justify-content: center; }
+  .fa-sleg { display: flex; align-items: center; gap: 4px; }
+  .fa-sleg-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+  .fa-prog { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; max-width: 320px; }
+  .fa-pdot { width: 7px; height: 7px; border-radius: 50%; background: var(--kimi-color-border); transition: background .2s; }
+  .fa-pdot.done { background: var(--kimi-color-positive); }
+  .fa-pdot.curr { background: var(--kimi-color-accent); }
+</style>
+</head>
+<body>
+
+<div class="fa-wrap">
+  <div class="fa-header">
+    <div class="fa-title">FlashAttention 分块运算可视化</div>
+    <div class="fa-btns">
+      <button class="fa-btn" onclick="reset()">重置</button>
+      <button class="fa-btn" onclick="prev()">← 上一步</button>
+      <button class="fa-btn primary" onclick="next()">下一步 →</button>
+      <button class="fa-btn" id="btn-auto" onclick="toggleAuto()">自动播放</button>
+      <span class="fa-info" id="step-info">步骤 0 / 25</span>
+    </div>
+  </div>
+
+  <div class="fa-stage" id="stage">初始化：设置 N=12, d=4, Br=3, Bc=2。SRAM 大小为 M。在 HBM 中初始化 O=0, ℓ=0, m=-∞。</div>
+
+  <div class="fa-top">
+    <div class="fa-mats">
+      <div class="fa-col">
+        <div class="fa-lbl">Q 矩阵 (N×d)</div>
+        <div class="fa-grid" id="g-q"></div>
+      </div>
+      <div class="fa-col">
+        <div class="fa-lbl">K 矩阵 (N×d)</div>
+        <div class="fa-grid" id="g-k"></div>
+      </div>
+      <div class="fa-col">
+        <div class="fa-lbl">O 输出 (N×d)</div>
+        <div class="fa-grid" id="g-o"></div>
+      </div>
+      <div class="fa-col">
+        <div class="fa-lbl">V 矩阵 (N×d)</div>
+        <div class="fa-grid" id="g-v"></div>
+      </div>
+    </div>
+    <div class="fa-vecs">
+      <div class="fa-vec-wrap">
+        <div class="fa-vec-lbl">m 向量（行最大值，按 Br=3 分组）</div>
+        <div class="fa-vec-row" id="g-m"></div>
+      </div>
+      <div class="fa-vec-wrap">
+        <div class="fa-vec-lbl">ℓ 向量（行和，按 Br=3 分组）</div>
+        <div class="fa-vec-row" id="g-l"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="fa-bottom">
+    <div class="fa-lbl">注意力分数 S 矩阵 (N×N)，每个色块 = Br×Bc = 3×2，显示计算值</div>
+    <div class="fa-sgrid" id="g-s"></div>
+    <div class="fa-slegend">
+      <div class="fa-sleg"><div class="fa-sleg-dot" style="background:var(--kimi-color-border)"></div>未计算</div>
+      <div class="fa-sleg"><div class="fa-sleg-dot" style="background:rgba(37,99,235,0.50);border:1px solid var(--kimi-color-text-primary)"></div>当前块</div>
+      <div class="fa-sleg"><div class="fa-sleg-dot" style="background:rgba(37,99,235,0.50)"></div>已完成</div>
+    </div>
+    <div class="fa-prog" id="prog"></div>
+  </div>
+
+  <div class="fa-sram-wrap">
+    <div class="fa-sram-title">on-chip SRAM 计算</div>
+    <div class="fa-flow" id="flow">
+      <div class="fa-fbox q">Qi<br><span style="font-size:10px">3×4</span></div>
+      <div class="fa-farr">×</div>
+      <div class="fa-fbox k">Kjᵀ<br><span style="font-size:10px">4×2</span></div>
+      <div class="fa-farr">=</div>
+      <div class="fa-fbox s">Sij<br><span style="font-size:10px">3×2</span></div>
+      <div class="fa-farr">→</div>
+      <div class="fa-fbox s">P̃ij<br><span style="font-size:10px">exp(S−m̃)</span></div>
+      <div class="fa-farr">×</div>
+      <div class="fa-fbox v">Vj<br><span style="font-size:10px">2×4</span></div>
+      <div class="fa-farr">→</div>
+      <div class="fa-fbox o">Oi<br><span style="font-size:10px">3×4</span></div>
+    </div>
+
+    <div class="fa-formula-panel" id="fpanel">
+      <div class="fa-fstep on">
+        <div class="fa-fstep-title">FlashAttention 前向传播公式</div>
+        <div class="fa-fstep-body">
+          <div class="fa-fline">① <span class="kw">S<sub>ij</sub></span> = Q<sub>i</sub> · K<sub>j</sub><sup>T</sup></div>
+          <div class="fa-fline">② <span class="kw">m̃<sub>ij</sub></span> = rowmax(S<sub>ij</sub>), &nbsp; <span class="kw">P̃<sub>ij</sub></span> = exp(S<sub>ij</sub> − m̃<sub>ij</sub>), &nbsp; <span class="kw">ℓ̃<sub>ij</sub></span> = rowsum(P̃<sub>ij</sub>)</div>
+          <div class="fa-fline">③ <span class="kw">m<sup>new</sup></span> = max(m<sub>i</sub>, m̃<sub>ij</sub>), &nbsp; <span class="kw">ℓ<sup>new</sup></span> = e<sup>m<sub>i</sub>−m<sup>new</sup></sup>·ℓ<sub>i</sub> + e<sup>m̃<sub>ij</sub>−m<sup>new</sup></sup>·ℓ̃<sub>ij</sub></div>
+          <div class="fa-fline">④ <span class="kw">O<sub>i</sub></span> ← diag(ℓ<sup>new</sup>)<sup>−1</sup> · (diag(ℓ<sub>i</sub>)·e<sup>m<sub>i</sub>−m<sup>new</sup></sup>·O<sub>i</sub> + e<sup>m̃<sub>ij</sub>−m<sup>new</sup></sup>·P̃<sub>ij</sub>·V<sub>j</sub>)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const N=12, d=4, Br=3, Bc=2;
+  const Tr=Math.ceil(N/Br), Tc=Math.ceil(N/Bc);
+  const totalSteps = 1 + Tc*Tr;
+  let step=0, autoTimer=null;
+
+  let seed=42;
+  function prng(){ seed=(seed*16807)%2147483647; return (seed-1)/2147483646; }
+  function rand(){ return Math.floor(prng()*3)+1; }
+
+  const Q=Array.from({length:N},()=>Array.from({length:d},rand));
+  const K=Array.from({length:N},()=>Array.from({length:d},rand));
+  const V=Array.from({length:N},()=>Array.from({length:d},rand));
+  let O=Array.from({length:N},()=>Array.from({length:d},()=>0));
+  let m=Array.from({length:N},()=>'-∞');
+  let l=Array.from({length:N},()=>0);
+  const Sdone=Array.from({length:N},()=>Array.from({length:N},()=>false));
+  let Svals=Array.from({length:N},()=>Array.from({length:N},()=>null));
+  let currBlock=null;
+
+  function el(id){return document.getElementById(id);}
+
+  function stepInfo(s){
+    if(s===0) return {phase:'init'};
+    const idx=s-1;
+    const j=Math.floor(idx/Tr), i=idx%Tr;
+    if(j>=Tc) return {phase:'done'};
+    return {phase:'block',i,j};
+  }
+
+  function fmtNum(n){
+    if(n===-Infinity||n==='-∞') return '-∞';
+    if(n===Infinity) return '∞';
+    if(isNaN(n)) return 'NaN';
+    return n.toFixed(2);
+  }
+  function miniMat(mat,R,C){
+    let h='<table class="mini-mat">';
+    for(let r=0;r<R;r++){ h+='<tr>'; for(let c=0;c<C;c++){ const v=(mat[r]&&mat[r][c]!==undefined)?mat[r][c]:0; h+='<td>'+fmtNum(v)+'</td>'; } h+='</tr>'; }
+    h+='</table>'; return h;
+  }
+  function fmtVec(arr){ return '<span class="mini-vec">['+arr.map(fmtNum).join(', ')+']</span>'; }
+
+  function simulateBlock(st){
+    if(st.phase!=='block') return;
+    const i=st.i, j=st.j, r0=i*Br, c0=j*Bc;
+    const Qi=[], Kj=[], Vj=[];
+    for(let r=0;r<Br;r++) Qi.push(Q[r0+r]?[...Q[r0+r]]:[0,0,0,0]);
+    for(let r=0;r<Bc;r++){ Kj.push(K[c0+r]?[...K[c0+r]]:[0,0,0,0]); Vj.push(V[c0+r]?[...V[c0+r]]:[0,0,0,0]); }
+    const Oi=[], mi=[], li=[];
+    for(let r=0;r<Br;r++){ const idx=r0+r; Oi.push(idx<N?[...O[idx]]:[0,0,0,0]); mi.push(idx<N?(m[idx]==='-∞'?-Infinity:m[idx]):0); li.push(idx<N?l[idx]:0); }
+
+    const Sij=[];
+    for(let r=0;r<Br;r++){ const row=[]; for(let c=0;c<Bc;c++){ let s=0; for(let k=0;k<d;k++) s+=Qi[r][k]*Kj[c][k]; row.push(s); } Sij.push(row); }
+
+    const mtilde=[], Ptilde=[], ltilde=[];
+    for(let r=0;r<Br;r++){
+      let mx=-Infinity; for(let c=0;c<Bc;c++) mx=Math.max(mx,Sij[r][c]); mtilde.push(mx);
+      const prow=[]; let lsum=0; for(let c=0;c<Bc;c++){ const p=Math.exp(Sij[r][c]-mx); prow.push(p); lsum+=p; }
+      Ptilde.push(prow); ltilde.push(lsum);
+    }
+
+    const mnew=[], lnew=[];
+    for(let r=0;r<Br;r++){
+      const mn=Math.max(mi[r],mtilde[r]); mnew.push(mn);
+      const e1=mi[r]===-Infinity?0:Math.exp(mi[r]-mn);
+      const e2=Math.exp(mtilde[r]-mn);
+      lnew.push(e1*li[r]+e2*ltilde[r]);
+    }
+
+    const term1=[];
+    for(let r=0;r<Br;r++){
+      const scale1=li[r]*(mi[r]===-Infinity?0:Math.exp(mi[r]-mnew[r]));
+      const row=[]; for(let c=0;c<d;c++) row.push(scale1*Oi[r][c]); term1.push(row);
+    }
+
+    const PV=[];
+    for(let r=0;r<Br;r++){
+      const row=[]; for(let c=0;c<d;c++){ let s=0; for(let c2=0;c2<Bc;c2++) s+=Ptilde[r][c2]*Vj[c2][c]; row.push(s); }
+      PV.push(row);
+    }
+
+    const term2=[];
+    for(let r=0;r<Br;r++){
+      const scale2=Math.exp(mtilde[r]-mnew[r]);
+      const row=[]; for(let c=0;c<d;c++) row.push(scale2*PV[r][c]); term2.push(row);
+    }
+
+    const Oi_new=[];
+    for(let r=0;r<Br;r++){
+      const row=[]; for(let c=0;c<d;c++) row.push((term1[r][c]+term2[r][c])/lnew[r]); Oi_new.push(row);
+    }
+
+    for(let r=0;r<Br;r++){
+      const idx=r0+r; if(idx>=N) continue;
+      m[idx]=mnew[r]===-Infinity?'-∞':parseFloat(mnew[r].toFixed(2));
+      l[idx]=parseFloat(lnew[r].toFixed(2));
+      for(let c=0;c<d;c++) O[idx][c]=parseFloat(Oi_new[r][c].toFixed(2));
+      for(let c=0;c<Bc;c++) if(c0+c<N){ Sdone[idx][c0+c]=true; Svals[idx][c0+c]=parseFloat(Sij[r][c].toFixed(2)); }
+    }
+    currBlock={Qi,Kj,Vj,Oi,mi,li,Sij,mtilde,Ptilde,ltilde,mnew,lnew,term1,PV,term2,Oi_new,i,j,r0,c0};
+  }
+
+  function renderGrid(id,rows,cols,vals,cls,hlFn){
+    const g=el(id); g.innerHTML=''; g.style.gridTemplateColumns='repeat('+cols+',1fr)';
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+      const d=document.createElement('div'); d.className='fa-cell '+cls;
+      const v=vals[r][c]; d.textContent=(v===null||v===undefined||v==='')?'':(typeof v==='number'?v.toFixed(2):v);
+      const on=hlFn?hlFn(r,c):false; if(on) d.classList.add('on'); else if(hlFn) d.classList.add('off');
+      g.appendChild(d);
+    }
+  }
+  function renderVec(id,vals,prefix,hlFn){
+    const g=el(id); g.innerHTML='';
+    for(let i=0;i<Tr;i++){
+      const grp=document.createElement('div'); grp.className='fa-vec-grp';
+      const lbl=document.createElement('div'); lbl.className='fa-vec-grp-lbl'; lbl.textContent=prefix+(i+1);
+      const grid=document.createElement('div'); grid.className='fa-vec-grid'; grid.style.gridTemplateColumns='repeat('+Br+',1fr)';
+      for(let k=0;k<Br;k++){ const idx=i*Br+k; const c=document.createElement('div'); c.className='fa-vcell'; c.textContent=vals[idx]===null||vals[idx]===undefined?'':(typeof vals[idx]==='number'?vals[idx].toFixed(2):vals[idx]); const on=hlFn?hlFn(idx):false; if(on) c.classList.add('on'); else if(hlFn) c.classList.add('off'); grid.appendChild(c); }
+      grp.appendChild(lbl); grp.appendChild(grid); g.appendChild(grp);
+    }
+  }
+  function renderS(st){
+    const g=el('g-s'); g.innerHTML=''; g.style.gridTemplateColumns='repeat('+N+',1fr)';
+    for(let r=0;r<N;r++) for(let c=0;c<N;c++){
+      const d=document.createElement('div'); d.className='fa-scell';
+      const isCurr=(st.phase==='block'&&r>=st.i*Br&&r<(st.i+1)*Br&&c>=st.j*Bc&&c<(st.j+1)*Bc);
+      if(isCurr) d.classList.add('curr'); else if(Sdone[r][c]) d.classList.add('done'); else d.classList.add('pnd');
+      if(Svals[r][c]!==null) d.textContent=Svals[r][c].toFixed(2);
+      g.appendChild(d);
+    }
+  }
+  function renderProg(st){
+    const g=el('prog'); g.innerHTML='';
+    for(let j=0;j<Tc;j++) for(let i=0;i<Tr;i++){
+      const d=document.createElement('div'); d.className='fa-pdot';
+      const idx=j*Tr+i, curr=(st.j!==null&&st.i!==null)?st.j*Tr+st.i:-1;
+      if(idx<curr) d.classList.add('done'); else if(idx===curr) d.classList.add('curr');
+      g.appendChild(d);
+    }
+  }
+  function updateFlow(st){
+    const flow=el('flow'), boxes=flow.querySelectorAll('.fa-fbox'), arrs=flow.querySelectorAll('.fa-farr');
+    boxes.forEach(function(b){b.style.opacity='0.35';}); arrs.forEach(function(a){a.style.opacity='0.25';a.classList.remove('hl');});
+    if(st.phase==='block'){ boxes.forEach(function(b){b.style.opacity='1';}); arrs.forEach(function(a){a.style.opacity='1';a.classList.add('hl');}); }
+  }
+  function updateFormula(st){
+    const fp=el('fpanel');
+    if(st.phase!=='block'){
+      fp.innerHTML='<div class="fa-fstep on"><div class="fa-fstep-title">FlashAttention 前向传播公式</div><div class="fa-fstep-body"><div class="fa-fline">① <span class="kw">S<sub>ij</sub></span> = Q<sub>i</sub> · K<sub>j</sub><sup>T</sup></div><div class="fa-fline">② <span class="kw">m̃<sub>ij</sub></span> = rowmax(S<sub>ij</sub>), &nbsp; <span class="kw">P̃<sub>ij</sub></span> = exp(S<sub>ij</sub> − m̃<sub>ij</sub>), &nbsp; <span class="kw">ℓ̃<sub>ij</sub></span> = rowsum(P̃<sub>ij</sub>)</div><div class="fa-fline">③ <span class="kw">m<sup>new</sup></span> = max(m<sub>i</sub>, m̃<sub>ij</sub>), &nbsp; <span class="kw">ℓ<sup>new</sup></span> = e<sup>m<sub>i</sub>−m<sup>new</sup></sup>·ℓ<sub>i</sub> + e<sup>m̃<sub>ij</sub>−m<sup>new</sup></sup>·ℓ̃<sub>ij</sub></div><div class="fa-fline">④ <span class="kw">O<sub>i</sub></span> ← diag(ℓ<sup>new</sup>)<sup>−1</sup> · (diag(ℓ<sub>i</sub>)·e<sup>m<sub>i</sub>−m<sup>new</sup></sup>·O<sub>i</sub> + e<sup>m̃<sub>ij</sub>−m<sup>new</sup></sup>·P̃<sub>ij</sub>·V<sub>j</sub>)</div></div></div>';
+      return;
+    }
+    const b=currBlock, i=st.i+1, j=st.j+1;
+    let html='';
+    html+='<div class="fa-fstep on"><div class="fa-fstep-title">① 加载数据到 SRAM（外循环 j='+j+'，内循环 i='+i+'）</div><div class="fa-fstep-body"><div class="fa-fline">Q<sub>'+i+'</sub> = '+miniMat(b.Qi,Br,d)+' &nbsp; K<sub>'+j+'</sub> = '+miniMat(b.Kj,Bc,d)+' &nbsp; V<sub>'+j+'</sub> = '+miniMat(b.Vj,Bc,d)+'</div><div class="fa-fline">O<sub>'+i+'</sub> = '+miniMat(b.Oi,Br,d)+' &nbsp; m<sub>'+i+'</sub> = '+fmtVec(b.mi)+' &nbsp; ℓ<sub>'+i+'</sub> = '+fmtVec(b.li)+'</div></div></div>';
+    html+='<div class="fa-fstep on"><div class="fa-fstep-title">② 计算注意力分数 S<sub>'+i+','+j+'</sub> = Q<sub>'+i+'</sub> · K<sub>'+j+'</sub><sup>T</sup></div><div class="fa-fstep-body"><div class="fa-fline">S<sub>'+i+','+j+'</sub> (3×2) = '+miniMat(b.Sij,Br,Bc)+'</div></div></div>';
+    html+='<div class="fa-fstep on"><div class="fa-fstep-title">③ 计算 softmax 中间量（含 P̃<sub>'+i+','+j+'</sub>）</div><div class="fa-fstep-body"><div class="fa-fline">m̃<sub>'+i+','+j+'</sub> = rowmax(S<sub>'+i+','+j+'</sub>) = '+fmtVec(b.mtilde)+'</div><div class="fa-fline">P̃<sub>'+i+','+j+'</sub> = exp(S<sub>'+i+','+j+'</sub> − m̃<sub>'+i+','+j+'</sub>) = '+miniMat(b.Ptilde,Br,Bc)+'</div><div class="fa-fline">ℓ̃<sub>'+i+','+j+'</sub> = rowsum(P̃<sub>'+i+','+j+'</sub>) = '+fmtVec(b.ltilde)+'</div></div></div>';
+
+    let calc4='';
+    calc4+='<div class="fa-fline"><span class="kw">m<sup>new</sup></span> = max(m<sub>'+i+'</sub>, m̃<sub>'+i+','+j+'</sub>) = max('+fmtVec(b.mi)+', '+fmtVec(b.mtilde)+') = <span class="val">'+fmtVec(b.mnew)+'</span></div>';
+    calc4+='<div class="fa-fline"><span class="kw">ℓ<sup>new</sup></span> = e<sup>m<sub>'+i+'</sub> − m<sup>new</sup></sup> ⊙ ℓ<sub>'+i+'</sub> + e<sup>m̃<sub>'+i+','+j+'</sub> − m<sup>new</sup></sup> ⊙ ℓ̃<sub>'+i+','+j+'</sub></div>';
+    var eOld=[], eNew=[];
+    for(let r=0;r<Br;r++){
+      eOld.push(b.mi[r]===-Infinity?0:Math.exp(b.mi[r]-b.mnew[r]));
+      eNew.push(Math.exp(b.mtilde[r]-b.mnew[r]));
+    }
+    calc4+='<div class="fa-fline">&nbsp;&nbsp;e<sup>m<sub>'+i+'</sub> − m<sup>new</sup></sup> = '+fmtVec(eOld)+' &nbsp;&nbsp; e<sup>m̃<sub>'+i+','+j+'</sub> − m<sup>new</sup></sup> = '+fmtVec(eNew)+'</div>';
+    calc4+='<div class="fa-fline">&nbsp;&nbsp;= '+fmtVec(eOld)+' ⊙ '+fmtVec(b.li)+' + '+fmtVec(eNew)+' ⊙ '+fmtVec(b.ltilde)+' = '+fmtVec(b.lnew)+'</div>';
+    html+='<div class="fa-fstep on"><div class="fa-fstep-title">④ 更新归一化统计量 m<sup>new</sup>、ℓ<sup>new</sup></div><div class="fa-fstep-body">'+calc4+'</div></div>';
+
+    let calc5='';
+    calc5+='<div class="fa-fline"><span class="kw">P̃<sub>'+i+','+j+'</sub> · V<sub>'+j+'</sub></span> = '+miniMat(b.PV,Br,d)+'</div>';
+    calc5+='<div class="fa-fline"><span class="kw">旧项</span> = diag(ℓ<sub>'+i+'</sub>) · e<sup>m<sub>'+i+'</sub> − m<sup>new</sup></sup> · O<sub>'+i+'</sub> = diag('+fmtVec(b.li)+') · diag('+fmtVec(eOld)+') · '+miniMat(b.Oi,Br,d)+' = '+miniMat(b.term1,Br,d)+'</div>';
+    calc5+='<div class="fa-fline"><span class="kw">新项</span> = e<sup>m̃<sub>'+i+','+j+'</sub> − m<sup>new</sup></sup> · (P̃<sub>'+i+','+j+'</sub> · V<sub>'+j+'</sub>) = diag('+fmtVec(eNew)+') · '+miniMat(b.PV,Br,d)+' = '+miniMat(b.term2,Br,d)+'</div>';
+    calc5+='<div class="fa-fline"><span class="kw">O<sub>'+i+'</sub><sup>new</sup></span> = (旧项 + 新项) ⊘ ℓ<sup>new</sup> = ('+miniMat(b.term1,Br,d)+' + '+miniMat(b.term2,Br,d)+') ⊘ '+fmtVec(b.lnew)+' = <span class="val">'+miniMat(b.Oi_new,Br,d)+'</span></div>';
+    html+='<div class="fa-fstep on"><div class="fa-fstep-title">⑤ 更新输出 O<sub>'+i+'</sub> 并写回 HBM</div><div class="fa-fstep-body">'+calc5+'</div></div>';
+
+    fp.innerHTML=html;
+  }
+  function updateDesc(st){
+    el('step-info').textContent='步骤 '+step+' / '+totalSteps;
+    const stage=el('stage');
+    if(st.phase==='init') stage.innerHTML='<b>初始化：</b>设置 N=12, d=4, Br=3, Bc=2。SRAM 大小为 M。在 HBM 中初始化 O=0, ℓ=0, m=-∞。';
+    else if(st.phase==='block'){
+      const i=st.i, j=st.j, r0=i*Br, c0=j*Bc;
+      stage.innerHTML='正在计算 block <b>i='+(i+1)+', j='+(j+1)+'</b>：Q<sub>'+(i+1)+'</sub>（第'+(r0+1)+'-'+Math.min(r0+Br,N)+'行）× K<sub>'+(j+1)+'</sub><sup>T</sup>（第'+(c0+1)+'-'+Math.min(c0+Bc,N)+'行）→ S<sub>'+(i+1)+','+(j+1)+'</sub>。';
+    } else stage.innerHTML='<b>完成：</b>所有 24 个 block 计算完毕，返回 O。';
+  }
+  function renderAll(){
+    const st=stepInfo(step);
+    const isBlock=(st.phase==='block');
+    const qiOn=isBlock?function(r,c){return r>=st.i*Br&&r<(st.i+1)*Br;}:null;
+    const kvOn=isBlock?function(r,c){return r>=st.j*Bc&&r<(st.j+1)*Bc;}:null;
+    const oiOn=isBlock?function(r,c){return r>=st.i*Br&&r<(st.i+1)*Br;}:null;
+    renderGrid('g-q',N,d,Q,'cq',qiOn); renderGrid('g-k',N,d,K,'ck',kvOn); renderGrid('g-o',N,d,O,'co',oiOn); renderGrid('g-v',N,d,V,'cv',kvOn);
+    renderVec('g-m',m,'m',isBlock?function(idx){return idx>=st.i*Br&&idx<(st.i+1)*Br;}:null);
+    renderVec('g-l',l,'ℓ',isBlock?function(idx){return idx>=st.i*Br&&idx<(st.i+1)*Br;}:null);
+    renderS(st); renderProg(st); updateFlow(st); updateFormula(st); updateDesc(st);
+  }
+  function applyStep(){ const st=stepInfo(step); if(st.phase==='block') simulateBlock(st); renderAll(); }
+
+  window.next=function(){ if(step<totalSteps){step++; applyStep();} };
+  window.prev=function(){
+    if(step>0){
+      for(let r=0;r<N;r++)for(let c=0;c<N;c++){Sdone[r][c]=false; Svals[r][c]=null;}
+      m.fill('-∞'); l.fill(0); for(let r=0;r<N;r++)for(let c=0;c<d;c++)O[r][c]=0;
+      step--; for(let s=1;s<=step;s++){ const st=stepInfo(s); if(st.phase==='block') simulateBlock(st); }
+      renderAll();
+    }
+  };
+  window.reset=function(){
+    step=0; for(let r=0;r<N;r++)for(let c=0;c<N;c++){Sdone[r][c]=false; Svals[r][c]=null;}
+    m.fill('-∞'); l.fill(0); for(let r=0;r<N;r++)for(let c=0;c<d;c++)O[r][c]=0;
+    if(autoTimer){clearInterval(autoTimer);autoTimer=null;el('btn-auto').textContent='自动播放';}
+    renderAll();
+  };
+  window.toggleAuto=function(){
+    const btn=el('btn-auto');
+    if(autoTimer){clearInterval(autoTimer);autoTimer=null;btn.textContent='自动播放';}
+    else{btn.textContent='暂停'; autoTimer=setInterval(function(){if(step>=totalSteps){toggleAuto();return;}next();},900);}
+  };
+
+  renderAll();
+})();
+</script>
+
+</body>
+</html>
