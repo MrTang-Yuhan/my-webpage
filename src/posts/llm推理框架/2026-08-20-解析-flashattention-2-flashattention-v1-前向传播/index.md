@@ -301,6 +301,8 @@ $$\mathbf{O} = \mathbf{0}_{N \times d} \in \mathbb{R}^{N \times d}, \quad \bolds
 
 **第 5 行**：外层循环开始
 
+过程展示：[flash_attention_visualization.html](attach/flash_attention_visualization.html)
+
 $$\text{for } j = 1 \text{ to } T_c \text{ do}$$
 
 外层循环遍历 $\mathbf{K}$ 和 $\mathbf{V}$ 的分块。每轮迭代处理一个 $\mathbf{K}_j$ 和一个 $\mathbf{V}_j$。
@@ -325,17 +327,19 @@ $$\mathbf{S}_{ij} = \mathbf{Q}_i \mathbf{K}_j^\top \in \mathbb{R}^{B_r \times B_
 
 这是矩阵乘法：$\mathbf{Q}_i$（$B_r \times d$）乘以 $\mathbf{K}_j^\top$（$d \times B_c$），得到 $\mathbf{S}_{ij}$（$B_r \times B_c$）。该块仅在 SRAM 中临时存在，**绝不写入 HBM**，这是 FlashAttention 节省内存的核心。
 
+![](img/flash-atten-3.png)
+
 **第 10 行**：在 SRAM 中计算局部 softmax 统计量
 
 $$\tilde{m}_{ij} = \text{rowmax}(\mathbf{S}_{ij}) \in \mathbb{R}^{B_r}, \quad \tilde{\mathbf{P}}_{ij} = \exp(\mathbf{S}_{ij} - \tilde{m}_{ij}) \in \mathbb{R}^{B_r \times B_c}, \quad \tilde{\ell}_{ij} = \text{rowsum}(\tilde{\mathbf{P}}_{ij}) \in \mathbb{R}^{B_r}$$
 
-$\tilde{m}_{ij}$ 是 $\mathbf{S}_{ij}$ 每行的最大值，即局部最大值。$\tilde{\mathbf{P}}_{ij}$ 是每行减去该行最大值后的逐元素指数，即局部未归一化指数矩阵。$\tilde{\ell}_{ij}$ 是 $\tilde{\mathbf{P}}_{ij}$ 每行的和，即局部 EXP 求和项。这三者对应标量推导中的公式 (13)、(14)、(15)。
+$\tilde{m}_{ij}$ 是 $\mathbf{S}_{ij}$ 每行的最大值，即局部最大值。$\tilde{\mathbf{P}}_{ij}$ 是每行减去该行最大值后的逐元素指数，即局部未归一化指数矩阵。$\tilde{\ell}_{ij}$ 是 $\tilde{\mathbf{P}}_{ij}$ 每行的和，即局部 EXP 求和项。
 
 **第 11 行**：在 SRAM 中更新全局统计量
 
 $$m_i^{\text{new}} = \max(m_i, \tilde{m}_{ij}) \in \mathbb{R}^{B_r}, \quad \ell_i^{\text{new}} = e^{m_i - m_i^{\text{new}}} \ell_i + e^{\tilde{m}_{ij} - m_i^{\text{new}}} \tilde{\ell}_{ij} \in \mathbb{R}^{B_r}$$
 
-$m_i^{\text{new}}$ 逐元素比较此前全局最大值 $m_i$ 与当前分块局部最大值 $\tilde{m}_{ij}$，取较大者。$\ell_i^{\text{new}}$ 将此前全局求和项 $\ell_i$ 和当前分块局部求和项 $\tilde{\ell}_{ij}$ 分别用指数因子调整到新的全局最大值 $m_i^{\text{new}}$ 基准下，再相加。这直接对应标量推导中的公式 (17) 与 (20)。
+$m_i^{\text{new}}$ 逐元素比较此前全局最大值 $m_i$ 与当前分块局部最大值 $\tilde{m}_{ij}$，取较大者。$\ell_i^{\text{new}}$ 将此前全局求和项 $\ell_i$ 和当前分块局部求和项 $\tilde{\ell}_{ij}$ 分别用指数因子调整到新的全局最大值 $m_i^{\text{new}}$ 基准下，再相加。
 
 **第 12 行**：在 SRAM 中增量更新输出并写回 HBM
 
