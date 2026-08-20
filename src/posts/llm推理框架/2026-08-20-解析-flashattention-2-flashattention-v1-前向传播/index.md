@@ -63,19 +63,10 @@ Softmax 需要全局信息（最大值、指数和），分块计算时怎么办
 
 训练时反向传播需要 $\mathbf{P}$ 的梯度。既然 $\mathbf{P}$ 没存，FlashAttention 在反向时**重新计算** $\mathbf{P}$——但它只需要重新加载 $\mathbf{Q}, \mathbf{K}$ 的小块，在 SRAM 里快速重算，成本远低于存储和读取巨大的 $\mathbf{P}$ 矩阵。
 
-结果：从 $O(N^2)$ 到 $O(N)$ 的跨越
-
-
-
-
-
-FlashAttention 将参与计算的矩阵进行**分块**送进 SRAM，来提高整体读写速度（减少了 HBM 读写）。整个 FlashAttention v1 的分块运算可视化过程如下:
+整个 FlashAttention v1 的分块运算可视化过程如下:
 
 [flash_attention_visualization.html](attach/flash_attention_visualization.html)
 
-
-
-如果像进行算子融合，
 
 下面正式开始介绍 [FlashAttention v1](https://arxiv.org/pdf/2205.14135) 版本的实现。
 
@@ -83,18 +74,11 @@ FlashAttention 将参与计算的矩阵进行**分块**送进 SRAM，来提高�
 ---
 
 
-
-
-
-
-
-
-
 ## 2、前向传播
 
 ### 1.1 标准 softmax 及其数值稳定版本
 
-标准 softmax 对向量 $x \in \mathbb{R}^B$ 的第 $i$ 个分量计算如下：
+以一维向量举例，标准 softmax 对向量 $x \in \mathbb{R}^B$ 的第 $i$ 个分量计算如下：
 
 $$\text{softmax}(x_i) = \frac{e^{x_i}}{\sum_{j=1}^{B} e^{x_j}} \quad (1)$$
 
@@ -244,13 +228,15 @@ $$f^{\text{new}}(x^{(1)})_k = f(x^{(1)})_k \cdot e^{m_{\max} - m_{\max}^{\text{n
 
 $$\text{softmax}^{(\text{new})}(x^{(1)}) = \frac{\text{softmax}(x^{(1)}) \cdot l(x^{(1)}) \cdot e^{m_{\max} - m_{\max}^{\text{new}}}}{l_{all}^{\text{new}}} \quad (27)$$
 
-现在解释为什么要更新 $\text{softmax}(x^{(1)})$。在处理完 $x^{(2)}$ 后，全局最大值从 $m_{\max}$ 更新为 $m_{\max}^{\text{new}}$，全局求和项从 $l_{all}$ 更新为 $l_{all}^{\text{new}}$。而 $\text{softmax}(x^{(1)})$ 此前是基于旧的全局统计量 $m_{\max}$ 和 $l_{all}$ 归一化的，其分母 $l(x^{(1)})$ 只是前 $B$ 个元素的局部和，并非全体 $2B$ 个元素的和。如果不更新 $\text{softmax}(x^{(1)})$，那么 $x^{(1)}$ 各元素的 softmax 值仍然只反映其在 $x^{(1)}$ 内部的相对权重，而非在整个 $x$ 中的相对权重。具体而言，假设 $m_{\max}^{\text{new}} = m(x^{(2)}) > m_{\max}$，则 $x^{(1)}$ 中所有元素的指数 $e^{x^{(1)}_k - m_{\max}}$ 都需要调整为 $e^{x^{(1)}_k - m_{\max}^{\text{new}}}$，即整体乘以 $e^{m_{\max} - m_{\max}^{\text{new}}}$；同时分母必须从 $l_{all}$ 更新为 $l_{all}^{\text{new}}$。因此必须将 $\text{softmax}(x^{(1)})$ 也重新归一化到新的全局基准上，使其分母变为 $l_{all}^{\text{new}}$，分子指数基准变为 $m_{\max}^{\text{new}}$。
+**把 $\text{softmax}^{(\text{new})}(x^{(1)})$ 和 $\text{softmax}^{(\text{new})}(x^{(2)})$ 直接拼接，就是整个向量 $x$ 的 softmax。**
 
 所有更新均不需要重新访问 $x^{(1)}$ 或 $x^{(2)}$ 的原始向量值，仅需之前保存的局部统计量与全局统计量。
 
 ### 1.7 全局统计量最终赋值
 
-处理完当前分块后，将新的全局统计量赋值给全局变量，为下一分块做准备：
+在当前的示例中，待计算 softmax 的向量为 $x \in \mathbb{R}^{2B} = \{x^{(1)}, x^{(2)}\}$，所以此时把 $\text{softmax}^{(\text{new})}(x^{(1)})$ 和 $\text{softmax}^{(\text{new})}(x^{(2)})$ 直接拼接，就是整个向量 $x$ 的 softmax。
+
+但是，如果切分的块更多，那么处理完当前分块后，将需要新的全局统计量赋值给全局变量，为下一分块做准备：
 
 $$m_{\max} = m_{\max}^{\text{new}} \quad (28)$$
 
@@ -260,11 +246,15 @@ $$l_{all} = l_{all}^{\text{new}} \quad (29)$$
 
 ### 1.8 映射到 Attention 矩阵形式与 Algorithm 1 逐行详解
 
-上述标量推导直接映射到 FlashAttention 前向伪代码 Algorithm 1。在 Attention 中，Score 矩阵定义为：
+上述标量推导直接映射到 FlashAttention 前向伪代码 Algorithm 1。
+
+![](img/flash-atten-algo1.png)
+
+在 Attention 中，Score 矩阵定义为：
 
 $$\mathbf{S} = \mathbf{Q}\mathbf{K}^\top \in \mathbb{R}^{N \times N}$$
 
-其中第 $i$ 行第 $j$ 列元素 $S_{ij} = q_i^\top k_j$。softmax 沿行方向进行，即每行独立归一化。因此第 $i$ 行 $S_{i:} = [q_i^\top k_1,\ q_i^\top k_2,\ \dots,\ q_i^\top k_N]$ 即为上述标量推导中的向量 $x$。由于不同行之间的 softmax 计算完全独立（无交互），为便于理解，可先考虑 $B_r = 1$ 的简化情形，即每次只处理一行，再推广到 $B_r > 1$ 的 Batch 情形。
+其中第 $i$ 行第 $j$ 列元素 $S_{ij} = q_i^\top k_j$。**softmax 沿行方向进行，即每行独立归一化**。因此第 $i$ 行 $S_{i:} = [q_i^\top k_1,\ q_i^\top k_2,\ \dots,\ q_i^\top k_N]$ 即为上述标量推导中的向量 $x$。由于不同行之间的 softmax 计算完全独立（无交互），为便于理解，可先考虑 $B_r = 1$ 的简化情形，即每次只处理一行，再推广到 $B_r > 1$ 的 Batch 情形。
 
 Algorithm 1 的输入为 $\mathbf{Q}, \mathbf{K}, \mathbf{V} \in \mathbb{R}^{N \times d}$ 存储在 HBM，SRAM 容量为 $M$。
 
