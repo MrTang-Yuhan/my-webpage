@@ -7,7 +7,19 @@ date: 2026-08-20
 tags:
   - post
 ---
-## 0. 矩阵定义
+## 1. 标准 Attention 的定义
+
+在正式分析 FlashAttention 之前，要先彻底地了解**标准 Attention** 的做法和含义。
+
+给定单个 Query 向量 $\mathbf{q} \in \mathbb{R}^{N \times d}$，以及 Key 矩阵 $\mathbf{K} \in \mathbb{R}^{N_{kv} \times d}$ 和 Value 矩阵 $\mathbf{V} \in \mathbb{R}^{N_{kv} \times d}$，其中 $N_{kv}$ 是 KV Cache 的序列长度（可能很长），$d$ 是注意力头维度。标准的缩放点积注意力（Scaled Dot-Product Attention）定义为：
+
+$$
+\mathrm{Attention}(\mathbf{q}, \mathbf{K}, \mathbf{V}) = \mathrm{softmax}\left(\frac{\mathbf{q}\mathbf{K}^{\top}}{\sqrt{d}}\right) \mathbf{V}
+$$
+
+---
+
+## 2. 以简化的矩阵为例进行推导
 
 以 $n=2$（两个词）、$d=3$（向量维度）为例，$Q, K, V \in \mathbb{R}^{2 \times 3}$，完整推导 Attention 计算过程。
 
@@ -27,11 +39,8 @@ $$
 
 ---
 
-## 1. $S = QK^\top$：注意力得分矩阵
+## 2. $S = QK^\top$：注意力得分矩阵
 
-$$
-K^\top = \begin{bmatrix} k_1^\top & k_2^\top \end{bmatrix} = \begin{bmatrix} k_{11} & k_{21} \\ k_{12} & k_{22} \\ k_{13} & k_{23} \end{bmatrix} \in \mathbb{R}^{3 \times 2}
-$$
 
 $$
 S = QK^\top = \begin{bmatrix} q_1 k_1^\top & q_1 k_2^\top \\ q_2 k_1^\top & q_2 k_2^\top \end{bmatrix} = \begin{bmatrix} \sum_{l=1}^{3} q_{1l}k_{1l} & \sum_{l=1}^{3} q_{1l}k_{2l} \\[6pt] \sum_{l=1}^{3} q_{2l}k_{1l} & \sum_{l=1}^{3} q_{2l}k_{2l} \end{bmatrix} \in \mathbb{R}^{2 \times 2}
@@ -44,9 +53,9 @@ $$
 
 ---
 
-## 2. Softmax：注意力权重矩阵
+## 3. Softmax：注意力权重矩阵
 
-对 $S$ 逐行做 Softmax。先减去行最大值 $m_i = \max_j S_{ij}$ 保证数值稳定，令 $\tilde{S}_{ij} = S_{ij} - m_i$，再归一化：
+对 $S$ **逐行做 Softmax**。先减去行最大值 $m_i = \max_j S_{ij}$ 保证数值稳定，令 $\tilde{S}_{ij} = S_{ij} - m_i$，再归一化：
 
 $$
 P_{ij} = \frac{e^{\tilde{S}_{ij}}}{\sum_{j'=1}^{2} e^{\tilde{S}_{ij'}}}
@@ -63,7 +72,7 @@ $$
 
 ---
 
-## 3. $O = PV$：输出矩阵
+## 4. $O = PV$：输出矩阵
 
 $$
 O = PV = \begin{bmatrix} P_{11} & P_{12} \\ P_{21} & P_{22} \end{bmatrix} \begin{bmatrix} v_1 \\ v_2 \end{bmatrix} = \begin{bmatrix} P_{11}v_1 + P_{12}v_2 \\ P_{21}v_1 + P_{22}v_2 \end{bmatrix} = \begin{bmatrix} O_1 \\ O_2 \end{bmatrix} \in \mathbb{R}^{2 \times 3}
@@ -79,16 +88,18 @@ $$
 O_2 = P_{21}[v_{11},\; v_{12},\; v_{13}] + P_{22}[v_{21},\; v_{22},\; v_{23}] = [O_{21},\; O_{22},\; O_{23}]
 $$
 
+**含义：**
+
+- **$O_1$**：第 1 个词的 query 向量 $q_1$ 与所有 key 向量（$k_1, k_2$）计算注意力得分并归一化为注意力分布 $P_1 = [P_{11},\; P_{12}]$ 后，用该分布作为权重对所有**词的 value 向量**（$v_1, v_2$）**加权求和**的结果。即 $O_1 = P_{11}v_1 + P_{12}v_2$。
+- **$O_2$**：同理，第 2 个词的 query 向量 $q_2$ 与所有 key 计算得分并归一化为 $P_2 = [P_{21},\; P_{22}]$ 后，对所有**词的 value 向量**加权求和的结果。即 $O_2 = P_{21}v_1 + P_{22}v_2$。
+
 其中分量形式为：
 
 $$
 O_{ij} = P_{i1}v_{1j} + P_{i2}v_{2j} = \sum_{l=1}^{2} P_{il} v_{lj}
 $$
 
-**含义：**
 
-- **$O_1$**：第 1 个词的 query 向量 $q_1$ 与所有 key 向量（$k_1, k_2$）计算注意力得分并归一化为注意力分布 $P_1 = [P_{11},\; P_{12}]$ 后，用该分布作为权重对所有**词的 value 向量**（$v_1, v_2$）**加权求和**的结果。即 $O_1 = P_{11}v_1 + P_{12}v_2$。
-- **$O_2$**：同理，第 2 个词的 query 向量 $q_2$ 与所有 key 计算得分并归一化为 $P_2 = [P_{21},\; P_{22}]$ 后，对所有**词的 value 向量**加权求和的结果。即 $O_2 = P_{21}v_1 + P_{22}v_2$。
 
 **元素 $O_{ij}$ 的详细解释：**
 
@@ -110,7 +121,7 @@ $$
 
 ---
 
-## 4. 加入 Causal Mask（因果掩码）
+## 5. 加入 Causal Mask（因果掩码）
 
 Decoder 中需防止第 $i$ 个词看到第 $j > i$ 个词。对 $n=2$：
 
