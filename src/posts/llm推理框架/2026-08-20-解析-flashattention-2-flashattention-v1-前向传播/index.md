@@ -21,12 +21,17 @@ tags:
 - 第二行对 $S$ 读取一次，对 $P$ 写入一次，读写总共两次；
 - 第一行对 $P$, $V$ 的读取共两次，对 $O$ 的写入一次，读写总共三次。
 
-为了减少对 HBM 的读写，FlashAttention 将参与计算的矩阵进行**分块**送进 SRAM，来提高整体读写速度（减少了 HBM 读写）。整个 FlashAttention v1 的分块运算可视化过程如图
+为了减少对 HBM 的读写，FlashAttention 将参与计算的矩阵进行**分块**送进 SRAM，来提高整体读写速度（减少了 HBM 读写）。整个 FlashAttention v1 的分块运算可视化过程如下:
 
+[flash_attention_visualization.html](attach/flash_attention_visualization.html)
 
+对于标准 Attention，公式如下：
 
+$$
+\mathrm{Attention}(\mathbf{q}, \mathbf{K}, \mathbf{V}) = \mathrm{softmax}\left(\frac{\mathbf{q}\mathbf{K}^{\top}}{\sqrt{d}}\right) \mathbf{V}
+$$
 
-
+如果像进行算子融合，
 
 下面正式开始介绍 [FlashAttention v1](https://arxiv.org/pdf/2205.14135) 版本的实现。
 
