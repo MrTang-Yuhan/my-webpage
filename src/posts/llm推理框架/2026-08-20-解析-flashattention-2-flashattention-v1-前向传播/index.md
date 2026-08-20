@@ -9,27 +9,71 @@ tags:
 ---
 ## 1. 背景 & 动机
 
-**FlashAttention的目标是降低 MAC （Memory Access Cost，内存访问开销）。**
-
-如下图所示，标准 Attention 的计算可以抽象为如下过程，它主要使用了 HBM：
-
-![](img/flash-atten-1.png)
-
-图中一共包含八次 HBM 的矩阵读写操作。这八次读写操作分别为：
-
-- 第一行对 $Q$, $K$ 的读取共两次，对 $S$ 的写入一次，读写总共三次；
-- 第二行对 $S$ 读取一次，对 $P$ 写入一次，读写总共两次；
-- 第一行对 $P$, $V$ 的读取共两次，对 $O$ 的写入一次，读写总共三次。
-
-为了减少对 HBM 的读写，FlashAttention 将参与计算的矩阵进行**分块**送进 SRAM，来提高整体读写速度（减少了 HBM 读写）。整个 FlashAttention v1 的分块运算可视化过程如下:
-
-[flash_attention_visualization.html](attach/flash_attention_visualization.html)
+### 1.1 标准 Attention 的核心矛盾
 
 对于标准 Attention，公式如下：
 
 $$
-\mathrm{Attention}(\mathbf{q}, \mathbf{K}, \mathbf{V}) = \mathrm{softmax}\left(\frac{\mathbf{q}\mathbf{K}^{\top}}{\sqrt{d}}\right) \mathbf{V}
+\mathrm{Attention}(\mathbf{Q}, \mathbf{K}, \mathbf{V}) = \mathrm{softmax}\left(\frac{\mathbf{Q}\mathbf{K}^{\top}}{\sqrt{d}}\right) \mathbf{V}
 $$
+
+它具体的计算过程为：
+
+$$
+\mathbf{S} = \mathbf{Q}\mathbf{K}^\top \rightarrow \mathbf{P} = \text{softmax}(\mathbf{S}) \rightarrow \mathbf{O} = \mathbf{P}\mathbf{V}
+$$
+
+涉及的内存操作如下，它主要使用了 HBM：
+![](img/flash-atten-1.png)
+
+图中一共包含八次 HBM 的矩阵读写操作。这八次读写操作分别为：
+
+- **Line 1**: 对 $Q$, $K$ 的读取共两次，对 $S$ 的写入一次，读写总共三次；
+- **Line 2**: 对 $S$ 读取一次，对 $P$ 写入一次，读写总共两次；
+- **Line 3**: 对 $P$, $V$ 的读取共两次，对 $O$ 的写入一次，读写总共三次。
+
+### 1.2 FlashAttention 的核心思路
+
+FlashAttention 的动机建立在三个观察上：
+
+| 观察 | 含义 |
+|------|------|
+| **1. 内存层级差异巨大** | GPU 的 SRAM（如 Shared Memory）比 HBM 快约 10–100 倍，但容量极小（如 A100 每 SM 仅 192KB）。标准 Attention 无视这一层级，把中间矩阵 $\mathbf{S}, \mathbf{P}$ 放在 HBM 中反复读写，导致算法受限于 HBM 带宽，成为 **memory-bound**。 |
+| **2. Attention 本不需要 $O(N^2)$ 显存** | 最终输出 $\mathbf{O}$ 只有 $N \times d$，理论额外内存可以是 $O(N)$。存储巨大的 $\mathbf{S}, \mathbf{P}$ 是**实现方式**的浪费，不是算法必需。 |
+| **3. Softmax 可以"在线"算** | 以前认为 softmax 必须看到全部数字才能归一化。但实际上可以通过维护一个**滑动最大值和累加和**，在流式看到数据时增量地得到正确结果（Online Softmax）。 |
+
+
+
+具体怎么做：
+
+**（1）Tiling（分块）**
+
+把 $\mathbf{Q}, \mathbf{K}, \mathbf{V}$ 切成足够小的块，使得一小块 $\mathbf{Q}_i$ 和 $\mathbf{K}_j$ 能在 SRAM 里完成矩阵乘法。这样 $\mathbf{S}_{ij}$ 的每个块在 SRAM 里生成，用完即弃，**从不写回 HBM**。
+
+**（2）Online Softmax（在线归一化）**
+
+Softmax 需要全局信息（最大值、指数和），分块计算时怎么办？  
+技巧是维护两个统计量：
+- $m$：当前见过的最大值（用于数值稳定性）
+- $\ell$：当前指数和
+
+当新的数据块进来时，用这两个量**修正**之前的结果，逐步逼近全局 softmax。这样不需要等所有 $\mathbf{S}$ 算完就能开始归一化。
+
+**（3）反向传播的重计算（Recomputation）**
+
+训练时反向传播需要 $\mathbf{P}$ 的梯度。既然 $\mathbf{P}$ 没存，FlashAttention 在反向时**重新计算** $\mathbf{P}$——但它只需要重新加载 $\mathbf{Q}, \mathbf{K}$ 的小块，在 SRAM 里快速重算，成本远低于存储和读取巨大的 $\mathbf{P}$ 矩阵。
+
+结果：从 $O(N^2)$ 到 $O(N)$ 的跨越
+
+
+
+
+
+FlashAttention 将参与计算的矩阵进行**分块**送进 SRAM，来提高整体读写速度（减少了 HBM 读写）。整个 FlashAttention v1 的分块运算可视化过程如下:
+
+[flash_attention_visualization.html](attach/flash_attention_visualization.html)
+
+
 
 如果像进行算子融合，
 
