@@ -291,7 +291,7 @@ $$
 
 $$\mathbf{o}_i=\frac{1}{\ell_i}\sum_{t=1}^{N}e^{s_{it}-m_i}\mathbf{v}_t$$
 
-由于 key/value 被切分为多个块，无法一次性加载全部 key/value 计算上述求和。因此，$\mathbf{o}_i$ 必须**增量构造**：维护一个“当前已处理 key 的累积输出”，每处理一个新块就将其纳入，同时保持与全局计算完全一致的数值稳定性。
+由于 key/value 按行被切分为多个块（每行若干个 key/value 行向量），无法一次性加载全部 key/value 计算上述求和。因此，$\mathbf{o}_i$ 必须**增量构造**：维护一个“当前已处理 key 的累积输出”，每处理一个新块就将其纳入，同时保持与全局计算完全一致的数值稳定性。
 
 如果没看懂这一部分，则参看 [解析 FlashAttention（1）：从标准 Attention 讲起](https://my-webpage-adu.pages.dev/posts/llm%E6%8E%A8%E7%90%86%E6%A1%86%E6%9E%B6/2026-08-20-%E8%A7%A3%E6%9E%90-flashattention-1-%E4%BB%8E%E6%A0%87%E5%87%86-attention-%E8%AE%B2%E8%B5%B7/) 详细了解 Attention 计算过程的含义。
 
@@ -319,6 +319,7 @@ $$m^{\text{new}}=\max\bigl(m,\;s_{ij}\bigr),\qquad \ell^{\text{new}}=\sum_{t=1}^
 
 $$\mathbf{o}_i=\frac{1}{\ell}\sum_{t=1}^{j-1}e^{s_{it}-m}\mathbf{v}_t$$
 
+其中 $\ell=\sum_{t=1}^{j-1}e^{s_{it}-m}$。
 反解未归一化的加权和：
 
 $$\sum_{t=1}^{j-1}e^{s_{it}-m}\mathbf{v}_t=\ell\cdot\mathbf{o}_i \quad (32)$$
@@ -337,7 +338,11 @@ $$m_j=s_{ij}$$
 
 局部指数定义为该分数相对于局部最大值的指数：
 
-$$p_{ij}=e^{s_{ij}-m_j}=e^{s_{ij}-s_{ij}}=e^0=1$$
+$$
+p_{ij}=e^{s_{ij}-m_j} \\
+=e^{s_{ij}-s_{ij}} \\
+=e^0=1
+$$
 
 目标分子中的新项为 $e^{s_{ij}-m^{\text{new}}}\mathbf{v}_j$。利用局部统计量将其基准从 $m_j$ 对齐至 $m^{\text{new}}$：
 
@@ -345,9 +350,38 @@ $$e^{s_{ij}-m^{\text{new}}}\mathbf{v}_j=e^{s_{ij}-m_j}\cdot e^{m_j-m^{\text{new}
 
 式 (34) 即为目标分子中的**新项**。其中 $p_{ij}$ 是局部指数（此处恒为 $1$），$e^{m_j-m^{\text{new}}}$ 是将局部基准对齐到全局基准的修正因子。
 
+>  **附：$B_c \neq 1 的情况：$**
+>
+> 第 $j$ 个 key/value 块 $(\mathbf{K}_j, \mathbf{V}_j)$ 包含 $B_c$ 个 $1 \times d$ 的 key/value 向量（即 $B_c$ 行）。该块的**局部最大值**为块内所有 score 的最大值：
+>
+> $$m_j = \max_{1 \leq k \leq B_c} s_{ijk}$$
+>
+> 其中 $s_{ijk}$ 表示 query $i$ 与第 $j$ 个块中第 $k$ 个 key 的内积。
+>
+> **局部指数**定义为每个 score 相对于该块局部最大值的指数：
+>
+> $$p_{ijk} = e^{s_{ijk} - m_j}$$
+
 ### 3.7 分母的更新
 
-将旧项与新项的指数部分相加，即得新的全局 EXP 求和项：
+根据公式 (31)，得覆盖前 $j$ 个 key/value 的全局 EXP 求和项为：
+
+$$
+\ell^{\text{new}}=\sum_{t=1}^{j}e^{s_{it}-m^{\text{new}}} = \sum_{t=1}^{j-1}e^{s_{it}-m^{\text{new}}} + e^{s_{ij}-m^{\text{new}}}
+$$
+
+上文已得：
+
+$$
+\ell=\sum_{t=1}^{j-1}e^{s_{it}-m_i}
+$$
+
+$$
+p_{ij}=e^{s_{ij}-m_j}
+$$
+
+
+进行对应项的替换，即得新的全局 EXP 求和项：
 
 $$\ell^{\text{new}}=\underbrace{\ell\cdot e^{m-m^{\text{new}}}}_{\text{前 }j-1\text{ 个 key 的指数和修正}}+\underbrace{p_{ij}\cdot e^{m_j-m^{\text{new}}}}_{\text{第 }j\text{ 个 key 的指数和对齐}} \quad (35)$$
 
