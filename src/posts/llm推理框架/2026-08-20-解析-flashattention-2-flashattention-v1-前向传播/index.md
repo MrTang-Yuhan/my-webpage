@@ -11,6 +11,8 @@ tags:
 >
 > 参考：[万字长文详解FlashAttention v1/v2](https://zhuanlan.zhihu.com/p/642962397)
 
+---
+
 ## 1. 背景 & 动机
 
 ### 1.1 标准 Attention 的核心矛盾
@@ -35,6 +37,8 @@ $$
 - **Line 1**: 对 $Q$, $K$ 的读取共两次，对 $S$ 的写入一次，读写总共三次；
 - **Line 2**: 对 $S$ 读取一次，对 $P$ 写入一次，读写总共两次；
 - **Line 3**: 对 $P$, $V$ 的读取共两次，对 $O$ 的写入一次，读写总共三次。
+
+
 
 ### 1.2 FlashAttention 的核心思路
 
@@ -250,9 +254,183 @@ $$l_{all} = l_{all}^{\text{new}} \quad (29)$$
 
 **这里的一维向量 $x$ ，放到 FlashAttention 里就是注意力分数矩阵 $S=QK^T$ 的某一行。**
 
+---
+
 ## 3. Attention 输出的分块增量更新
 
+### 3.1 问题设定
 
+设单头维度为 $N=2$，特征维度为 $d$。输入矩阵按行切分为 $B_r=B_c=1$ 的块：
+
+$$\mathbf{Q}=\begin{bmatrix}\mathbf{q}_1\\\mathbf{q}_2\end{bmatrix}\in\mathbb{R}^{2\times d},\quad\mathbf{K}=\begin{bmatrix}\mathbf{k}_1\\\mathbf{k}_2\end{bmatrix}\in\mathbb{R}^{2\times d},\quad\mathbf{V}=\begin{bmatrix}\mathbf{v}_1\\\mathbf{v}_2\end{bmatrix}\in\mathbb{R}^{2\times d}$$
+
+其中 $\mathbf{q}_i,\mathbf{k}_j,\mathbf{v}_j\in\mathbb{R}^{1\times d}$ 均为行向量。记注意力分数：
+
+$$s_{ij}=\mathbf{q}_i\mathbf{k}_j^\top\in\mathbb{R}$$
+
+为**第 $i$ 个 query 向量与第 $j$ 个 key 向量的内积**。
+
+对于输出矩阵 $\mathbf{O}\in\mathbb{R}^{2\times d}$，其**每一行**都是对应 query 向量与**所有** key 向量和 value 向量的 Attention 结果。以下以第 $1$ 行 $\mathbf{o}_1$（对应 $\mathbf{q}_1$）为例，展示其输出如何通过分块增量方式逐步构造。
+
+
+
+### 3.2 数值稳定的标准 Attention
+
+对第 $i$ 个 query，其最终输出应为全部 $N$ 个 key/value 的数值稳定加权和：
+
+$$
+\mathbf{o}_i=\frac{\displaystyle\sum_{t=1}^{N}e^{s_{it}-m_i}\mathbf{v}_t}{\displaystyle\sum_{t=1}^{N}e^{s_{it}-m_i}}=\frac{\displaystyle\sum_{t=1}^{N}e^{s_{it}-m_i}\mathbf{v}_t}{\ell_i}
+$$
+
+其中：
+- **全局最大值** $m_i=\max_{1\le t\le N}s_{it}$，用于数值稳定性；
+- **分母** 为全局 EXP 求和项，记为 $\ell_i=\sum_{t=1}^{N}e^{s_{it}-m_i}$；
+- **分子各项** 为 $e^{s_{it}-m_i}\mathbf{v}_t$，即每个 value 向量按指数权重缩放后的结果。
+
+可简写为：
+
+$$\mathbf{o}_i=\frac{1}{\ell_i}\sum_{t=1}^{N}e^{s_{it}-m_i}\mathbf{v}_t$$
+
+由于 key/value 被切分为多个块，无法一次性加载全部 key/value 计算上述求和。因此，$\mathbf{o}_i$ 必须**增量构造**：维护一个“当前已处理 key 的累积输出”，每处理一个新块就将其纳入，同时保持与全局计算完全一致的数值稳定性。
+
+如果没看懂这一部分，则参看 [解析 FlashAttention（1）：从标准 Attention 讲起](https://my-webpage-adu.pages.dev/posts/llm%E6%8E%A8%E7%90%86%E6%A1%86%E6%9E%B6/2026-08-20-%E8%A7%A3%E6%9E%90-flashattention-1-%E4%BB%8E%E6%A0%87%E5%87%86-attention-%E8%AE%B2%E8%B5%B7/) 详细了解 Attention 计算过程的含义。
+
+### 3.3 增量更新推导
+
+设当前已处理前 $j-1$ 个 key/value 对（即 $\mathbf{k}_1,\dots,\mathbf{k}_{j-1}$ 和 $\mathbf{v}_1,\dots,\mathbf{v}_{j-1}$），累积状态为 $(m,\ell,\mathbf{o}_i)$。此时 $\mathbf{o}_i$ 已是这 $j-1$ 个 key 的精确 Attention 输出。现在加入第 $j$ 个 key/value 对 $(\mathbf{k}_j,\mathbf{v}_j)$，**需要更新 $\mathbf{o}_i$ 使其覆盖前 $j$ 个 key/value**。
+
+### 3.4 目标形式
+
+覆盖前 $j$ 个 key/value 的正确输出应为：
+
+$$\mathbf{o}_i^{\text{(target)}}=\frac{1}{\ell^{\text{new}}}\sum_{t=1}^{j}e^{s_{it}-m^{\text{new}}}\mathbf{v}_t \quad (30)$$
+
+其中新的全局最大值与全局 EXP 求和项分别为：
+
+$$m^{\text{new}}=\max\bigl(m,\;s_{ij}\bigr),\qquad \ell^{\text{new}}=\sum_{t=1}^{j}e^{s_{it}-m^{\text{new}}} \quad (31)$$
+
+式 (30) 的分子为下面两类项的求和：
+- **旧项**：$\sum_{t=1}^{j-1}e^{s_{it}-m^{\text{new}}}\mathbf{v}_t$（前 $j-1$ 个 key/value 的贡献，需用存量 $\mathbf{o}_i$ 还原）
+- **新项**：$e^{s_{ij}-m^{\text{new}}}\mathbf{v}_j$（第 $j$ 个 key/value 的贡献）
+
+### 3.5 旧项的还原与基准修正
+
+由处理前状态的定义，$\mathbf{o}_i$ 是前 $j-1$ 个 key/value 在旧全局最大值 $m$ 下的精确输出：
+
+$$\mathbf{o}_i=\frac{1}{\ell}\sum_{t=1}^{j-1}e^{s_{it}-m}\mathbf{v}_t$$
+
+反解未归一化的加权和：
+
+$$\sum_{t=1}^{j-1}e^{s_{it}-m}\mathbf{v}_t=\ell\cdot\mathbf{o}_i \quad (32)$$
+
+将式 (32) 的指数基准从 $m$ 修正至新的全局最大值 $m^{\text{new}}$，两边同乘 $e^{m-m^{\text{new}}}$：
+
+$$\sum_{t=1}^{j-1}e^{s_{it}-m^{\text{new}}}\mathbf{v}_t=\ell\cdot e^{m-m^{\text{new}}}\cdot\mathbf{o}_i \quad (33)$$
+
+式 (33) 即为目标分子中的**旧项**。其含义为：将已归一化的旧输出还原为未归一化加权和，并将指数基准统一修正至 $m^{\text{new}}$。
+
+### 3.6 新项的基准对齐
+
+由于 $B_c=1$，第 $j$ 个 key/value 块 $(\mathbf{k}_j,\mathbf{v}_j)$ 仅含**单个 $1\times d$ 的 key/value 向量**（即仅有一行）。因此该块的局部最大值即为该 key 向量与 query 的内积本身：
+
+$$m_j=s_{ij}$$
+
+局部指数定义为该分数相对于局部最大值的指数：
+
+$$p_{ij}=e^{s_{ij}-m_j}=e^{s_{ij}-s_{ij}}=e^0=1$$
+
+目标分子中的新项为 $e^{s_{ij}-m^{\text{new}}}\mathbf{v}_j$。利用局部统计量将其基准从 $m_j$ 对齐至 $m^{\text{new}}$：
+
+$$e^{s_{ij}-m^{\text{new}}}\mathbf{v}_j=e^{s_{ij}-m_j}\cdot e^{m_j-m^{\text{new}}}\mathbf{v}_j=p_{ij}\cdot e^{m_j-m^{\text{new}}}\mathbf{v}_j \quad (34)$$
+
+式 (34) 即为目标分子中的**新项**。其中 $p_{ij}$ 是局部指数（此处恒为 $1$），$e^{m_j-m^{\text{new}}}$ 是将局部基准对齐到全局基准的修正因子。
+
+### 3.7 分母的更新
+
+将旧项与新项的指数部分相加，即得新的全局 EXP 求和项：
+
+$$\ell^{\text{new}}=\underbrace{\ell\cdot e^{m-m^{\text{new}}}}_{\text{前 }j-1\text{ 个 key 的指数和修正}}+\underbrace{p_{ij}\cdot e^{m_j-m^{\text{new}}}}_{\text{第 }j\text{ 个 key 的指数和对齐}} \quad (35)$$
+
+### 3.8 增量更新式
+
+将式 (33)、(34)、(35) 代入目标形式 (30)，得到第 $j$ 轮后 $\mathbf{o}_i$ 的增量更新：
+
+$$\mathbf{o}_i\leftarrow\frac{\ell\cdot e^{m-m^{\text{new}}}\mathbf{o}_i+e^{m_j-m^{\text{new}}}p_{ij}\mathbf{v}_j}{\ell\cdot e^{m-m^{\text{new}}}+p_{ij}\cdot e^{m_j-m^{\text{new}}}} \quad (36)$$
+
+随后赋值全局状态：
+
+$$m\leftarrow m^{\text{new}},\qquad\ell\leftarrow\ell^{\text{new}}$$
+
+式 (36) 中：
+- **分子第一项** $\ell\cdot e^{m-m^{\text{new}}}\mathbf{o}_i$：前 $j-1$ 个 key 的加权和经基准修正后的结果；
+- **分子第二项** $e^{m_j-m^{\text{new}}}p_{ij}\mathbf{v}_j$：第 $j$ 个 key 的加权贡献经基准对齐后的结果；
+- **分母** $\ell^{\text{new}}$：前 $j$ 个 key 在统一基准 $m^{\text{new}}$ 下的指数和，作为新的归一化因子。
+
+遍历全部 $N$ 个 key/value 块后，$\mathbf{o}_i$ 即精确等于第 2 节中定义的标准 Attention 输出。
+
+
+
+### 3.9 从标量更新式到矩阵形式的扩展
+
+当块尺寸 $B_r,B_c>1$ 时，$\mathbf{Q}_i\in\mathbb{R}^{B_r\times d}$，$\mathbf{K}_j,\mathbf{V}_j\in\mathbb{R}^{B_c\times d}$。此时：
+
+$$\mathbf{S}_{ij}=\mathbf{Q}_i\mathbf{K}_j^\top\in\mathbb{R}^{B_r\times B_c}$$
+
+由于 softmax 是**逐行独立**的，$\mathbf{O}_i$ 的 $B_r$ 行各自维护独立的标量统计量。将式 (36) 的标量运算按行并行打包，即得到矩阵形式。
+
+### 3.10 局部统计量的向量化
+
+对 $\mathbf{S}_{ij}$ 逐行计算：
+- **局部行最大值**：$\tilde{\mathbf{m}}_{ij}=\mathrm{rowmax}(\mathbf{S}_{ij})\in\mathbb{R}^{B_r}$
+- **局部指数矩阵**：$\tilde{\mathbf{P}}_{ij}=\exp(\mathbf{S}_{ij}-\tilde{\mathbf{m}}_{ij})\in\mathbb{R}^{B_r\times B_c}$（逐行广播减法）
+- **局部行指数和**：$\tilde{\boldsymbol{\ell}}_{ij}=\mathrm{rowsum}(\tilde{\mathbf{P}}_{ij})\in\mathbb{R}^{B_r}$
+
+### 3.11 全局统计量的向量化
+
+下标 $i$ 表示第 $i$ 个 query 块 $\mathbf{Q}_i$，该块包含 $B_r$ 个 query，每行拥有独立的统计量：
+
+$$\mathbf{m}_i^{\text{new}}=\max(\mathbf{m}_i,\;\tilde{\mathbf{m}}_{ij})\in\mathbb{R}^{B_r}\quad\text{（逐元素取最大）}$$
+
+$$\boldsymbol{\ell}_i^{\text{new}}=\boldsymbol{\ell}_i\odot e^{\mathbf{m}_i-\mathbf{m}_i^{\text{new}}}+\tilde{\boldsymbol{\ell}}_{ij}\odot e^{\tilde{\mathbf{m}}_{ij}-\mathbf{m}_i^{\text{new}}}\in\mathbb{R}^{B_r}\quad\text{（逐元素运算）}$$
+
+其中 $\odot$ 为 Hadamard 积。此式即为式 (35) 在 $B_r$ 行上的并行版本。
+
+### 3.12 输出更新的矩阵化与对角矩阵的作用
+
+对标量式 (36) 的分子两项分别作矩阵化：
+
+**第一项（旧输出修正）**：  
+标量形式为 $\ell\cdot e^{m-m^{\text{new}}}\mathbf{o}_i$。在 $B_r>1$ 时，$\boldsymbol{\ell}_i$ 与 $e^{\mathbf{m}_i-\mathbf{m}_i^{\text{new}}}$ 均为 $B_r$ 维向量，每行 query 拥有独立的标量统计量。为了对 $B_r$ 行**分别**进行缩放而不互相干扰，需要构造对角矩阵：
+
+$$\mathrm{diag}(\boldsymbol{\ell}_i)=\begin{bmatrix}\ell_{i,1}& & \\ & \ddots & \\ & & \ell_{i,B_r}\end{bmatrix}\in\mathbb{R}^{B_r\times B_r}$$
+
+**左乘对角矩阵的含义**：对任意矩阵 $\mathbf{X}\in\mathbb{R}^{B_r\times d}$，左乘 $\mathrm{diag}(\boldsymbol{\ell}_i)$ 的结果为：
+
+$$\mathrm{diag}(\boldsymbol{\ell}_i)\mathbf{X}=\begin{bmatrix}\ell_{i,1}\cdot\mathbf{X}_{1*}\\ \vdots\\ \ell_{i,B_r}\cdot\mathbf{X}_{B_r*}\end{bmatrix}$$
+
+即第 $r$ 行被乘以 $\ell_{i,r}$，各行之间完全独立。这正是式 (36) 中 $\ell\cdot\mathbf{o}_i$ 在 $B_r$ 行上的并行实现。同理，$\mathrm{diag}(\boldsymbol{\ell}_i)^{-1}$ 左乘相当于对每一行分别除以 $\ell_{i,r}$，实现逐行归一化。
+
+因此，旧输出修正项的矩阵形式为：
+
+$$\mathrm{diag}(\boldsymbol{\ell}_i)\,e^{\mathbf{m}_i-\mathbf{m}_i^{\text{new}}}\mathbf{O}_i\in\mathbb{R}^{B_r\times d}$$
+
+其第 $r$ 行为 $\ell_{i,r}\cdot e^{m_{i,r}-m_{i,r}^{\text{new}}}\mathbf{O}_{i,r*}$，与标量形式完全一致。
+
+**第二项（新块贡献对齐）**：  
+标量形式为 $e^{m_j-m^{\text{new}}}p_{ij}\mathbf{v}_j$。在矩阵形式中，新块对 $B_r$ 个 query 的未归一化加权和为 $\tilde{\mathbf{P}}_{ij}\mathbf{V}_j\in\mathbb{R}^{B_r\times d}$。将其逐行乘以基准对齐因子 $e^{\tilde{\mathbf{m}}_{ij}-\mathbf{m}_i^{\text{new}}}\in\mathbb{R}^{B_r}$（向量与矩阵相乘时逐行广播）：
+
+$$e^{\tilde{\mathbf{m}}_{ij}-\mathbf{m}_i^{\text{new}}}\odot(\tilde{\mathbf{P}}_{ij}\mathbf{V}_j)\in\mathbb{R}^{B_r\times d}$$
+
+其第 $r$ 行为 $e^{\tilde{m}_{ij,r}-m_{i,r}^{\text{new}}}\cdot(\tilde{\mathbf{P}}_{ij}\mathbf{V}_j)_{r*}$，对应标量形式的第二项。
+
+**合并归一化**：  
+将两项相加后，逐行除以新的全局和 $\boldsymbol{\ell}_i^{\text{new}}$。同样使用对角矩阵实现逐行独立归一化：
+
+$$\mathbf{O}_i\leftarrow\mathrm{diag}(\boldsymbol{\ell}_i^{\text{new}})^{-1}\left(\mathrm{diag}(\boldsymbol{\ell}_i)\,e^{\mathbf{m}_i-\mathbf{m}_i^{\text{new}}}\mathbf{O}_i+e^{\tilde{\mathbf{m}}_{ij}-\mathbf{m}_i^{\text{new}}}\odot(\tilde{\mathbf{P}}_{ij}\mathbf{V}_j)\right) \quad (37)$$
+
+式 (37) 即为论文 Algorithm 1 中的增量更新公式。遍历所有 key/value 块后，$\mathbf{O}_i$ 即为 $B_r$ 个 query 对全部 key 的精确全局 Attention 输出，且全程无需将 $\mathbf{S}_{ij}$ 或 $\tilde{\mathbf{P}}_{ij}$ 写回 HBM。
+
+---
 
 ## 4. 映射到 Attention 矩阵形式与 Algorithm 1 逐行详解
 
@@ -351,74 +529,7 @@ $m_i^{\text{new}}$ 逐元素比较此前全局最大值 $m_i$ 与当前分块局
 
 $$\mathbf{O}_i \leftarrow \text{diag}(\ell_i^{\text{new}})^{-1} \left( \text{diag}(\ell_i) e^{m_i - m_i^{\text{new}}} \mathbf{O}_i + e^{\tilde{m}_{ij} - m_i^{\text{new}}} \tilde{\mathbf{P}}_{ij} \mathbf{V}_j \right) \quad (30)$$
 
-以下从 Attention Score 矩阵的视角，以 $B_r = 1$ 的简化情形为例，逐步推导公式 (30) 的来源。取 $B_r = 1$ 是因为 softmax 沿行进行，不同行之间完全独立，每行的计算逻辑相同，只是 Batch 处理多行以提高效率。
-
-考虑第 $i$ 个 query，其 Attention Score 为第 $i$ 行 $\mathbf{S}_{i:} = [q_i^\top k_1,\ q_i^\top k_2,\ \dots,\ q_i^\top k_N]$。将这一行按列分成 $T_c$ 个块，第 $j$ 块包含 $B_c$ 个元素，记为 $\mathbf{S}_{ij} \in \mathbb{R}^{1 \times B_c}$。对应的 Value 也按行分成 $T_c$ 个块，第 $j$ 块为 $\mathbf{V}_j \in \mathbb{R}^{B_c \times d}$。
-
-设当前已处理完前 $j-1$ 个块，状态如下：
-- $O_i \in \mathbb{R}^{1 \times d}$：已累积的归一化输出
-- $m_i \in \mathbb{R}$：当前全局最大值（前 $j-1$ 个块的最大值）
-- $\ell_i \in \mathbb{R}$：当前全局 EXP 和（前 $j-1$ 个块以 $m_i$ 为基准的指数和）
-
-由输出定义，$O_i$ 是前 $j-1$ 个块的 softmax 加权 value 和：
-
-$$O_i = \sum_{k \in \text{前 } j-1 \text{ 块}} \frac{e^{q_i^\top k_k - m_i}}{\ell_i} \mathbf{v}_k = \frac{1}{\ell_i} \sum_{k \in \text{前 } j-1 \text{ 块}} e^{q_i^\top k_k - m_i} \mathbf{v}_k \quad (30.1)$$
-
-定义前 $j-1$ 个块的未归一化加权和为：
-
-$$\mathbf{F}^{\text{prev}} = \sum_{k \in \text{前 } j-1 \text{ 块}} e^{q_i^\top k_k - m_i} \mathbf{v}_k \in \mathbb{R}^{1 \times d} \quad (30.2)$$
-
-则由公式 (30.1) 可得：
-
-$$\mathbf{F}^{\text{prev}} = \ell_i \cdot O_i \quad (30.3)$$
-
-现在处理第 $j$ 个块 $\mathbf{S}_{ij}$。计算局部统计量：
-- 局部最大值 $\tilde{m}_{ij} = \max_{k \in \text{第 } j \text{ 块}} q_i^\top k_k$
-- 局部未归一化指数 $\tilde{\mathbf{P}}_{ij} = \exp(\mathbf{S}_{ij} - \tilde{m}_{ij}) \in \mathbb{R}^{1 \times B_c}$
-- 局部 EXP 和 $\tilde{\ell}_{ij} = \sum \tilde{\mathbf{P}}_{ij}$
-
-更新全局统计量：
-- $m_i^{\text{new}} = \max(m_i, \tilde{m}_{ij})$
-- $\ell_i^{\text{new}} = e^{m_i - m_i^{\text{new}}} \ell_i + e^{\tilde{m}_{ij} - m_i^{\text{new}}} \tilde{\ell}_{ij}$
-
-接下来需要更新输出 $O_i$。更新分为两部分：旧部分（前 $j-1$ 个块）和新部分（第 $j$ 个块）。
-
-**旧部分调整**：前 $j-1$ 个块的未归一化加权和 $\mathbf{F}^{\text{prev}}$ 当前以 $m_i$ 为指数基准。由于全局最大值已更新为 $m_i^{\text{new}}$，需要将指数基准从 $m_i$ 调整到 $m_i^{\text{new}}$。对 $\mathbf{F}^{\text{prev}}$ 中每一项 $e^{q_i^\top k_k - m_i} \mathbf{v}_k$，调整为 $e^{q_i^\top k_k - m_i^{\text{new}}} = e^{q_i^\top k_k - m_i} \cdot e^{m_i - m_i^{\text{new}}}$。因此整体乘以标量 $e^{m_i - m_i^{\text{new}}}$：
-
-$$\mathbf{F}^{\text{prev, new}} = e^{m_i - m_i^{\text{new}}} \cdot \mathbf{F}^{\text{prev}} = e^{m_i - m_i^{\text{new}}} \cdot \ell_i \cdot O_i \quad (30.4)$$
-
-**新部分加入**：第 $j$ 个块的未归一化加权和为 $\tilde{\mathbf{P}}_{ij} \mathbf{V}_j$。注意 $\tilde{\mathbf{P}}_{ij} = \exp(\mathbf{S}_{ij} - \tilde{m}_{ij})$ 的指数基准为局部最大值 $\tilde{m}_{ij}$，需要调整到全局最大值 $m_i^{\text{new}}$。对 $\tilde{\mathbf{P}}_{ij}$ 中每一项 $e^{q_i^\top k_k - \tilde{m}_{ij}}$，调整为 $e^{q_i^\top k_k - m_i^{\text{new}}} = e^{q_i^\top k_k - \tilde{m}_{ij}} \cdot e^{\tilde{m}_{ij} - m_i^{\text{new}}}$。因此整体乘以标量 $e^{\tilde{m}_{ij} - m_i^{\text{new}}}$：
-
-$$\mathbf{F}^{\text{new}} = e^{\tilde{m}_{ij} - m_i^{\text{new}}} \cdot \tilde{\mathbf{P}}_{ij} \mathbf{V}_j \quad (30.5)$$
-
-**合并与归一化**：将调整后的旧部分与新部分相加，得到全体 key 的未归一化加权和：
-
-$$\mathbf{F}^{\text{total}} = \mathbf{F}^{\text{prev, new}} + \mathbf{F}^{\text{new}} = e^{m_i - m_i^{\text{new}}} \ell_i O_i + e^{\tilde{m}_{ij} - m_i^{\text{new}}} \tilde{\mathbf{P}}_{ij} \mathbf{V}_j \quad (30.6)$$
-
-最后，用新的全局 EXP 和 $\ell_i^{\text{new}}$ 进行归一化，得到更新后的输出：
-
-$$O_i^{\text{new}} = \frac{\mathbf{F}^{\text{total}}}{\ell_i^{\text{new}}} = \frac{e^{m_i - m_i^{\text{new}}} \ell_i O_i + e^{\tilde{m}_{ij} - m_i^{\text{new}}} \tilde{\mathbf{P}}_{ij} \mathbf{V}_j}{\ell_i^{\text{new}}} \quad (30.7)$$
-
-将公式 (30.7) 写成矩阵形式，即 Algorithm 1 第 12 行的表达式。当 $B_r > 1$ 时，上述逻辑对 $B_r$ 行同时执行，行与行之间完全独立（因为 softmax 按行进行，不同 query 之间无交互）。此时需要说明为什么标量公式中的乘 $\ell_i$ 变成了左乘 $\text{diag}(\ell_i)$。
-
-在 $B_r = 1$ 时，$\ell_i$ 是标量，第 $r$ 行的未归一化加权和恢复为 $\mathbf{F}^{\text{prev}}_{r,:} = \ell_i \cdot \mathbf{O}_{i,r,:}$。当 $B_r > 1$ 时，$\ell_i$ 变为 $B_r$ 维向量，其第 $r$ 个分量 $\ell_{i,r}$ 是第 $r$ 行的全局 EXP 和。第 $r$ 行的未归一化加权和恢复为 $\mathbf{F}^{\text{prev}}_{r,:} = \ell_{i,r} \cdot \mathbf{O}_{i,r,:}$。对 $B_r$ 行同时执行这一操作，即每行各自乘以自己的 $\ell_{i,r}$，用矩阵语言描述就是左乘一个对角矩阵：
-
-$$\mathbf{F}^{\text{prev}} = \text{diag}(\ell_i) \mathbf{O}_i \quad (30.8)$$
-
-其中 $\text{diag}(\ell_i) \in \mathbb{R}^{B_r \times B_r}$ 是对角矩阵，第 $(r,r)$ 个元素为 $\ell_{i,r}$。左乘 $\mathbf{O}_i \in \mathbb{R}^{B_r \times d}$ 后，第 $r$ 行被缩放 $\ell_{i,r}$ 倍，恰好实现每行各自恢复未归一化加权和的效果。
-
-同理，标量除法 $/ \ell_i^{\text{new}}$ 推广为左乘 $\text{diag}(\ell_i^{\text{new}})^{-1}$，实现对 $B_r$ 行各自的逐行归一化。
-
-因此标量公式 (30.7) 的矩阵形式为：
-
-$$\mathbf{O}_i \leftarrow \text{diag}(\ell_i^{\text{new}})^{-1} \left( \text{diag}(\ell_i) e^{m_i - m_i^{\text{new}}} \mathbf{O}_i + e^{\tilde{m}_{ij} - m_i^{\text{new}}} \tilde{\mathbf{P}}_{ij} \mathbf{V}_j \right) \quad (30)$$
-
-其中：
-- $\text{diag}(\ell_i) e^{m_i - m_i^{\text{new}}} \mathbf{O}_i$：对应公式 (30.4)，将前 $j-1$ 个块的已归一化输出恢复为未归一化加权和，再调整指数基准到新的全局最大值
-- $e^{\tilde{m}_{ij} - m_i^{\text{new}}} \tilde{\mathbf{P}}_{ij} \mathbf{V}_j$：对应公式 (30.5)，将当前块的局部未归一化指数调整到新的全局最大值基准，再与 $\mathbf{V}_j$ 相乘得到加权贡献
-- $\text{diag}(\ell_i^{\text{new}})^{-1}$：对应公式 (30.7) 的除以 $\ell_i^{\text{new}}$，用新的全局 EXP 和逐行归一化
-
-更新后的 $\mathbf{O}_i$ 被写回 HBM。
+**推导过程见上文。**
 
 **第 13 行**：将更新后的全局统计量写回 HBM
 
