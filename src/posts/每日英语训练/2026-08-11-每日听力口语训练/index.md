@@ -177,3 +177,21 @@ By the way, those who have studied abroad for years aren't necessarily good at E
 
 顺便说一句，那些在国外学习了好几年的人，英语未必就好。我认识一个大学生，他在美国——一个真正的英语环境——待了两年，回来后的英语水平却只有小学水平。
 
+---
+
+## 009. 全英｜靠英语只工作不上班，我总结了3点经验
+
+[全英｜靠英语只工作不上班，我总结了3点经验](https://www.bilibili.com/video/BV1tt8b6rEU1/?spm_id_from=333.1387.homepage.video_card.click&vd_source=e98b669ccbafff4b5aa59dd6303b722f)
+
+
+First, teaching English online is super awesome. I don't have to spend any time commuting between work and home. All I need is my laptop, a pair of earphones with a microphone, a USB webcam, a ring light, and I'm all set. And landing a job like that isn't as hard as you think, because there are a lot of job openings for online English teachers. If you're not confident in your English proficiency, you can also start by teaching young kids.
+
+Second, practice your English speaking skills with Doubao. I think we all have to admit that speaking skills are almost the most important part for English teachers. Being able to speak English fluently and naturally brings more job opportunities. And if you stop practicing for a while, your spoken English will soon get rusty. I think Doubao is a perfect English partner — you can call it and speak English with it directly. It can talk about any topic you want, help you correct and improve your sentences, teach you expressions you can't think of, and it's free.
+
+Third, read some interesting foreign magazine articles to boost your vocabulary. Articles are short, which means they don't consume much of your time or energy. It's much easier to fit article reading into your daily schedule than reading English books. While reading, you absorb English expressions and learn how to use them in different contexts. It's a really efficient way to increase your input. And remember to pick ones with topics you're really interested in, which helps you engage in and stick to the habit.
+
+首先，在线教英语超级棒。我不必花任何时间在上下班通勤上。我所需要的只是我的笔记本电脑、一副带麦克风的耳机、一个USB摄像头、一个环形灯，然后我就都准备好了。而且找到一份那样的工作并不像你想的那么难，因为有很多在线英语教师的工作岗位空缺。如果你对自己的英语水平不自信，你也可以从教小孩子开始。
+
+第二，用豆包练习你的英语口语技能。我想我们都得承认，口语技能几乎是英语教师最重要的部分。能够流利和自然地讲英语带来更多的工作机会。而且如果你停止练习一段时间，你的英语口语很快就会生疏。我认为豆包是一个完美的英语伙伴——你可以呼叫它并直接和它说英语。它可以谈论你想要的任何话题，帮助你纠正和改进你的句子，教你想不到的表达方式，而且它是免费的。
+
+第三，读一些有趣的外国杂志文章来提升你的词汇量。文章很短，这意味着它们不会消耗你太多时间或精力。把读文章纳入你的日常安排比读英语书容易得多。在阅读时，你吸收英语表达并学习如何在不同语境中使用它们。这真的是一种增加输入的高效方式。而且记得选择那些话题你真正感兴趣的，这有助于你投入并坚持这个习惯。
