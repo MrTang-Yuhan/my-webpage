@@ -128,6 +128,11 @@ O_{22} &= p_{21}v_{12} + p_{22}v_{22}
 \end{aligned}
 $$
 
+故
+
+$$
+\mathbf{dO} = \begin{bmatrix} dO_{11} & dO_{12} \\ dO_{21} & dO_{22}\end{bmatrix} = \begin{bmatrix} \frac{\partial \mathcal{L}}{\partial O_{11}} & \frac{\partial \mathcal{L}}{\partial O_{12}} \\ \frac{\partial \mathcal{L}}{\partial O_{21}} & \frac{\partial \mathcal{L}}{\partial O_{22}}\end{bmatrix} \in \mathbb{R}^{2 \times 2}
+$$
 
 **推导 $\mathbf{dV}$。** 元素 $v_{11}$ 仅出现在 $O_{11}$ 与 $O_{21}$ 中。根据链式法则，损失函数 $\mathcal{L}$ 对 $v_{11}$ 的梯度通过这两条路径传递：
 
@@ -145,15 +150,23 @@ $$
 $$
 
 
-同理，对 $v_{12}$：
+
+同理，对 $v_{12}$, $v_{21}$, $v_{22}$ 分别计算梯度：
 
 
 $$
 \frac{\partial \mathcal{L}}{\partial v_{12}} = dO_{12} \cdot p_{11} + dO_{22} \cdot p_{21}
 $$
 
+$$
+\frac{\partial \mathcal{L}}{\partial v_{21}} = dO_{11} \cdot p_{12} + dO_{21} \cdot p_{22}
+$$
 
-将上述两式合写为矩阵形式。注意到
+$$
+\frac{\partial \mathcal{L}}{\partial v_{22}} = dO_{12} \cdot p_{12} + dO_{22} \cdot p_{22}
+$$
+
+注意到
 
 
 $$
@@ -161,17 +174,12 @@ $$
 $$
 
 
-则
-
-
-$$
-(\mathbf{P}^\top \mathbf{dO})_{11} = p_{11} \cdot dO_{11} + p_{21} \cdot dO_{21} = \frac{\partial \mathcal{L}}{\partial v_{11}}
-$$
-
+而
 
 $$
-(\mathbf{P}^\top \mathbf{dO})_{12} = p_{11} \cdot dO_{12} + p_{21} \cdot dO_{22} = \frac{\partial \mathcal{L}}{\partial v_{12}}
+\mathbf{dV} = \begin{bmatrix} \frac{\partial \mathcal{L}}{\partial v_{11}} & \frac{\partial \mathcal{L}}{\partial v_{12}} \\ \frac{\partial \mathcal{L}}{\partial v_{21}} & \frac{\partial \mathcal{L}}{\partial v_{22}} \end{bmatrix}
 $$
+
 
 
 因此得到矩阵形式：
@@ -239,11 +247,11 @@ $$
 $$
 
 
-**组装 Jacobian 矩阵。** 将所有偏导数排列成矩阵 $\mathbf{J} \in \mathbb{R}^{2 \times 2}$，其中第 $k$ 行第 $j$ 列为 $\frac{\partial p_k}{\partial s_j}$：
+**组装 Jacobian 矩阵 $\mathbf{J} = \frac{\partial p}{\partial s}$。** 将所有偏导数排列成矩阵 $\mathbf{J} \in \mathbb{R}^{2 \times 2}$，其中第 $k$ 行第 $j$ 列为 $\frac{\partial p_k}{\partial s_j}$：
 
 
 $$
-\mathbf{J} = \begin{bmatrix} p_1(1-p_1) & -p_1 p_2 \\ -p_2 p_1 & p_2(1-p_2) \end{bmatrix} = \text{diag}(\mathbf{p}) - \mathbf{p}^\top \mathbf{p}
+\mathbf{J} = \begin{bmatrix} \frac{\partial p_1}{\partial s_1} & \frac{\partial p_1}{\partial s_2} \\ \frac{\partial p_2}{\partial s_1} & \frac{\partial p_2}{\partial s_2} \end{bmatrix}= \begin{bmatrix} p_1(1-p_1) & -p_1 p_2 \\ -p_2 p_1 & p_2(1-p_2) \end{bmatrix} = \text{diag}(\mathbf{p}) - \mathbf{p}^\top \mathbf{p}
 $$
 
 
@@ -252,6 +260,11 @@ $$
 
 **应用链式法则：**
 
+$$
+\frac{\partial \mathcal{L}}{\partial s} = \frac{\partial \mathcal{L}}{\partial p} \cdot \frac{\partial \mathcal{p}}{\partial s}
+$$
+
+即
 
 $$
 \mathbf{ds} = \mathbf{dp} \cdot \mathbf{J} = [dp_1, dp_2] \cdot \begin{bmatrix} p_1(1-p_1) & -p_1 p_2 \\ -p_2 p_1 & p_2(1-p_2) \end{bmatrix}
@@ -378,6 +391,7 @@ $$
 
 ### 2.5 $\mathbf{dQ}$ 与 $\mathbf{dK}$ 的推导
 
+> 与 **2.2 节** 中 $\mathbf{dV}$ 的推导类似。
 
 由 $\mathbf{S} = \tau \mathbf{Q}\mathbf{K}^\top$。继续使用 $N=2, d=2$ 的例子。设
 
