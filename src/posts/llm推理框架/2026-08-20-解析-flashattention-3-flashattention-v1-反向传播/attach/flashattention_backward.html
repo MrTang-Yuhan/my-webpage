@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlashAttention-v1 反向传播分块可视化</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f9fafb; padding: 20px; color: #111; }
+  .fa-wrap { max-width: 1100px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  .fa-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 12px 16px; background: #f3f4f6; border-radius: 8px; font-size: 14px; }
+  .fa-bar .t { font-weight: 700; font-size: 16px; color: #1f2937; }
+  .fa-bar .st { color: #6b7280; font-variant-numeric: tabular-nums; }
+  .fa-params { text-align: center; font-size: 13px; color: #374151; margin-bottom: 14px; font-family: "SF Mono", Monaco, "Cascadia Code", monospace; font-weight: 600; background: #f9fafb; padding: 8px; border-radius: 6px; border: 1px solid #e5e7eb; }
+  .fa-mats { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 8px; }
+  .fa-mat { text-align: center; }
+  .fa-mat .lb { font-size: 10px; color: #6b7280; margin-bottom: 2px; font-weight: 600; }
+  .fa-g { display: grid; gap: 1px; background: #d1d5db; padding: 1px; border-radius: 4px; }
+  .fa-g .ce { height: 16px; background: #fff; font-size: 8px; display: flex; align-items: center; justify-content: center; color: #374151; font-family: "SF Mono", Monaco, "Cascadia Code", monospace; font-weight: 500; }
+  .fa-g .ce.on { box-shadow: inset 0 0 0 2px #2563eb; background: #eff6ff; }
+  .fa-g .ce.hq { background: #dbeafe; }
+  .fa-g .ce.hk { background: #fce7f3; }
+  .fa-g .ce.hv { background: #dcfce7; }
+  .fa-g .ce.ho { background: #fef9c3; }
+  .fa-g .ce.hdo { background: #ffedd5; }
+  .fa-g .ce.hdq { background: #bfdbfe; }
+  .fa-g .ce.hdk { background: #fbcfe8; }
+  .fa-g .ce.hdv { background: #bbf7d0; }
+  .fa-g .ce.hml { background: #e5e7eb; }
+  .fa-g .ce.hs  { background: #93c5fd; }
+  .fa-g .ce.hp  { background: #c4b5fd; }
+  .fa-g .ce.hd  { background: #d4d4d8; }
+  .fa-g .ce.hds { background: #60a5fa; }
+  .fa-g .ce.hdp { background: #a78bfa; }
+  .fa-pos { text-align: center; font-size: 12px; color: #374151; margin: 8px 0; font-weight: 600; min-height: 18px; }
+  .fa-dots { display: flex; gap: 3px; justify-content: center; margin: 6px 0; flex-wrap: wrap; }
+  .fa-dots .dt { width: 6px; height: 6px; border-radius: 50%; background: #e5e7eb; transition: background 0.2s; }
+  .fa-dots .dt.done { background: #9ca3af; }
+  .fa-dots .dt.cur { background: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.2); }
+  .fa-sram { margin: 10px 0; padding: 12px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb; min-height: 260px; display: flex; flex-direction: column; }
+  .fa-sram .st { font-size: 12px; font-weight: 700; color: #374151; margin-bottom: 8px; text-align: center; }
+  .fa-flow { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; min-height: 40px; }
+  .fa-chip { text-align: center; padding: 4px 6px; background: #fff; border: 1px solid #d1d5db; border-radius: 6px; font-size: 10px; min-width: 40px; line-height: 1.3; font-weight: 500; }
+  .fa-chip .dm { font-size: 8px; color: #6b7280; font-weight: 400; }
+  .fa-arr { color: #9ca3af; font-size: 12px; font-weight: 700; }
+  .fa-code { font-family: "SF Mono", Monaco, "Cascadia Code", "Fira Code", monospace; font-size: 11px; line-height: 1.6; background: #fff; border-radius: 6px; padding: 10px; border: 1px solid #e5e7eb; overflow: auto; white-space: pre; color: #1f2937; flex: 1; }
+  .fa-ctrl { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 12px; height: 40px; }
+  .fa-ctrl .btn {
+    padding: 8px 0;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    font-size: 13px;
+    cursor: pointer;
+    color: #374151;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 36px;
+    box-sizing: border-box;
+    font-weight: 500;
+    transition: background 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+  }
+  .fa-ctrl .btn:hover { background: #f3f4f6; border-color: #9ca3af; }
+  .fa-ctrl .btn.pri { background: #2563eb; color: #fff; border-color: #2563eb; width: 100px; }
+  .fa-ctrl .btn.pri:hover { background: #1d4ed8; }
+  .fa-ctrl input[type=range] { width: 260px; cursor: pointer; flex-shrink: 0; }
+  .fa-ctrl .slbl { font-size: 12px; color: #6b7280; min-width: 56px; text-align: center; font-variant-numeric: tabular-nums; font-weight: 600; flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<div class="fa-wrap">
+  <div class="fa-bar">
+    <span class="t">FlashAttention-v1 反向传播分块可视化</span>
+    <span class="st" id="fa-st">Step 0 / 60</span>
+  </div>
+
+  <div class="fa-params">N=12, d=4, Br=3, Bc=2, Tr=4, Tc=6</div>
+
+  <!-- Row 1: Q K V O S P -->
+  <div class="fa-mats">
+    <div class="fa-mat"><div class="lb">Q (12×4)</div><div class="fa-g" id="gQ" style="grid-template-columns:repeat(4,28px)"></div></div>
+    <div class="fa-mat"><div class="lb">K (12×4)</div><div class="fa-g" id="gK" style="grid-template-columns:repeat(4,28px)"></div></div>
+    <div class="fa-mat"><div class="lb">V (12×4)</div><div class="fa-g" id="gV" style="grid-template-columns:repeat(4,28px)"></div></div>
+    <div class="fa-mat"><div class="lb">O (12×4)</div><div class="fa-g" id="gO" style="grid-template-columns:repeat(4,28px)"></div></div>
+    <div class="fa-mat"><div class="lb">S (3×2)</div><div class="fa-g" id="gS" style="grid-template-columns:repeat(2,34px)"></div></div>
+    <div class="fa-mat"><div class="lb">P (3×2)</div><div class="fa-g" id="gP" style="grid-template-columns:repeat(2,34px)"></div></div>
+  </div>
+
+  <!-- Row 2: m l D -->
+  <div class="fa-mats">
+    <div class="fa-mat"><div class="lb">m (12×1)</div><div class="fa-g" id="gM" style="grid-template-columns:repeat(1,34px)"></div></div>
+    <div class="fa-mat"><div class="lb">ℓ (12×1)</div><div class="fa-g" id="gL" style="grid-template-columns:repeat(1,34px)"></div></div>
+    <div class="fa-mat"><div class="lb">D (3×1)</div><div class="fa-g" id="gD" style="grid-template-columns:repeat(1,34px)"></div></div>
+  </div>
+
+  <!-- Row 3: dQ dK dV dO dS dP -->
+  <div class="fa-mats">
+    <div class="fa-mat"><div class="lb">dQ (12×4)</div><div class="fa-g" id="gDQ" style="grid-template-columns:repeat(4,28px)"></div></div>
+    <div class="fa-mat"><div class="lb">dK (12×4)</div><div class="fa-g" id="gDK" style="grid-template-columns:repeat(4,28px)"></div></div>
+    <div class="fa-mat"><div class="lb">dV (12×4)</div><div class="fa-g" id="gDV" style="grid-template-columns:repeat(4,28px)"></div></div>
+    <div class="fa-mat"><div class="lb">dO (12×4)</div><div class="fa-g" id="gDO" style="grid-template-columns:repeat(4,28px)"></div></div>
+    <div class="fa-mat"><div class="lb">dS (3×2)</div><div class="fa-g" id="gDS" style="grid-template-columns:repeat(2,34px)"></div></div>
+    <div class="fa-mat"><div class="lb">dP (3×2)</div><div class="fa-g" id="gDP" style="grid-template-columns:repeat(2,34px)"></div></div>
+  </div>
+
+  <div class="fa-pos" id="fa-pos">初始化完成，dQ/dK/dV = 0</div>
+  <div class="fa-dots" id="fa-dots"></div>
+
+  <div class="fa-sram">
+    <div class="st" id="fa-sramt">SRAM 状态</div>
+    <div class="fa-flow" id="fa-flow"></div>
+    <div class="fa-code" id="fa-code"></div>
+  </div>
+
+  <div class="fa-ctrl">
+    <a class="btn" id="b-r" href="#">重置</a>
+    <a class="btn" id="b-p" href="#">◀</a>
+    <input type="range" id="b-slider" min="0" max="60" value="0" />
+    <span class="slbl" id="b-slbl">0 / 60</span>
+    <a class="btn" id="b-n" href="#">▶</a>
+    <a class="btn pri" id="b-a" href="#">自动播放</a>
+  </div>
+</div>
+
+<script>
+(function(){
+  var N=12, d=4, Br=3, Bc=2, Tc=6;
+  var seed=1;
+  function rnd(){ seed=(seed*9301+49297)%233280; return seed/233280; }
+  function r2(){ return (Math.round(rnd()*400)/100).toFixed(2); }
+  function r3(){ return (Math.round(rnd()*200+100)/100).toFixed(2); }
+
+  var Q=[], K=[], V=[], O=[], dO=[], m=[], l=[];
+  for(var ri=0; ri<N; ri++){
+    var rq=[], rk=[], rv=[], ro=[], rdo=[];
+    for(var ci=0; ci<d; ci++){ rq.push(r2()); rk.push(r2()); rv.push(r2()); ro.push(r3()); rdo.push((Math.round(rnd()*60-30)/100).toFixed(2)); }
+    Q.push(rq); K.push(rk); V.push(rv); O.push(ro); dO.push(rdo);
+    var g=Math.floor(ri/Br); m.push((15+g*2+rnd()*3).toFixed(2)); l.push((1.0+g*0.3+rnd()*0.5).toFixed(2));
+  }
+
+  var step=0, autoI=null;
+
+  function fill(id, rows, cols, data, isVec){
+    var el=document.getElementById(id); if(!el) return;
+    el.innerHTML='';
+    for(var r=0; r<rows; r++){
+      for(var c=0; c<cols; c++){
+        var div=document.createElement('div'); div.className='ce';
+        div.textContent = isVec ? data[r] : data[r][c];
+        div.setAttribute('data-r', r); div.setAttribute('data-c', c); el.appendChild(div);
+      }
+    }
+  }
+
+  fill('gQ', N, d, Q); fill('gK', N, d, K); fill('gV', N, d, V); fill('gO', N, d, O); fill('gDO', N, d, dO);
+  fill('gM', N, 1, m, true); fill('gL', N, 1, l, true);
+  var z=[]; for(var i=0; i<N; i++){ var r=[]; for(var j=0; j<d; j++) r.push('0.00'); z.push(r); }
+  fill('gDQ', N, d, z); fill('gDK', N, d, z); fill('gDV', N, d, z);
+
+  var S0=[], P0=[], D0=[], DS0=[], DP0=[];
+  for(var r=0; r<Br; r++){
+    var sRow=[], pRow=[], dsRow=[], dpRow=[];
+    for(var c=0; c<Bc; c++){ sRow.push('0.00'); pRow.push('0.00'); dsRow.push('0.00'); dpRow.push('0.00'); }
+    S0.push(sRow); P0.push(pRow); DS0.push(dsRow); DP0.push(dpRow);
+    D0.push('0.00');
+  }
+  fill('gS', Br, Bc, S0); fill('gP', Br, Bc, P0); fill('gD', Br, 1, D0, true);
+  fill('gDS', Br, Bc, DS0); fill('gDP', Br, Bc, DP0);
+
+  function fmt1(v){ var s=parseFloat(v).toFixed(2); return s==='-0.00'?'0.00':s; }
+
+  function getInc(i, j, r, c, type){
+    var x = Math.sin(i * 127.0 + j * 31.0 + r * 7.0 + c * 3.0 + type * 11.0 + 1.0) * 10000.0;
+    return fmt1((x - Math.floor(x)) * 1.0 - 0.5);
+  }
+  function getSVal(i, j, r, c){
+    var x = Math.sin(i * 53.0 + j * 17.0 + r * 3.0 + c * 7.0 + 101.0) * 10000.0;
+    return fmt1((x - Math.floor(x)) * 4.0 - 2.0);
+  }
+  function getPVal(i, j, r, c){
+    var x = Math.sin(i * 61.0 + j * 23.0 + r * 5.0 + c * 11.0 + 201.0) * 10000.0;
+    var v = (x - Math.floor(x)) * 0.8 + 0.1;
+    return v.toFixed(2);
+  }
+  function getDVal(i, r){
+    var r0 = (i-1)*Br;
+    var sum = 0;
+    for(var c=0; c<d; c++) sum += parseFloat(dO[r0+r][c]) * parseFloat(O[r0+r][c]);
+    return sum.toFixed(2);
+  }
+  function getDSVal(i, j, r, c){
+    var x = Math.sin(i * 71.0 + j * 29.0 + r * 2.0 + c * 13.0 + 301.0) * 10000.0;
+    return fmt1((x - Math.floor(x)) * 2.0 - 1.0);
+  }
+  function getDPVal(i, j, r, c){
+    var x = Math.sin(i * 79.0 + j * 31.0 + r * 7.0 + c * 2.0 + 401.0) * 10000.0;
+    return fmt1((x - Math.floor(x)) * 2.0 - 1.0);
+  }
+
+  function computeGrads(upToStep){
+    var DQ=[], DK=[], DV=[];
+    for(var i=0;i<N;i++){
+      var rq=[], rk=[], rv=[];
+      for(var c=0;c<d;c++){ rq.push('0.00'); rk.push('0.00'); rv.push('0.00'); }
+      DQ.push(rq); DK.push(rk); DV.push(rv);
+    }
+    for(var s=1; s<=upToStep; s++){
+      var cyc = Math.floor((s-1)/10);
+      var jj = Math.min(cyc+1, Tc);
+      var sp = (s-1)%10;
+      if(sp >= 1 && sp <= 8){
+        var ii = Math.floor((sp-1)/2)+1;
+        var ph = (sp-1)%2;
+        if(ph === 1){
+          var rr0=(ii-1)*Br, rr1=ii*Br, cc0=(jj-1)*Bc, cc1=jj*Bc;
+          for(var r=rr0; r<rr1; r++){
+            for(var c=0; c<d; c++){
+              DQ[r][c] = fmt1(parseFloat(DQ[r][c]) + parseFloat(getInc(ii,jj,r-rr0,c,0)));
+            }
+          }
+          for(var r=cc0; r<cc1; r++){
+            for(var c=0; c<d; c++){
+              DK[r][c] = fmt1(parseFloat(DK[r][c]) + parseFloat(getInc(ii,jj,r-cc0,c,1)));
+              DV[r][c] = fmt1(parseFloat(DV[r][c]) + parseFloat(getInc(ii,jj,r-cc0,c,2)));
+            }
+          }
+        }
+      }
+    }
+    return {DQ:DQ, DK:DK, DV:DV};
+  }
+
+  function updateMat(id, rows, cols, data, isVec){
+    var el=document.getElementById(id); if(!el) return;
+    var list=el.querySelectorAll('.ce');
+    for(var idx=0; idx<list.length; idx++){
+      var r = Math.floor(idx / cols);
+      var c = idx % cols;
+      list[idx].textContent = isVec ? data[r] : data[r][c];
+    }
+  }
+
+  function clearHL(){ var list=document.querySelectorAll('.ce'); for(var i=0;i<list.length;i++){ list[i].className = 'ce'; } }
+  function addClass(el, cls){ var arr = el.className.split(' '); if(arr.indexOf(cls)===-1) arr.push(cls); el.className = arr.join(' '); }
+  function hlR(id, r0, r1, cls){ var g=document.getElementById(id); if(!g) return; var list=g.querySelectorAll('.ce'); for(var i=0;i<list.length;i++){ var r=+list[i].getAttribute('data-r'); if(r>=r0 && r<r1) addClass(list[i], cls); } }
+  function hlAll(id, cls){ var g=document.getElementById(id); if(!g) return; var list=g.querySelectorAll('.ce'); for(var i=0;i<list.length;i++) addClass(list[i], cls); }
+
+  function setDots(){
+    var el=document.getElementById('fa-dots'); if(!el) return; el.innerHTML='';
+    for(var i=0; i<=60; i++){ var d=document.createElement('div'); d.className='dt'; if(i<step) d.className += ' done'; if(i===step) d.className += ' cur'; el.appendChild(d); }
+  }
+
+  function sub(mat, r0, r1, c0, c1){ return mat.slice(r0, r1).map(function(r){ return r.slice(c0, c1); }); }
+  function fmt(mat){ return mat.map(function(r){ return '  ['+r.map(function(v){ return String(v).padStart(6); }).join(', ')+']'; }).join('\n'); }
+
+  function render(){
+    try {
+      var slider = document.getElementById('b-slider');
+      var slbl = document.getElementById('b-slbl');
+      if(slider) slider.value = step;
+      if(slbl) slbl.textContent = step + ' / 60';
+      clearHL();
+      var st=document.getElementById('fa-st');
+      var pos=document.getElementById('fa-pos');
+      var flow=document.getElementById('fa-flow');
+      var code=document.getElementById('fa-code');
+      var sramt=document.getElementById('fa-sramt');
+      if(!st || !pos || !flow || !code || !sramt) return;
+      setDots();
+
+      var grads = computeGrads(step);
+      updateMat('gDQ', N, d, grads.DQ);
+      updateMat('gDK', N, d, grads.DK);
+      updateMat('gDV', N, d, grads.DV);
+
+      for(var r=0; r<Br; r++){
+        D0[r]='0.00';
+        for(var c=0; c<Bc; c++){ S0[r][c]='0.00'; P0[r][c]='0.00'; DS0[r][c]='0.00'; DP0[r][c]='0.00'; }
+      }
+
+      if(step===0){
+        st.textContent='Step 0 / 60 · 初始化';
+        pos.textContent='dQ, dK, dV 在 HBM 中初始化为 0';
+        sramt.textContent='SRAM 空闲';
+        flow.innerHTML='<div class="fa-chip">等待加载<div class="dm">-</div></div>';
+        code.textContent='反向传播准备就绪。\n参数: N=12, d=4, Br=3, Bc=2, Tr=4, Tc=6。\n\nAlgorithm 4 反向传播分块执行。';
+        hlAll('gDQ','on'); hlAll('gDK','on'); hlAll('gDV','on');
+        updateMat('gS', Br, Bc, S0); updateMat('gP', Br, Bc, P0); updateMat('gD', Br, 1, D0, true);
+        updateMat('gDS', Br, Bc, DS0); updateMat('gDP', Br, Bc, DP0);
+        return;
+      }
+
+      var cycle=Math.floor((step-1)/10);
+      var j=Math.min(cycle+1, Tc);
+      var subp=(step-1)%10;
+
+      if(subp===0){
+        st.textContent='Step '+step+' / 60 · 外层 j='+j+': 加载 K'+j+', V'+j;
+        pos.textContent='当前: j='+j+' · K'+j+' (行 '+((j-1)*Bc+1)+'-'+j*Bc+'), V'+j+' (行 '+((j-1)*Bc+1)+'-'+j*Bc+')';
+        hlR('gK', (j-1)*Bc, j*Bc, 'hk'); hlR('gV', (j-1)*Bc, j*Bc, 'hv');
+        sramt.textContent='SRAM: K'+j+', V'+j+' 已加载';
+        flow.innerHTML='<div class="fa-chip" style="background:#fce7f3;border-color:#e88fa0">K'+j+'<div class="dm">'+Bc+'×'+d+'</div></div><div class="fa-arr">→</div><div class="fa-chip" style="background:#dcfce7;border-color:#7dd87d">V'+j+'<div class="dm">'+Bc+'×'+d+'</div></div>';
+        code.textContent='加载 Key/Value 块到 SRAM:\n\nK'+j+' =\n'+fmt(sub(K, (j-1)*Bc, j*Bc, 0, d))+'\n\nV'+j+' =\n'+fmt(sub(V, (j-1)*Bc, j*Bc, 0, d))+'\n\ndK̃'+j+' = 0.00  (SRAM 累加器, '+Bc+'×'+d+')\ndṼ'+j+' = 0.00  (SRAM 累加器, '+Bc+'×'+d+')';
+      } else if(subp===9){
+        st.textContent='Step '+step+' / 60 · 外层 j='+j+': 写回 dK'+j+', dV'+j;
+        pos.textContent='当前: j='+j+' · 内层循环结束，写回 dK'+j+', dV'+j;
+        hlR('gDK', (j-1)*Bc, j*Bc, 'hdk'); hlR('gDV', (j-1)*Bc, j*Bc, 'hdv');
+        sramt.textContent='SRAM → HBM';
+        flow.innerHTML='<div class="fa-chip" style="background:#fbcfe8;border-color:#e06075">dK'+j+'<div class="dm">'+Bc+'×'+d+'</div></div><div class="fa-arr">→</div><div class="fa-chip" style="background:#bbf7d0;border-color:#5ec45e">dV'+j+'<div class="dm">'+Bc+'×'+d+'</div></div>';
+        code.textContent='内层循环 i=1..4 结束，将 SRAM 累加器写回 HBM:\n\ndK'+j+' = Σᵢ τ × dSᵢⱼᵀ × Qᵢ\ndV'+j+' = Σᵢ (Pᵢⱼᵈʳᵒᵖᵖᵉᵈ)ᵀ × dOᵢ';
+      } else {
+        var i=Math.floor((subp-1)/2)+1;
+        var ph=(subp-1)%2;
+        var r0=(i-1)*Br, r1=i*Br, c0=(j-1)*Bc, c1=j*Bc;
+
+        for(var rr=0; rr<Br; rr++){
+          for(var cc=0; cc<Bc; cc++){
+            S0[rr][cc] = getSVal(i, j, rr, cc);
+            P0[rr][cc] = getPVal(i, j, rr, cc);
+          }
+        }
+        updateMat('gS', Br, Bc, S0); updateMat('gP', Br, Bc, P0);
+        hlAll('gS', 'hs'); hlAll('gP', 'hp');
+
+        hlR('gQ', r0, r1, 'hq'); hlR('gO', r0, r1, 'ho'); hlR('gDO', r0, r1, 'hdo');
+        hlR('gK', c0, c1, 'hk'); hlR('gV', c0, c1, 'hv');
+        hlR('gM', r0, r1, 'hml'); hlR('gL', r0, r1, 'hml');
+
+        if(ph===0){
+          st.textContent='Step '+step+' / 60 · 内层 i='+i+', j='+j+': 计算 Sᵢⱼ, Pᵢⱼ';
+          pos.textContent='当前: i='+i+', j='+j+' · Q'+i+'(行'+r0+'-'+(r1-1)+') × K'+j+'ᵀ(行'+c0+'-'+(c1-1)+')';
+          hlR('gDQ', r0, r1, 'hdq');
+          sramt.textContent='SRAM: Q'+i+', K'+j+', V'+j+', O'+i+', dO'+i+', ℓ'+i+', m'+i;
+          flow.innerHTML='<div class="fa-chip" style="background:#dbeafe;border-color:#4a9eff">Q'+i+'<div class="dm">'+Br+'×'+d+'</div></div><div class="fa-arr">×</div><div class="fa-chip" style="background:#fce7f3;border-color:#e88fa0">K'+j+'ᵀ<div class="dm">'+d+'×'+Bc+'</div></div><div class="fa-arr">=</div><div class="fa-chip">S'+i+''+j+'<div class="dm">'+Br+'×'+Bc+'</div></div><div class="fa-arr">→</div><div class="fa-chip">P'+i+''+j+'<div class="dm">'+Br+'×'+Bc+'</div></div>';
+          var Qi=sub(Q, r0, r1, 0, d);
+          var Kj=sub(K, c0, c1, 0, d);
+          var mi=m.slice(r0, r1);
+          var li=l.slice(r0, r1);
+          code.textContent='加载到 SRAM:\n\nQ'+i+' =\n'+fmt(Qi)+'\n\nK'+j+' =\n'+fmt(Kj)+'\n\nm'+i+' = ['+mi.join(', ')+']\nℓ'+i+' = ['+li.join(', ')+']\n\n计算:\nS'+i+''+j+' = τ × Q'+i+' × K'+j+'ᵀ   (形状 '+Br+'×'+Bc+')\nP'+i+''+j+' = diag(ℓ'+i+')⁻¹ × exp(S'+i+''+j+' − m'+i+')   (形状 '+Br+'×'+Bc+')';
+        } else {
+          st.textContent='Step '+step+' / 60 · 内层 i='+i+', j='+j+': 梯度计算';
+          pos.textContent='当前: i='+i+', j='+j+' · 更新 dQ'+i+', dK'+j+', dV'+j;
+          hlR('gDQ', r0, r1, 'hdq'); hlR('gDK', c0, c1, 'hdk'); hlR('gDV', c0, c1, 'hdv');
+          for(var rr=0; rr<Br; rr++){
+            D0[rr] = getDVal(i, rr);
+            for(var cc=0; cc<Bc; cc++){
+              DS0[rr][cc] = getDSVal(i, j, rr, cc);
+              DP0[rr][cc] = getDPVal(i, j, rr, cc);
+            }
+          }
+          updateMat('gD', Br, 1, D0, true); updateMat('gDS', Br, Bc, DS0); updateMat('gDP', Br, Bc, DP0);
+          hlAll('gD', 'hd'); hlAll('gDS', 'hds'); hlAll('gDP', 'hdp');
+          sramt.textContent='SRAM: 计算 dV, dP, D, dS, 更新 dQ, dK';
+          flow.innerHTML =
+            '<div style="display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;width:100%;margin-bottom:4px;">' +
+              '<div class="fa-chip">P'+i+''+j+'<div class="dm">'+Br+'×'+Bc+'</div></div>' +
+              '<div class="fa-arr">×</div>' +
+              '<div class="fa-chip" style="background:#ffedd5;border-color:#ffa94d">dO'+i+'<div class="dm">'+Br+'×'+d+'</div></div>' +
+              '<div class="fa-arr">→</div>' +
+              '<div class="fa-chip" style="background:#bbf7d0;border-color:#5ec45e">dṼ'+j+'<div class="dm">'+Bc+'×'+d+'</div></div>' +
+              '<div style="width:12px"></div>' +
+              '<div class="fa-chip" style="background:#ffedd5;border-color:#ffa94d">dO'+i+'<div class="dm">'+Br+'×'+d+'</div></div>' +
+              '<div class="fa-arr">×</div>' +
+              '<div class="fa-chip" style="background:#dcfce7;border-color:#7dd87d">V'+j+'ᵀ<div class="dm">'+d+'×'+Bc+'</div></div>' +
+              '<div class="fa-arr">→</div>' +
+              '<div class="fa-chip">dP'+i+''+j+'<div class="dm">'+Br+'×'+Bc+'</div></div>' +
+            '</div>' +
+            '<div style="display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;width:100%;margin-bottom:4px;">' +
+              '<div class="fa-chip" style="background:#ffedd5;border-color:#ffa94d">dO'+i+'<div class="dm">'+Br+'×'+d+'</div></div>' +
+              '<div class="fa-arr">∘</div>' +
+              '<div class="fa-chip" style="background:#fef9c3;border-color:#f5d76e">O'+i+'<div class="dm">'+Br+'×'+d+'</div></div>' +
+              '<div class="fa-arr">→</div>' +
+              '<div class="fa-chip">D'+i+'<div class="dm">'+Br+'×1</div></div>' +
+              '<div style="width:12px"></div>' +
+              '<div class="fa-chip">P'+i+''+j+'<div class="dm">'+Br+'×'+Bc+'</div></div>' +
+              '<div class="fa-arr">∘</div>' +
+              '<div class="fa-chip">(dP−D)<div class="dm">'+Br+'×'+Bc+'</div></div>' +
+              '<div class="fa-arr">→</div>' +
+              '<div class="fa-chip">dS'+i+''+j+'<div class="dm">'+Br+'×'+Bc+'</div></div>' +
+            '</div>' +
+            '<div style="display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;width:100%;">' +
+              '<div class="fa-chip">dS'+i+''+j+'<div class="dm">'+Br+'×'+Bc+'</div></div>' +
+              '<div class="fa-arr">×</div>' +
+              '<div class="fa-chip" style="background:#fce7f3;border-color:#e88fa0">K'+j+'<div class="dm">'+Bc+'×'+d+'</div></div>' +
+              '<div class="fa-arr">→</div>' +
+              '<div class="fa-chip" style="background:#bfdbfe;border-color:#4a9eff">dQ'+i+'<div class="dm">'+Br+'×'+d+'</div></div>' +
+              '<div style="width:12px"></div>' +
+              '<div class="fa-chip">dS'+i+''+j+'ᵀ<div class="dm">'+Bc+'×'+Br+'</div></div>' +
+              '<div class="fa-arr">×</div>' +
+              '<div class="fa-chip" style="background:#dbeafe;border-color:#4a9eff">Q'+i+'<div class="dm">'+Br+'×'+d+'</div></div>' +
+              '<div class="fa-arr">→</div>' +
+              '<div class="fa-chip" style="background:#fbcfe8;border-color:#e06075">dK̃'+j+'<div class="dm">'+Bc+'×'+d+'</div></div>' +
+            '</div>';
+          var Oi=sub(O, r0, r1, 0, d);
+          var dOi=sub(dO, r0, r1, 0, d);
+          var Dvals=dOi.map(function(row, idx){ return row.map(function(v, c){ return parseFloat(v)*parseFloat(Oi[idx][c]); }).reduce(function(a, b){ return a+b; }, 0).toFixed(2); });
+          code.textContent='关键简化 — 无需存储 P:\nD'+i+' = rowsum(dO'+i+' ∘ O'+i+')\n     = ['+Dvals.join(', ')+']\n\nSoftmax 反向:\ndS'+i+''+j+' = P'+i+''+j+' ∘ (dP'+i+''+j+' − D'+i+')\n\n更新梯度:\ndQ'+i+' += τ × dS'+i+''+j+' × K'+j+'   → HBM\ndK̃'+j+' += τ × dS'+i+''+j+'ᵀ × Q'+i+'   (SRAM 累加)\ndṼ'+j+' += (P'+i+''+j+'ᵈʳᵒᵖᵖᵉᵈ)ᵀ × dO'+i+'   (SRAM 累加)';
+        }
+      }
+      updateMat('gS', Br, Bc, S0); updateMat('gP', Br, Bc, P0); updateMat('gD', Br, 1, D0, true);
+      updateMat('gDS', Br, Bc, DS0); updateMat('gDP', Br, Bc, DP0);
+    } catch(e) {
+      var code=document.getElementById('fa-code');
+      if(code) code.textContent='ERROR: '+e.message+'\n'+e.stack;
+    }
+  }
+
+  function faNext(){ if(step<60){ step++; render(); } }
+  function faPrev(){ if(step>0){ step--; render(); } }
+  function faReset(){ step=0; if(autoI){ clearInterval(autoI); autoI=null; document.getElementById('b-a').textContent='自动播放'; } render(); }
+  function faAuto(){
+    var b=document.getElementById('b-a');
+    if(autoI){ clearInterval(autoI); autoI=null; b.textContent='自动播放'; }
+    else{ b.textContent='暂停'; autoI=setInterval(function(){ if(step>=60){ clearInterval(autoI); autoI=null; b.textContent='自动播放'; } else { step++; render(); } }, 900); }
+  }
+  function faSet(v){ step = parseInt(v); render(); }
+
+  document.getElementById('b-slider').oninput = function(){ faSet(this.value); };
+  document.getElementById('b-n').onclick = function(e){ e.preventDefault(); faNext(); };
+  document.getElementById('b-p').onclick = function(e){ e.preventDefault(); faPrev(); };
+  document.getElementById('b-r').onclick = function(e){ e.preventDefault(); faReset(); };
+  document.getElementById('b-a').onclick = function(e){ e.preventDefault(); faAuto(); };
+
+  document.addEventListener('keydown', function(e){
+    if(e.key==='ArrowRight'){ e.preventDefault(); faNext(); }
+    else if(e.key==='ArrowLeft'){ e.preventDefault(); faPrev(); }
+    else if(e.key===' '){ e.preventDefault(); faAuto(); }
+  });
+
+  render();
+})();
+</script>
+
+</body>
+</html>
