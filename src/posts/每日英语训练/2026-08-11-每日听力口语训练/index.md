@@ -195,3 +195,25 @@ Third, read some interesting foreign magazine articles to boost your vocabulary.
 第二，用豆包练习你的英语口语技能。我想我们都得承认，口语技能几乎是英语教师最重要的部分。能够流利和自然地讲英语带来更多的工作机会。而且如果你停止练习一段时间，你的英语口语很快就会生疏。我认为豆包是一个完美的英语伙伴——你可以呼叫它并直接和它说英语。它可以谈论你想要的任何话题，帮助你纠正和改进你的句子，教你想不到的表达方式，而且它是免费的。
 
 第三，读一些有趣的外国杂志文章来提升你的词汇量。文章很短，这意味着它们不会消耗你太多时间或精力。把读文章纳入你的日常安排比读英语书容易得多。在阅读时，你吸收英语表达并学习如何在不同语境中使用它们。这真的是一种增加输入的高效方式。而且记得选择那些话题你真正感兴趣的，这有助于你投入并坚持这个习惯。
+
+---
+
+## 010. 背诵英语句子对提高口语没用
+
+[背诵英语句子对提高口语没用](https://www.bilibili.com/video/BV1ZCL16eEmk/?spm_id_from=333.1387.upload.video_card.click&vd_source=e98b669ccbafff4b5aa59dd6303b722f)
+
+Memorizing English sentences doesn't help with your speaking skills. It seems like a good method, but it isn't.
+
+First, the content you memorize becomes part of your input. Whether you know how to use these words and phrases is not guaranteed, because you haven't dug into their various usages in different contexts. You may recognize these expressions when you see or hear them, but when you need to speak or write, they will be on the tip of your tongue, or you simply cannot think of them.
+
+Second, when you memorize some content, you don't have to think about how to organize words, which means your mind isn't trained to construct sentences. Your English fluency and accuracy depend on whether you're used to putting words together correctly. If you want to articulate yourself in English, you need to practice making sentences. There are no shortcuts, I'm afraid.
+
+Third, even if you can use the sentences you memorize in real conversations, there are countless scenarios that you need to deal with in day‑to‑day life, and the dynamics of conversations change every second. It's impossible for you to communicate with others based on your memory all the time. Languages are never fixed.
+
+背诵英语句子并不能提升你的口语能力。这看似是个好方法，实则不然。
+
+首先，你背诵的内容固然会成为你的输入，但你未必知道如何运用这些单词和短语，因为你并没有深入探究它们在不同语境下的各种用法。看到或听到时，你也许能认出这些表达；但真到要说或要写的时候，它们可能就在嘴边却说不出来，或者你根本想不起来。
+
+其次，背诵时你无需思考如何组织语言，这意味着你的大脑缺乏构建句子的训练。英语的流利度和准确度，取决于你是否习惯正确地将单词组合在一起。若想用英语清楚地表达思想，你必须练习造句。恐怕这没有捷径。
+
+再者，即便你能在真实对话中用上背诵的句子，日常生活中需要应对的场景不计其数，对话的走向更是瞬息万变。你不可能时时依靠记忆与人交流。语言从来不是固定不变的。
