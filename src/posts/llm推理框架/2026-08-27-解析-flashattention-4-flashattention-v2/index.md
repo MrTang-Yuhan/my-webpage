@@ -118,7 +118,7 @@ $$m^{(1)} = \max(m^{(0)}, S_{11}) = \max(-\infty, S_{11}) = S_{11}$$
 计算局部平移指数（标量）：
 $$\tilde{P}_{11} = \exp(S_{11} - m^{(1)}) = \exp(0) = 1$$
 
-更新全局指数和：
+更新全局指数和（见 [解析 FlashAttention（2）：FlashAttention-v1 前向传播](https://my-webpage-adu.pages.dev/posts/llm%E6%8E%A8%E7%90%86%E6%A1%86%E6%9E%B6/2026-08-20-%E8%A7%A3%E6%9E%90-flashattention-2-flashattention-v1-%E5%89%8D%E5%90%91%E4%BC%A0%E6%92%AD/) 公式 35）：
 $$\ell^{(1)} = \exp(m^{(0)} - m^{(1)}) \cdot \ell^{(0)} + \tilde{P}_{11} = \exp(-\infty - S_{11}) \cdot 0 + 1 = 1$$
 
 更新 un-scaled 输出。由于 $O^{(0)} = \mathbf{0}$，rescaling 项消失：
