@@ -10,6 +10,9 @@ tags:
 > 上一篇：[解析 FlashAttention（1）：从标准 Attention 讲起](https://my-webpage-adu.pages.dev/posts/llm%E6%8E%A8%E7%90%86%E6%A1%86%E6%9E%B6/2026-08-20-%E8%A7%A3%E6%9E%90-flashattention-1-%E4%BB%8E%E6%A0%87%E5%87%86-attention-%E8%AE%B2%E8%B5%B7/)
 >
 > 参考：[万字长文详解FlashAttention v1/v2](https://zhuanlan.zhihu.com/p/642962397)
+>
+> 整个 FlashAttention v1 的分块运算可视化过程: [flash_attention_visualization.html](attach/flash_attention_visualization.html)
+
 
 ---
 
@@ -70,10 +73,6 @@ Softmax 需要全局信息（最大值、指数和），分块计算时怎么办
 **（3）反向传播的重计算（Recomputation）**
 
 训练时反向传播需要 $\mathbf{P}$ 的梯度。既然 $\mathbf{P}$ 没存，FlashAttention 在反向时**重新计算** $\mathbf{P}$——但它只需要重新加载 $\mathbf{Q}, \mathbf{K}$ 的小块，在 SRAM 里快速重算，成本远低于存储和读取巨大的 $\mathbf{P}$ 矩阵。
-
-整个 FlashAttention v1 的分块运算可视化过程如下:
-
-[flash_attention_visualization.html](attach/flash_attention_visualization.html)
 
 
 下面正式开始介绍 [FlashAttention v1](https://arxiv.org/pdf/2205.14135) 版本的实现。
