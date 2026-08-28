@@ -217,3 +217,25 @@ Third, even if you can use the sentences you memorize in real conversations, the
 其次，背诵时你无需思考如何组织语言，这意味着你的大脑缺乏构建句子的训练。英语的流利度和准确度，取决于你是否习惯正确地将单词组合在一起。若想用英语清楚地表达思想，你必须练习造句。恐怕这没有捷径。
 
 再者，即便你能在真实对话中用上背诵的句子，日常生活中需要应对的场景不计其数，对话的走向更是瞬息万变。你不可能时时依靠记忆与人交流。语言从来不是固定不变的。
+
+---
+
+## 011. 影子跟读法对提高口语没有用
+
+[影子跟读法对提高口语没有用](https://www.bilibili.com/video/BV1nL5S6jExZ/?spm_id_from=333.1387.upload.video_card.click&vd_source=e98b669ccbafff4b5aa59dd6303b722f)
+
+Shadowing doesn't help with your fluency and accuracy. It has long been overestimated and considered one of the most effective approaches for improving speaking skills. Nonsense. Is there anyone who has successfully learned to express themselves through shadowing? Please let me know. 
+
+Just think about it: when you repeat after another person, do you take the initiative to put words together? No. You don't need to think about the words, phrases, and sentence structures on your own. You're just repeating after them without pausing. If you don't use your mind, how can you train your mind to construct English sentences? 
+
+The only way to boost your speaking skills is to practice making English sentences, either through writing or speaking itself. In this process, you gradually get used to using all the English you've learned. Shadowing can, at most, help with your pronunciation and intonation because you're imitating the speaker. But the effect is highly limited because you can't hear your own voice without pausing, so you have no chance to precisely correct and improve your pronunciation and intonation. 
+
+You can learn very little by shadowing unless you pause after every sentence, imitate the audio, and learn the words, phrases, and sentence structures one by one. It's a sort of input.
+
+ 跟读对你的流利度和准确性毫无帮助。它长期以来被严重高估，甚至被视为提升口语最有效的方法之一。一派胡言。有谁是通过跟读真正学会了表达自我？如果有，请告诉我。
+
+好好想想：当你跟着别人重复时，是你主动在组织语言吗？不是。你根本不需要自己去思考该用什么词、什么短语、什么句子结构。你只是在不停顿地跟着对方重复。如果你不动脑子，又怎么能训练大脑去构建英文句子呢？
+
+提升口语能力的唯一方法，就是练习造英文句子——要么通过写，要么通过说本身。在这个过程中，你会逐渐习惯运用所学过的全部英语知识。跟读充其量只能帮你练练发音和语调，因为你毕竟是在模仿说话者。但效果非常有限：你无法在不停顿的情况下听到自己的声音，因此根本没有机会去精确纠正和改进自己的发音与语调。
+
+除非你在每句话后停下来，模仿音频，并逐字逐句地学习其中的词汇、短语和句子结构，否则跟读几乎学不到东西。那不过是一种输入罢了。
