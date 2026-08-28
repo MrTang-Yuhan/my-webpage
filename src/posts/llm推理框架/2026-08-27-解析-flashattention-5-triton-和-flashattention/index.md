@@ -2,7 +2,7 @@
 layout: post.njk
 post_id: 2026-08-27-解析-flashattention-5-triton-和-flashattention
 archive: llm推理框架
-title: 解析 FlashAttention（5）：triton 和 FlashAttention
+title: 解析 FlashAttention（5）：FlashAttention 和常用 triton 算子
 date: 2026-08-27
 tags:
   - post
