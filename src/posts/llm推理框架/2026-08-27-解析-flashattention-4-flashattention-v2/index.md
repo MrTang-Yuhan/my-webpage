@@ -249,7 +249,7 @@ $m_1^{(1)}[r] \in \mathbb{R}$ 的含义：第 $r$ 个 query 行向量在处理�
 
 $$\tilde{P}_1^{(1)} = \exp\left(S_1^{(1)} - m_1^{(1)}\right) \in \mathbb{R}^{2 \times 2}$$
 
-**定义：** $\tilde{P}_1^{(1)}$ 称为**局部平移指数矩阵**。其元素 $\tilde{P}_1^{(1)}[r,c] = \exp(S_1^{(1)}[r,c] - m_1^{(1)}[r])$ 表示：第 $r$ 个 query 与第 $c$ 个 key 的分数，相对于当前全局最大值 $m_1^{(1)}[r]$ 的指数值。
+**定义：** $\tilde{P}_1^{(1)}$ 称为**局部平移指数矩阵**。其元素 $\tilde{P}_1^{(1)}[r,c] = \exp(S_1^{(1)}[r,c] - m_1^{(1)}[r])$ 表示：第 $r$ 个 query 行向量与第 $c$ 个 key 行向量的分数，相对于当前全局最大值 $m_1^{(1)}[r]$ 的指数值。
 
 **运算说明：** 此处减法为**逐行广播**。$S_1^{(1)} \in \mathbb{R}^{2 \times 2}$ 的第 $r$ 行减去 $m_1^{(1)} \in \mathbb{R}^{2}$ 的第 $r$ 个元素，得到平移后的分数，再逐元素取指数。
 
@@ -262,14 +262,14 @@ $$\tilde{P}_1^{(1)} = \exp\left(S_1^{(1)} - m_1^{(1)}\right) \in \mathbb{R}^{2 \
 $$\ell_1^{(1)} = \exp\left(m_1^{(0)} - m_1^{(1)}\right) \odot \ell_1^{(0)} + \text{rowsum}\left(\tilde{P}_1^{(1)}\right) \in \mathbb{R}^{2}$$
 
 **分解说明：**
-- $\text{rowsum}(\tilde{P}_1^{(1)}) \in \mathbb{R}^{2}$ 对 $\tilde{P}_1^{(1)}$ 每行求和，输出长度为 $2$ 的列向量。第 $r$ 个元素是第 $r$ 个 query 对当前 key 块中所有 key 的平移指数之和。
+- $\text{rowsum}(\tilde{P}_1^{(1)}) \in \mathbb{R}^{2}$ 对 $\tilde{P}_1^{(1)}$ 每行求和，输出长度为 $2$ 的列向量。第 $r$ 个元素是第 $r$ 个 query 行向量对当前 key 块中所有 key 行向量的平移指数之和。
 - $\exp(m_1^{(0)} - m_1^{(1)}) \in \mathbb{R}^{2}$ 是逐元素的定标因子。由于 $m_1^{(0)} = -\infty$，该项为 $\mathbf{0}$。
 - $\odot$ 为逐元素乘法。
 
 因此：
 $$\ell_1^{(1)} = \text{rowsum}\left(\tilde{P}_1^{(1)}\right) = \begin{bmatrix} \sum_{c=1}^{2} \exp(S_1^{(1)}[1,c] - m_1^{(1)}[1]) \\ \sum_{c=1}^{2} \exp(S_1^{(1)}[2,c] - m_1^{(1)}[2]) \end{bmatrix}$$
 
-$\ell_1^{(1)}[r] \in \mathbb{R}$ 的含义：第 $r$ 个 query 在处理完第 $1$ 个 key 块后，以当前全局最大值 $m_1^{(1)}[r]$ 为基准，与**所有已处理 key** 的分数的指数和。
+$\ell_1^{(1)}[r] \in \mathbb{R}$ 的含义：第 $r$ 个 query 行向量在处理完第 $1$ 个 key 块后，以当前全局最大值 $m_1^{(1)}[r]$ 为基准，与**所有已处理 key** 块的分数的指数和。
 
 **用途：** $\ell_1^{(1)}$ 是分母的局部近似。循环结束后，$\ell_1^{(T_c)}$ 将等于标准 softmax 的分母。
 
@@ -279,6 +279,11 @@ $\ell_1^{(1)}[r] \in \mathbb{R}$ 的含义：第 $r$ 个 query 在处理完第 $
 
 $$O_1^{(1)} = \text{diag}\left(\exp\left(m_1^{(0)} - m_1^{(1)}\right)\right)^{-1} O_1^{(0)} + \tilde{P}_1^{(1)} V_1 \in \mathbb{R}^{2 \times 3}$$
 
+> 根据指数函数的倒数性质，存在
+> $$\exp(a)^{-1} = \frac{1}{\exp(a)} = \exp(-a)$$
+> 而**对角矩阵的逆，就是对每个对角元取倒数**，故
+> $$O^{(j)} = \underbrace{\text{diag}\left(\exp\left(m^{(j-1)} - m^{(j)}\right)\right)^{-1}}_{\text{等价于 } \text{diag}(\exp(m^{(j)}-m^{(j-1)}))} O^{(j-1)} + \tilde{P}^{(j)}V_j$$
+
 **分解说明：**
 - $\text{diag}(\exp(m_1^{(0)} - m_1^{(1)}))^{-1} \in \mathbb{R}^{2 \times 2}$ 是以定标因子为对角元的对角矩阵的逆。由于 $m_1^{(0)} = -\infty$，该对角矩阵为零矩阵，其逆无意义，但乘以 $O_1^{(0)} = \mathbf{0}$ 后该项整体为零矩阵。
 - $\tilde{P}_1^{(1)} \in \mathbb{R}^{2 \times 2}$，$V_1 \in \mathbb{R}^{2 \times 3}$，矩阵乘法结果 $\in \mathbb{R}^{2 \times 3}$。
@@ -286,7 +291,7 @@ $$O_1^{(1)} = \text{diag}\left(\exp\left(m_1^{(0)} - m_1^{(1)}\right)\right)^{-1
 因此：
 $$O_1^{(1)} = \tilde{P}_1^{(1)} V_1 = \begin{bmatrix} \sum_{c=1}^{2} \tilde{P}_1^{(1)}[1,c] \cdot \mathbf{v}_c \\ \sum_{c=1}^{2} \tilde{P}_1^{(1)}[2,c] \cdot \mathbf{v}_c \end{bmatrix} \in \mathbb{R}^{2 \times 3}$$
 
-$O_1^{(1)}[r,:] \in \mathbb{R}^{1 \times 3}$ 的含义：第 $r$ 个 query 在处理完第 $1$ 个 key 块后，以当前全局最大值 $m_1^{(1)}[r]$ 为基准，对**所有已处理 key** 的 value 的加权累加和。权重为平移后的指数 $\tilde{P}_1^{(1)}[r,c]$。
+$O_1^{(1)}[r,:] \in \mathbb{R}^{1 \times 3}$ 的含义：第 $r$ 个 query 行向量在处理完第 $1$ 个 key 块后，以当前全局最大值 $m_1^{(1)}[r]$ 为基准，对**所有已处理 key** 的 value 的加权累加和。权重为平移后的指数 $\tilde{P}_1^{(1)}[r,c]$。
 
 **用途：** $O_1^{(1)}$ 是分子的局部近似。循环结束后，$O_1^{(T_c)} / \ell_1^{(T_c)}$ 将等于标准 softmax attention 的输出。
 
@@ -298,7 +303,7 @@ $O_1^{(1)}[r,:] \in \mathbb{R}^{1 \times 3}$ 的含义：第 $r$ 个 query 在�
 
 $$S_1^{(2)} = Q_1 K_2^\top = \begin{bmatrix} \mathbf{q}_1 \mathbf{k}_3^\top & \mathbf{q}_1 \mathbf{k}_4^\top \\ \mathbf{q}_2 \mathbf{k}_3^\top & \mathbf{q}_2 \mathbf{k}_4^\top \end{bmatrix} \in \mathbb{R}^{2 \times 2}$$
 
-$S_1^{(2)}[r,c]$ 是第 $r$ 个 query 与第 $j=2$ 块中第 $c$ 个 key 的标量内积。
+$S_1^{(2)}[r,c]$ 是第 $r$ 个 query 行向量与第 $j=2$ 块中第 $c$ 个 key 行向量的标量内积。
 
 ---
 
@@ -306,7 +311,7 @@ $S_1^{(2)}[r,c]$ 是第 $r$ 个 query 与第 $j=2$ 块中第 $c$ 个 key 的标�
 
 $$m_1^{(2)} = \max\left(m_1^{(1)},\ \text{rowmax}\left(S_1^{(2)}\right)\right) \in \mathbb{R}^{2}$$
 
-$m_1^{(2)}[r] \in \mathbb{R}$ 的含义：第 $r$ 个 query 在处理完前 $2$ 个 key 块后，与**所有已处理 key** 的分数中的最大值。
+$m_1^{(2)}[r] \in \mathbb{R}$ 的含义：第 $r$ 个 query 行向量在处理完前 $2$ 个 key 块后，与**所有已处理 key** 的分数中的最大值。
 
 此处必须分两种情况，因为 $m_1^{(2)}$ 的值决定了旧统计量是否需要重新定标。
 
@@ -318,7 +323,7 @@ $m_1^{(2)}[r] \in \mathbb{R}$ 的含义：第 $r$ 个 query 在处理完前 $2$ 
 
 $$\tilde{P}_1^{(2)}[r,c] = \exp\left(S_1^{(2)}[r,c] - m_1^{(2)}[r]\right) = \exp\left(S_1^{(2)}[r,c] - m_1^{(1)}[r]\right)$$
 
-$\tilde{P}_1^{(2)}[r,c]$ 的含义：第 $r$ 个 query 与第 $c$ 个新 key 的分数，相对于当前全局最大值 $m_1^{(2)}[r]$ 的指数值。
+$\tilde{P}_1^{(2)}[r,c]$ 的含义：第 $r$ 个 query 行向量与第 $c$ 个新 key 行向量的分数，相对于当前全局最大值 $m_1^{(2)}[r]$ 的指数值。
 
 **Step 4：更新全局行指数和。**
 
@@ -348,6 +353,7 @@ $$\ell_1^{(2)}[r] = \exp\left(m_1^{(1)}[r] - m_1^{(2)}[r]\right) \cdot \ell_1^{(
 
 **Step 5：更新未归一化输出。**
 
+
 $$O_1^{(2)}[r,:] = \exp\left(m_1^{(1)}[r] - m_1^{(2)}[r]\right) \cdot O_1^{(1)}[r,:] + \sum_{c=1}^{2} \tilde{P}_1^{(2)}[r,c] \cdot \mathbf{v}_{2+c}$$
 
 **来源：** 第二节统一更新公式的向量化。旧加权和 $O_1^{(1)}[r,:]$ 是以旧基准 $m_1^{(1)}[r]$ 计算的，必须乘以相同定标因子 $\exp(m_1^{(1)}[r] - m_1^{(2)}[r])$ 收缩后，才表示新基准下的加权和，再加上新块的贡献。
@@ -374,6 +380,8 @@ $$L_1 = m_1^{(2)} + \log\left(\ell_1^{(2)}\right) \in \mathbb{R}^{2}$$
 ---
 
 ## 四、FlashAttention-2 前向传播的一般形式（Algorithm 1）
+
+![](img/flash-atten-v2-algo1.png)
 
 对第 $i$ 个 query 块，定义：
 - $S_i^{(j)} = Q_i K_j^\top \in \mathbb{R}^{B_r \times B_c}$：第 $i$ 个 query 块与第 $j$ 个 key 块的**局部分数矩阵**。元素 $S_i^{(j)}[r,c]$ 是第 $r$ 个 query 与第 $c$ 个 key 的标量内积。
