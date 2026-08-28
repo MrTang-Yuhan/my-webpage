@@ -13,7 +13,7 @@ tags:
 - FlashAttention v1：*FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness* (NeurIPS 2022) —— https://arxiv.org/abs/2205.14135
 - FlashAttention v2：*FlashAttention-2: Faster Attention with Better Parallelism and Work Partitioning* (arXiv 2023) —— https://arxiv.org/abs/2307.08691
 
-> ***这些写 html****
+> FlashAttention v2 过程演示可视化脚本：[flashattention_v2_visualizer.html](attach/flashattention_v2_visualizer.html)
 
 ---
 
