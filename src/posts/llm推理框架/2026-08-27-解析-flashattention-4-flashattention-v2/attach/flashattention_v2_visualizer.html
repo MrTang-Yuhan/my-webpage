@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlashAttention-2 交互可视化</title>
+<style>
+:root {
+  --kimi-font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --kimi-font-mono: "SF Mono", "Fira Code", "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  --kimi-color-text-primary: #1a1a1a;
+  --kimi-color-text-secondary: #555;
+  --kimi-color-text-tertiary: #888;
+  --kimi-color-text-quaternary: #aaa;
+  --kimi-color-surface: #fff;
+  --kimi-color-surface-muted: #f5f5f5;
+  --kimi-color-surface-raised: #fff;
+  --kimi-color-surface-strong: #eee;
+  --kimi-color-border: #ddd;
+  --kimi-color-accent: #2563eb;
+  --kimi-color-warning: #d97706;
+  --kimi-chart-1: #2563eb;
+  --kimi-chart-2: #dc2626;
+  --kimi-chart-3: #16a34a;
+  --kimi-chart-4: #9333ea;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --kimi-color-text-primary: #f0f0f0;
+    --kimi-color-text-secondary: #bbb;
+    --kimi-color-text-tertiary: #888;
+    --kimi-color-text-quaternary: #666;
+    --kimi-color-surface: #1a1a1a;
+    --kimi-color-surface-muted: #222;
+    --kimi-color-surface-raised: #2a2a2a;
+    --kimi-color-surface-strong: #333;
+    --kimi-color-border: #444;
+    --kimi-color-accent: #3b82f6;
+    --kimi-color-warning: #f59e0b;
+    --kimi-chart-1: #60a5fa;
+    --kimi-chart-2: #f87171;
+    --kimi-chart-3: #4ade80;
+    --kimi-chart-4: #c084fc;
+  }
+}
+body { margin: 0; padding: 20px; background: var(--kimi-color-surface); font-family: var(--kimi-font-sans); color: var(--kimi-color-text-primary); }
+#fa-root { width: 100%; max-width: 920px; margin: 0 auto; }
+#fa-root * { box-sizing: border-box; }
+.fa-params { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; padding: 10px 14px; background: var(--kimi-color-surface-muted); border-radius: 8px; border: 1px solid var(--kimi-color-border); }
+.fa-param { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--kimi-color-text-secondary); }
+.fa-param b { color: var(--kimi-color-text-primary); font-weight: 500; }
+.fa-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+.fa-tabs { display: flex; gap: 4px; background: var(--kimi-color-surface-muted); padding: 4px; border-radius: 8px; }
+.fa-tab { padding: 7px 18px; border: none; background: transparent; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--kimi-color-text-secondary); transition: all .15s ease-out; }
+.fa-tab.active { background: var(--kimi-color-surface-raised); color: var(--kimi-color-text-primary); box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+.fa-controls { display: flex; align-items: center; gap: 8px; }
+.fa-btn { padding: 7px 16px; border: 1px solid var(--kimi-color-border); background: var(--kimi-color-surface); border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--kimi-color-text-primary); transition: all .15s; font-weight: 500; }
+.fa-btn:hover { background: var(--kimi-color-surface-raised); }
+.fa-btn:disabled { opacity: .35; cursor: not-allowed; }
+.fa-step { font-size: 13px; color: var(--kimi-color-text-secondary); min-width: 80px; text-align: center; font-variant-numeric: tabular-nums; font-weight: 500; }
+.fa-stage { display: flex; gap: 14px; align-items: flex-start; min-height: 380px; }
+.fa-panel { flex: 1; min-width: 0; }
+.fa-title { font-size: 11px; font-weight: 500; color: var(--kimi-color-text-tertiary); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+.fa-hbm { border: 1px dashed var(--kimi-color-border); border-radius: 10px; padding: 12px; background: color-mix(in srgb, var(--kimi-color-surface-muted) 40%, transparent); }
+.fa-sram { border: 2px solid var(--kimi-color-accent); border-radius: 10px; padding: 12px; background: color-mix(in srgb, var(--kimi-color-accent) 5%, transparent); position: relative; }
+.fa-sram::before { content: "SRAM"; position: absolute; top: -10px; right: 12px; background: var(--kimi-color-accent); color: #fff; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+.fa-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.fa-mat { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.fa-label { font-size: 11px; font-weight: 500; color: var(--kimi-color-text-secondary); }
+.fa-cells { display: grid; gap: 2px; }
+.fa-cell { width: 24px; height: 24px; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 600; transition: all .15s; }
+.fa-cell.q { background: color-mix(in srgb, var(--kimi-chart-1) 20%, transparent); color: var(--kimi-chart-1); }
+.fa-cell.k { background: color-mix(in srgb, var(--kimi-chart-2) 20%, transparent); color: var(--kimi-chart-2); }
+.fa-cell.v { background: color-mix(in srgb, var(--kimi-chart-3) 20%, transparent); color: var(--kimi-chart-3); }
+.fa-cell.o { background: color-mix(in srgb, var(--kimi-chart-4) 20%, transparent); color: var(--kimi-chart-4); }
+.fa-cell.s { background: color-mix(in srgb, var(--kimi-color-text-secondary) 18%, transparent); color: var(--kimi-color-text-secondary); }
+.fa-cell.stat { background: color-mix(in srgb, var(--kimi-color-warning) 18%, transparent); color: var(--kimi-color-warning); }
+.fa-cell.on { outline: 2px solid var(--kimi-color-text-primary); outline-offset: 1px; transform: scale(1.08); }
+.fa-cell.off { opacity: .2; }
+.fa-arrow { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-width: 44px; padding-top: 20px; }
+.fa-arrow svg { width: 26px; height: 26px; color: var(--kimi-color-text-tertiary); }
+.fa-ops { display: flex; flex-direction: column; gap: 3px; align-items: center; }
+.fa-op { font-size: 10px; padding: 2px 8px; border-radius: 4px; background: var(--kimi-color-surface-strong); color: var(--kimi-color-text-secondary); white-space: nowrap; }
+.fa-explain { margin-top: 12px; padding: 14px 16px; border-radius: 10px; background: var(--kimi-color-surface-muted); border-left: 3px solid var(--kimi-color-accent); }
+.fa-explain h4 { margin: 0 0 6px; font-size: 14px; font-weight: 500; }
+.fa-explain p { margin: 0; font-size: 13px; line-height: 1.6; color: var(--kimi-color-text-secondary); }
+.fa-formula-box { margin-top: 10px; padding: 12px 14px; border-radius: 8px; background: var(--kimi-color-surface-strong); border: 1px solid var(--kimi-color-border); }
+.fa-formula { font-family: var(--kimi-font-mono, monospace); font-size: 14px; color: var(--kimi-color-text-primary); line-height: 1.6; overflow-x: auto; white-space: pre-wrap; }
+.fa-legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; }
+.fa-leg { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--kimi-color-text-tertiary); }
+.fa-dot { width: 10px; height: 10px; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="fa-root">
+<div class="fa-params">
+  <div class="fa-param">序列长度 <b>N = 4</b></div>
+  <div class="fa-param">特征维度 <b>d = 3</b></div>
+  <div class="fa-param">Query块大小 <b>Bᵣ = 2</b></div>
+  <div class="fa-param">Key/Value块大小 <b>Bc = 2</b></div>
+  <div class="fa-param">Query块数 <b>Tᵣ = 2</b></div>
+  <div class="fa-param">Key块数 <b>Tc = 2</b></div>
+</div>
+
+<div class="fa-header">
+  <div class="fa-tabs">
+    <button class="fa-tab active" data-mode="forward">前向传播</button>
+    <button class="fa-tab" data-mode="backward">反向传播</button>
+  </div>
+  <div class="fa-controls">
+    <button class="fa-btn" id="btn-prev">上一步</button>
+    <span class="fa-step" id="step-label">1 / 14</span>
+    <button class="fa-btn" id="btn-next">下一步</button>
+  </div>
+</div>
+
+<div class="fa-stage" id="stage"></div>
+
+<div class="fa-explain" id="explain">
+  <h4 id="ex-title">初始化</h4>
+  <p id="ex-text">准备开始...</p>
+  <div class="fa-formula-box" id="ex-formula-wrap" style="display:none">
+    <div class="fa-formula" id="ex-formula"></div>
+  </div>
+</div>
+
+<div class="fa-legend">
+  <div class="fa-leg"><div class="fa-dot" style="background:var(--kimi-chart-1)"></div>Query (Q)</div>
+  <div class="fa-leg"><div class="fa-dot" style="background:var(--kimi-chart-2)"></div>Key (K)</div>
+  <div class="fa-leg"><div class="fa-dot" style="background:var(--kimi-chart-3)"></div>Value (V)</div>
+  <div class="fa-leg"><div class="fa-dot" style="background:var(--kimi-chart-4)"></div>Output (O)</div>
+  <div class="fa-leg"><div class="fa-dot" style="background:var(--kimi-color-warning)"></div>统计量 (m, ℓ, L, D)</div>
+</div>
+</div>
+
+<script>
+(function(){
+const forward = [
+  {t:"初始化",d:"为第1个query块初始化统计量。O₁⁽⁰⁾ = 0 ∈ ℝ²ˣ³，m₁⁽⁰⁾ = [−∞, −∞] ∈ ℝ²，ℓ₁⁽⁰⁾ = [0, 0] ∈ ℝ²",f:"",hbm:["Q1","Q2","K1","K2","V1","V2"],sram:["O1","m1","l1"],act:[],ops:[]},
+  {t:"加载 Q₁, K₁, V₁ → SRAM",d:"从HBM加载第1个query块和第1个key/value块到SRAM。SRAM容量有限，只加载当前计算所需的块。",f:"",hbm:["Q1","Q2","K1","K2","V1","V2"],sram:["Q1","K1","V1","O1","m1","l1"],act:["Q1","K1","V1"],ops:["Load"]},
+  {t:"计算分数矩阵 S₁⁽¹⁾ = Q₁K₁ᵀ",d:"通过矩阵乘法计算query块与key块的内积，得到 2×2 分数矩阵。每个元素是query与key的标量内积。",f:"S₁⁽¹⁾ = Q₁ K₁ᵀ  ∈ ℝ²ˣ²",hbm:["Q1","Q2","K1","K2","V1","V2"],sram:["Q1","K1","V1","S11","O1","m1","l1"],act:["Q1","K1"],ops:["matmul"]},
+  {t:"更新行最大值 m₁⁽¹⁾",d:"逐行取当前分数矩阵的最大值，与旧全局最大值比较。由于初始值为 −∞，此时 m₁⁽¹⁾ 等于 S₁⁽¹⁾ 的逐行最大值。",f:"m₁⁽¹⁾ = max( m₁⁽⁰⁾ ,  rowmax(S₁⁽¹⁾) )  ∈ ℝ²",hbm:["Q1","Q2","K1","K2","V1","V2"],sram:["Q1","K1","V1","S11","m1","O1","l1"],act:[],ops:["rowmax","max"]},
+  {t:"计算平移指数 P̃₁⁽¹⁾ = exp(S₁⁽¹⁾ − m₁⁽¹⁾)",d:"逐行广播减法：S₁⁽¹⁾ 的第 r 行减去 m₁⁽¹⁾ 的第 r 个元素。再逐元素取指数，得到未归一化注意力权重。最大值为 exp(0)=1，避免溢出。",f:"P̃₁⁽¹⁾ = exp( S₁⁽¹⁾ − m₁⁽¹⁾ )  ∈ ℝ²ˣ²",hbm:["Q1","Q2","K1","K2","V1","V2"],sram:["Q1","K1","V1","S11","m1","P11","O1","l1"],act:[],ops:["broadcast sub","exp"]},
+  {t:"更新指数和 ℓ₁⁽¹⁾",d:"旧指数和经定标因子调整后，加上新块的平移指数之和。由于 m₁⁽⁰⁾ = −∞，定标因子为 0，旧项消失。",f:"ℓ₁⁽¹⁾ = exp(m₁⁽⁰⁾−m₁⁽¹⁾) ⊙ ℓ₁⁽⁰⁾ + rowsum( P̃₁⁽¹⁾ )",hbm:["Q1","Q2","K1","K2","V1","V2"],sram:["Q1","K1","V1","S11","m1","P11","l1","O1"],act:[],ops:["scale","rowsum","add"]},
+  {t:"更新输出 O₁⁽¹⁾",d:"旧加权和经定标因子调整后（此处为 0），加上新块的加权 value 之和。O₁⁽¹⁾[r,:] = Σ_c P̃₁⁽¹⁾[r,c] · v_c",f:"O₁⁽¹⁾ = diag( exp(m₁⁽⁰⁾−m₁⁽¹⁾) )⁻¹ O₁⁽⁰⁾ + P̃₁⁽¹⁾ V₁",hbm:["Q1","Q2","K1","K2","V1","V2"],sram:["Q1","K1","V1","S11","m1","P11","l1","O1"],act:["V1"],ops:["scale","matmul","add"]},
+  {t:"加载 K₂, V₂ → SRAM",d:"SRAM 容量有限，加载第2个key/value块，替换 K₁,V₁。Q₁ 和统计量保留在SRAM中继续累积。",f:"",hbm:["Q1","Q2","K1","K2","V1","V2"],sram:["Q1","K2","V2","S11","m1","P11","l1","O1"],act:["K2","V2"],ops:["Load","Evict"]},
+  {t:"计算 S₁⁽²⁾ 并更新 m₁⁽²⁾",d:"计算 Q₁ 与 K₂ 的内积得到新分数，与旧最大值 m₁⁽¹⁾ 逐元素比较，取较大者作为新的全局行最大值。",f:"S₁⁽²⁾ = Q₁ K₂ᵀ ,   m₁⁽²⁾ = max( m₁⁽¹⁾ , rowmax(S₁⁽²⁾) )",hbm:["Q1","Q2","K1","K2","V1","V2"],sram:["Q1","K2","V2","S12","m1","l1","O1"],act:["Q1","K2"],ops:["matmul","rowmax","max"]},
+  {t:"计算 P̃₁⁽²⁾ = exp(S₁⁽²⁾ − m₁⁽²⁾)",d:"以新的全局最大值 m₁⁽²⁾ 为基准，计算第2个key块的平移指数。若某行最大值未更新，基准不变。",f:"P̃₁⁽²⁾ = exp( S₁⁽²⁾ − m₁⁽²⁾ )",hbm:["Q1","Q2","K1","K2","V1","V2"],sram:["Q1","K2","V2","S12","m1","P12","l1","O1"],act:[],ops:["broadcast sub","exp"]},
+  {t:"更新 ℓ₁⁽²⁾ 和 O₁⁽²⁾",d:"若某行最大值提升 (m₁⁽²⁾ > m₁⁽¹⁾)，旧统计量需乘以定标因子 exp(m₁⁽¹⁾−m₁⁽²⁾) < 1 进行收缩，再加新块贡献。",f:"ℓ₁⁽²⁾ = scale · ℓ₁⁽¹⁾ + rowsum( P̃₁⁽²⁾ )\nO₁⁽²⁾ = scale · O₁⁽¹⁾ + P̃₁⁽²⁾ V₂",hbm:["Q1","Q2","K1","K2","V1","V2"],sram:["Q1","K2","V2","S12","m1","P12","l1","O1"],act:["V2"],ops:["scale","rowsum","matmul","add"]},
+  {t:"归一化并保存 L₁",d:"循环结束，O₁⁽²⁾ 除以 ℓ₁⁽²⁾ 得到标准 softmax 输出。保存 L₁ = m₁⁽²⁾ + log(ℓ₁⁽²⁾) 供反向传播重算概率。",f:"O₁ = diag( ℓ₁⁽²⁾ )⁻¹ O₁⁽²⁾\nL₁ = m₁⁽²⁾ + log( ℓ₁⁽²⁾ )",hbm:["Q1","Q2","K1","K2","V1","V2","O1","L1"],sram:["O1","L1"],act:["O1","L1"],ops:["div","log","add"]},
+  {t:"处理第2个query块 Q₂",d:"对 Q₂ 重复上述完整过程：依次处理 K₁,V₁ 和 K₂,V₂，维护独立的 m₂,ℓ₂,O₂，最后归一化并保存 L₂。",f:"O₂ = softmax(Q₂ Kᵀ) V ,   L₂ = m₂ + log(ℓ₂)",hbm:["Q1","Q2","K1","K2","V1","V2","O1","O2","L1","L2"],sram:["Q2","K1","V1","K2","V2","O2","L2"],act:["Q2","O2","L2"],ops:["full block"]},
+  {t:"前向传播完成",d:"所有query块处理完毕。输出 O ∈ ℝ⁴ˣ³ 和 logsumexp L ∈ ℝ⁴ 已写回HBM。未保存任何 N×N 中间矩阵。",f:"O = [O₁ ; O₂] ∈ ℝ⁴ˣ³ ,   L = [L₁ ; L₂] ∈ ℝ⁴",hbm:["Q1","Q2","K1","K2","V1","V2","O1","O2","L1","L2"],sram:[],act:[],ops:["Writeback"]}
+];
+
+const backward = [
+  {t:"预计算 D = rowsum(dO ⊙ O)",d:"利用已保存的 O 和传入的 dO，逐元素相乘后按行求和，得到 softmax 梯度修正项 D ∈ ℝ⁴。此步完全在SRAM内完成，复杂度 O(Bᵣd)。",f:"D = rowsum( dO ⊙ O )  ∈ ℝ⁴",hbm:["O1","O2","dO1","dO2","D"],sram:["O1","dO1","D1"],act:["O1","dO1","D1"],ops:["hadamard","rowsum"]},
+  {t:"外层 j=1：加载 K₁, V₁ → SRAM",d:"初始化 dK₁ = 0, dV₁ = 0 在SRAM中。外层循环按key/value块遍历，每个key块只需加载一次。",f:"dK₁ = 0 ,  dV₁ = 0",hbm:["K1","K2","V1","V2","dK1","dV1"],sram:["K1","V1","dK1","dV1"],act:["K1","V1"],ops:["Load","Init"]},
+  {t:"内层 i=1：加载 Q₁, dO₁, L₁, D₁",d:"加载第1个query块及其相关统计量到SRAM。内层循环按query块遍历，重算该query与当前key块的交互。",f:"",hbm:["Q1","Q2","dO1","dO2","L1","L2","D1","D2"],sram:["Q1","dO1","L1","D1","K1","V1","dK1","dV1"],act:["Q1","dO1","L1","D1"],ops:["Load"]},
+  {t:"重算概率 P₁⁽¹⁾ = exp(S₁⁽¹⁾ − L₁)",d:"利用保存的 L₁ 和重新计算的 S₁⁽¹⁾ 恢复全局softmax概率。关键：exp(S−L) = exp(S−m) / ℓ，无需保存完整 P 矩阵。",f:"P₁⁽¹⁾ = exp( Q₁ K₁ᵀ − L₁ )",hbm:["Q1","K1","L1"],sram:["Q1","K1","S11","L1","P11","dO1","D1","dK1","dV1"],act:["Q1","K1","L1"],ops:["matmul","exp","broadcast sub"]},
+  {t:"累加 dV₁ += (P₁⁽¹⁾)ᵀ dO₁",d:"每个key的梯度等于所有query对其的加权梯度贡献。P 转置后行索引从query变为key。",f:"dV₁ ← dV₁ + P₁⁽¹⁾ᵀ dO₁",hbm:["dV1"],sram:["P11","dO1","dV1"],act:["dV1"],ops:["matmul_T","add"]},
+  {t:"计算 dP₁⁽¹⁾ = dO₁ V₁ᵀ",d:"概率梯度：输出梯度与value的内积。矩阵乘法同时计算块内所有query-key对的梯度。",f:"dP₁⁽¹⁾ = dO₁ V₁ᵀ  ∈ ℝ²ˣ²",hbm:[],sram:["dO1","V1","dP11"],act:["dO1","V1"],ops:["matmul"]},
+  {t:"计算 dS₁⁽¹⁾ = P₁⁽¹⁾ ⊙ (dP₁⁽¹⁾ − D₁ 1ᵀ)",d:"softmax梯度公式 ds = p ⊙ (dp − D·1) 的分块实现。D₁ 1ᵀ 实现逐行广播减法，修正归一化耦合效应。",f:"dS₁⁽¹⁾ = P₁⁽¹⁾ ⊙ ( dP₁⁽¹⁾ − D₁ · 1₂ᵀ )",hbm:[],sram:["P11","dP11","D1","dS11"],act:[],ops:["broadcast sub","hadamard"]},
+  {t:"更新 dQ₁ += dS₁⁽¹⁾ K₁ 和 dK₁ += dS₁⁽¹⁾ᵀ Q₁",d:"通过链式法则将分数梯度回传到query和key。dQ 需 atomic adds 支持并行；dK 在SRAM内累加，内层循环结束写回。",f:"dQ₁ ← dQ₁ + dS₁⁽¹⁾ K₁\ndK₁ ← dK₁ + dS₁⁽¹⁾ᵀ Q₁",hbm:["dK1"],sram:["dS11","Q1","K1","dQ1","dK1"],act:["dQ1","dK1"],ops:["matmul","matmul_T","add"]},
+  {t:"内层 i=2：处理 Q₂, dO₂, L₂, D₂",d:"对第2个query块重复：重算 P₂⁽¹⁾、累加 dV₁、计算 dS₂⁽¹⁾、更新 dQ₂ 和 dK₁。两个query块共享同一key块 K₁,V₁。",f:"同上，i = 2",hbm:["Q2","dO2","L2","D2","dK1","dV1"],sram:["Q2","dO2","L2","D2","K1","V1","dS21","dQ2","dK1","dV1"],act:["Q2","dO2","L2","D2","dK1","dV1"],ops:["full inner"]},
+  {t:"写回 dK₁, dV₁ → HBM",d:"第1个key/value块受到所有query块的梯度贡献已累加完毕，写回HBM。SRAM腾出空间给下一key块。",f:"",hbm:["dK1","dV1"],sram:[],act:["dK1","dV1"],ops:["Writeback"]},
+  {t:"外层 j=2：加载 K₂, V₂",d:"对第2个key/value块重复完整内层循环 (i=1,2)。初始化 dK₂=0, dV₂=0，处理完两个query块后写回。",f:"dK₂ = 0 ,  dV₂ = 0",hbm:["K2","V2","dK2","dV2"],sram:["K2","V2","dK2","dV2","Q1","Q2","dO1","dO2","L1","L2","D1","D2"],act:["K2","V2","dK2","dV2"],ops:["Load","Init","full outer"]},
+  {t:"反向传播完成",d:"所有 dQ, dK, dV 已计算完毕并写回HBM。全程未保存 N×N 注意力矩阵，内存复杂度 O(N)。",f:"dQ, dK, dV ∈ ℝ⁴ˣ³",hbm:["dQ1","dQ2","dK1","dK2","dV1","dV2"],sram:[],act:["dQ1","dQ2","dK1","dK2","dV1","dV2"],ops:["Done"]}
+];
+
+let mode='forward', step=0, data=forward;
+
+function setMode(m){
+  mode=m; step=0;
+  document.querySelectorAll('.fa-tab').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
+  data = m==='forward'?forward:backward;
+  render();
+}
+
+function prevStep(){ if(step>0){step--;render();} }
+function nextStep(){ if(step<data.length-1){step++;render();} }
+
+function render(){
+  const d=data[step];
+  document.getElementById('step-label').textContent=(step+1)+' / '+data.length;
+  document.getElementById('btn-prev').disabled=step===0;
+  document.getElementById('btn-next').disabled=step===data.length-1;
+  document.getElementById('ex-title').textContent=d.t;
+  document.getElementById('ex-text').textContent=d.d;
+  const wrap=document.getElementById('ex-formula-wrap');
+  const fm=document.getElementById('ex-formula');
+  if(d.f){ fm.textContent=d.f; wrap.style.display='block'; }
+  else { wrap.style.display='none'; }
+
+  const actSet=new Set(d.act.map(s=>s.toLowerCase()));
+  const sramSet=new Set(d.sram.map(s=>s.toLowerCase()));
+  const isFwd=mode==='forward';
+  const hbmBlocks=isFwd?['Q1','Q2','K1','K2','V1','V2','O1','O2','L1','L2']
+    :['Q1','Q2','K1','K2','V1','V2','O1','O2','dO1','dO2','L1','L2','D1','D2','dK1','dK2','dV1','dV2'];
+
+  let html='<div class="fa-panel"><div class="fa-title">HBM（高带宽内存）</div><div class="fa-hbm"><div class="fa-grid">';
+  hbmBlocks.forEach(name=>{
+    const key=name.toLowerCase();
+    const type=key.includes('q')&&!key.includes('d')?'q':key.includes('k')&&!key.includes('d')?'k':key.includes('v')&&!key.includes('d')?'v':key.includes('o')&&!key.includes('d')?'o':'stat';
+    const inSram=sramSet.has(key);
+    const active=actSet.has(key);
+    const isVec=key.includes('l')||key.includes('d');
+    const cols=isVec?1:3, cnt=isVec?2:6;
+    html+='<div class="fa-mat"><div class="fa-label">'+name+' <span style="color:var(--kimi-color-text-quaternary);font-size:10px">'+(isVec?'2×1':'2×3')+'</span></div><div class="fa-cells" style="grid-template-columns:repeat('+cols+',1fr)">';
+    for(let i=0;i<cnt;i++) html+='<div class="fa-cell '+type+(inSram?' on':'')+(active?'':' off')+'">'+name[0].toUpperCase()+'</div>';
+    html+='</div></div>';
+  });
+  html+='</div></div></div>';
+
+  html+='<div class="fa-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg><div class="fa-ops">'+d.ops.map(o=>'<span class="fa-op">'+o+'</span>').join('')+'</div></div>';
+
+  html+='<div class="fa-panel"><div class="fa-title">SRAM（静态随机存取存储器）</div><div class="fa-sram"><div class="fa-grid">';
+  if(!d.sram.length) html+='<div style="color:var(--kimi-color-text-quaternary);font-size:12px;padding:20px;text-align:center">SRAM 空闲</div>';
+  else d.sram.forEach(name=>{
+    const key=name.toLowerCase();
+    const type=key.includes('q')&&!key.includes('d')?'q':key.includes('k')&&!key.includes('d')?'k':key.includes('v')&&!key.includes('d')?'v':key.includes('o')&&!key.includes('d')&&!key.includes('l')?'o':(key.includes('m')||key.includes('l')||key.includes('d')||(key.includes('s')&&key.length<3))?'stat':'s';
+    const isVec=(key.includes('m')||key.includes('l')||key.includes('d')||(key.includes('s')&&key.length<3))&&!key.includes('s1')&&key.length<4;
+    const isS=key.includes('s')&&key.length>2, isP=key.includes('p');
+    const cols=isVec?1:(isS||isP?2:3), cnt=isVec?2:(isS||isP?4:6);
+    html+='<div class="fa-mat"><div class="fa-label">'+name+' <span style="color:var(--kimi-color-text-quaternary);font-size:10px">'+(isVec?'2×1':(isS||isP?'2×2':'2×3'))+'</span></div><div class="fa-cells" style="grid-template-columns:repeat('+cols+',1fr)">';
+    for(let i=0;i<cnt;i++) html+='<div class="fa-cell '+type+' on">'+name[0].toUpperCase()+'</div>';
+    html+='</div></div>';
+  });
+  html+='</div></div></div>';
+
+  document.getElementById('stage').innerHTML=html;
+}
+
+document.getElementById('btn-prev').addEventListener('click',prevStep);
+document.getElementById('btn-next').addEventListener('click',nextStep);
+document.querySelectorAll('.fa-tab').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
+
+render();
+})();
+</script>
+
+</body>
+</html>

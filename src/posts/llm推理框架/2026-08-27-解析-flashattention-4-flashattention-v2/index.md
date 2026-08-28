@@ -2,7 +2,7 @@
 layout: post.njk
 post_id: 2026-08-27-解析-flashattention-4-flashattention-v2
 archive: llm推理框架
-title: 解析 FlashAttention（4）：FlashAttention-v2 （未完成）
+title: "解析 FlashAttention（4）：FlashAttention-v2 "
 date: 2026-08-27
 tags:
   - post
@@ -13,7 +13,7 @@ tags:
 - FlashAttention v1：*FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness* (NeurIPS 2022) —— https://arxiv.org/abs/2205.14135
 - FlashAttention v2：*FlashAttention-2: Faster Attention with Better Parallelism and Work Partitioning* (arXiv 2023) —— https://arxiv.org/abs/2307.08691
 
-> ***这些写 html****
+> FlashAttention v2 过程演示可视化脚本：[flashattention_v2_visualizer.html](attach/flashattention_v2_visualizer.html)
 
 ---
 
@@ -385,9 +385,9 @@ $$L_1 = m_1^{(2)} + \log\left(\ell_1^{(2)}\right) \in \mathbb{R}^{2}$$
 
 对第 $i$ 个 query 块，定义：
 - $S_i^{(j)} = Q_i K_j^\top \in \mathbb{R}^{B_r \times B_c}$：第 $i$ 个 query 块与第 $j$ 个 key 块的**局部分数矩阵**。元素 $S_i^{(j)}[r,c]$ 是第 $r$ 个 query 与第 $c$ 个 key 的标量内积。
-- $m_i^{(j)} \in \mathbb{R}^{B_r}$：**全局行最大值向量**。第 $r$ 个元素是第 $r$ 个 query 在处理完前 $j$ 个 key 块后的全局最大值。初始 $m_i^{(0)} = (-\infty)^{B_r}$。
-- $\ell_i^{(j)} \in \mathbb{R}^{B_r}$：**全局行指数和向量**。第 $r$ 个元素是第 $r$ 个 query 在处理完前 $j$ 个 key 块后，以 $m_i^{(j)}[r]$ 为基准的指数和。初始 $\ell_i^{(0)} = \mathbf{0}^{B_r}$。
-- $O_i^{(j)} \in \mathbb{R}^{B_r \times d}$：**未归一化累积输出矩阵**。第 $r$ 行是第 $r$ 个 query 在处理完前 $j$ 个 key 块后，以 $m_i^{(j)}[r]$ 为基准的 value 加权累加和。初始 $O_i^{(0)} = \mathbf{0}^{B_r \times d}$。
+- $m_i^{(j)} \in \mathbb{R}^{B_r}$：**全局行最大值向量**。第 $r$ 个元素是第 $r$ 个 query 行向量在处理完前 $j$ 个 key 块后的全局最大值。初始 $m_i^{(0)} = (-\infty)^{B_r}$。
+- $\ell_i^{(j)} \in \mathbb{R}^{B_r}$：**全局行指数和向量**。第 $r$ 个元素是第 $r$ 个 query 行向量在处理完前 $j$ 个 key 块后，以 $m_i^{(j)}[r]$ 为基准的指数和。初始 $\ell_i^{(0)} = \mathbf{0}^{B_r}$。
+- $O_i^{(j)} \in \mathbb{R}^{B_r \times d}$：**未归一化累积输出矩阵**。第 $r$ 行是第 $r$ 个 query 行向量在处理完前 $j$ 个 key 块后，以 $m_i^{(j)}[r]$ 为基准的 value 加权累加和。初始 $O_i^{(0)} = \mathbf{0}^{B_r \times d}$。
 
 对 $j = 1, \dots, T_c$，依次执行：
 
@@ -395,7 +395,7 @@ $$L_1 = m_1^{(2)} + \log\left(\ell_1^{(2)}\right) \in \mathbb{R}^{2}$$
 2. $m_i^{(j)} = \max\left(m_i^{(j-1)},\ \text{rowmax}\left(S_i^{(j)}\right)\right) \in \mathbb{R}^{B_r}$
 3. $\tilde{P}_i^{(j)} = \exp\left(S_i^{(j)} - m_i^{(j)}\right) \in \mathbb{R}^{B_r \times B_c}$（逐行广播减法）
 
-   **定义：** $\tilde{P}_i^{(j)}$ 为**局部平移指数矩阵**。元素 $\tilde{P}_i^{(j)}[r,c] = \exp(S_i^{(j)}[r,c] - m_i^{(j)}[r])$ 表示第 $r$ 个 query 与第 $c$ 个 key 的分数相对于当前全局最大值 $m_i^{(j)}[r]$ 的指数值。
+   **定义：** $\tilde{P}_i^{(j)}$ 为**局部平移指数矩阵**。元素 $\tilde{P}_i^{(j)}[r,c] = \exp(S_i^{(j)}[r,c] - m_i^{(j)}[r])$ 表示第 $r$ 个 query 行向量与第 $c$ 个 key 的分数相对于当前全局最大值 $m_i^{(j)}[r]$ 的指数值。
 
    **用途：** $\tilde{P}_i^{(j)}$ 是当前 key 块对当前 query 块的未归一化注意力权重。减去行最大值确保数值稳定性，最大元素值为 $1$。
 
@@ -438,18 +438,25 @@ $$\frac{\partial p_m}{\partial s_n} = \frac{0 - \exp(s_m) \cdot \exp(s_n)}{\left
 $$\frac{\partial p_m}{\partial s_n} = p_m (\delta_{mn} - p_n)$$
 
 由链式法则：
+
+$$(ds)_n = \frac{\partial L}{\partial s_n} = \sum_{m=1}^{N} \underbrace{\frac{\partial L}{\partial p_m}}_{(dp)_m} \cdot \underbrace{\frac{\partial p_m}{\partial s_n}}_{\text{Jacobian}}$$
+
+代入得：
+
 $$(ds)_n = \sum_{m=1}^{N} p_m (\delta_{mn} - p_n) (dp)_m = p_n (dp)_n - p_n \sum_{m=1}^{N} p_m (dp)_m$$
 
 定义标量 $D_n = \sum_{m=1}^{N} p_m (dp)_m = p^\top dp \in \mathbb{R}$，则：
 $$ds = p \odot (dp - D_n \cdot \mathbf{1}_N) \in \mathbb{R}^N$$
 
-**定义：** $D_n$ 为**softmax 梯度修正项**。它是输出梯度 $dp$ 与概率 $p$ 的内积，表示当前 query 对所有 key 的加权梯度贡献。
+**定义：** $D_n$ 为**softmax 梯度修正项**。它是输出梯度 $dp$ 与概率 $p$ 的内积，表示当前 query 行向量对所有 key 的加权梯度贡献。
 
 **用途：** $D_n$ 用于修正 softmax 的梯度。由于 softmax 的归一化特性，增大某个分数会通过分母影响其他分数，$D_n$ 正是这一耦合效应的量化。
 
 ---
 
 ### 5.2 $D_i$ 的代数简化（Algorithm 2 第 4 行）
+
+![](img/flash-atten-v2-algo2.png)
 
 对第 $n$ 个 query 行，需计算 $D_n = \sum_{m=1}^{N} P_{n,m} (dP)_{n,m} \in \mathbb{R}$。
 
@@ -477,7 +484,7 @@ $$D_n = \sum_{t=1}^{d} (dO)_{n,t} O_{n,t}$$
 对第 $i$ 个 query 块，$dO_i, O_i \in \mathbb{R}^{B_r \times d}$，则：
 $$D_i = \text{rowsum}\left(dO_i \odot O_i\right) \in \mathbb{R}^{B_r}$$
 
-**定义：** $D_i$ 为**分块 softmax 梯度修正向量**。第 $r$ 个元素 $D_i[r]$ 对应第 $i$ 块中第 $r$ 个 query 的修正项。
+**定义：** $D_i$ 为**分块 softmax 梯度修正向量**。第 $r$ 个元素 $D_i[r]$ 对应第 $i$ 块中第 $r$ 个 query 行向量的修正项。
 
 **用途：** 计算 $D_i$ 无需访问 $P$ 的任何元素，仅需 $dO_i$ 与 $O_i$ 的逐元素乘积，复杂度 $O(B_r d)$，完全在 SRAM 内完成。
 
@@ -519,7 +526,7 @@ $$D = \text{rowsum}(dO \odot O) \in \mathbb{R}^{4}$$
 
    $$dV_1 \leftarrow dV_1 + \left(P_1^{(1)}\right)^\top dO_1 \in \mathbb{R}^{2 \times 3}$$
 
-   **来源：** 由 $d\mathbf{v}_m = \sum_{n} P_{n,m} d\mathbf{o}_n$，对块内所有行同时计算。$\left(P_1^{(1)}\right)^\top \in \mathbb{R}^{2 \times 2}$ 的转置使得行索引从 query 变为 key，与 $dO_1 \in \mathbb{R}^{2 \times 3}$ 相乘后，得到每个 key 对所有 query 的加权梯度贡献。
+   **来源：** 由 $d\mathbf{v}_m = \sum_{n} P_{n,m} d\mathbf{o}_n$，对块内所有行同时计算。$\left(P_1^{(1)}\right)^\top \in \mathbb{R}^{2 \times 2}$ 的转置使得行索引从 query 变为 key，与 $dO_1 \in \mathbb{R}^{2 \times 3}$ 相乘后，得到每个 key 行向量对所有 query 行向量的加权梯度贡献。
 
    **用途：** $dV_1$ 累加第 $j=1$ 个 value 块受到的所有 query 块的梯度影响。
 
@@ -527,7 +534,7 @@ $$D = \text{rowsum}(dO \odot O) \in \mathbb{R}^{4}$$
 
    $$dP_1^{(1)} = dO_1 V_1^\top \in \mathbb{R}^{2 \times 2}$$
 
-   **定义：** $dP_1^{(1)}$ 为**分块概率梯度矩阵**。元素 $dP_1^{(1)}[r,c] = \sum_{t=1}^{d} (dO_1)_{r,t} (V_1)_{c,t}$ 是第 $r$ 个 query 对第 $c$ 个 key 的概率梯度。
+   **定义：** $dP_1^{(1)}$ 为**分块概率梯度矩阵**。元素 $dP_1^{(1)}[r,c] = \sum_{t=1}^{d} (dO_1)_{r,t} (V_1)_{c,t}$ 是第 $r$ 个 query 行向量对第 $c$ 个 key 行向量的概率梯度。
 
    **来源：** 由 $(dP)_{n,m} = \sum_{t} (dO)_{n,t} V_{m,t}$，对块内所有行同时计算即得矩阵乘法 $dO_1 V_1^\top$。
 
@@ -553,7 +560,7 @@ $$D = \text{rowsum}(dO \odot O) \in \mathbb{R}^{4}$$
 
    $$dK_1 \leftarrow dK_1 + \left(dS_1^{(1)}\right)^\top Q_1 \in \mathbb{R}^{2 \times 3}$$
 
-   **来源：** 由 $d\mathbf{k}_m = \sum_{n} (dS)_{n,m} \mathbf{q}_n$，对块内所有行同时计算。转置 $\left(dS_1^{(1)}\right)^\top \in \mathbb{R}^{2 \times 2}$ 使得行索引从 query 变为 key，与 $Q_1 \in \mathbb{R}^{2 \times 3}$ 相乘后，得到每个 key 对所有 query 的梯度贡献。
+   **来源：** 由 $d\mathbf{k}_m = \sum_{n} (dS)_{n,m} \mathbf{q}_n$，对块内所有行同时计算。转置 $\left(dS_1^{(1)}\right)^\top \in \mathbb{R}^{2 \times 2}$ 使得行索引从 query 变为 key，与 $Q_1 \in \mathbb{R}^{2 \times 3}$ 相乘后，得到每个 key 行向量对所有 query 行向量的梯度贡献。
 
    **用途：** $dK_1$ 累加第 $j=1$ 个 key 块受到的所有 query 块的梯度影响。
 
@@ -651,10 +658,16 @@ $$D = \text{rowsum}(dO \odot O) \in \mathbb{R}^{4}$$
 
 **反向传播。** 论文 Algorithm 2 是 FlashAttention-2（v2）的反向传播。v2 使用 $L_i$ 代替 $(m_i, \ell_i)$ 来重算概率，其余分块累加逻辑与 v1 类似，但配合了序列长度维度的并行化。
 
+![](img/flash-atten-v2-fig2.png)
+
 **非 matmul FLOPs。** v1 每轮内层循环都执行完整的输出 rescaling（除以当前 $\ell$）；v2 将除法延迟到循环结束后，循环内仅保留逐元素指数修正，大幅减少了非 matmul 操作。
 
 **并行维度。** v1 仅在 batch 和 heads 维度并行；v2 额外增加序列长度维度的并行化，前向将 query 行块分配到不同 thread block，反向将 key/value 列块分配到不同 thread block，通过 atomic adds 协调 $dQ$ 的更新。
 
+
+
 **Warp 划分。** v1 采用 Split-K 策略（$K, V$ 切分到不同 warp），需通过 shared memory 通信累加中间结果；v2 改为 Split-Q 策略（$Q$ 切分到不同 warp，$K, V$ 共享），warp 间无需通信，消除了 shared memory 读写瓶颈。
+
+![](img/flash-atten-v2-fig3.png)
 
 **理论峰值利用率。** v1 前向约为 30–50%，反向约为 25–35%；v2 前向可达 50–73%，反向可达 63%，单 A100 在 GPT 训练中可达 225 TFLOPs/s。
