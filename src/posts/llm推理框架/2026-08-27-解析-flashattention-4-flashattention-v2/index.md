@@ -197,11 +197,10 @@ $$\frac{o^{(T_c)}}{\ell^{(T_c)}} = \frac{\sum_{m=1}^{N} \exp(s_m - m^{(T_c)}) v_
 
 ---
 
-> 从这儿开始，还没弄完
 
 ## 三、从标量到矩阵块：$N=4, d=3, B_r=2, B_c=2$
 
-第二节展示了单个 query 对多个 key 的标量运算。在 GPU 上，需将多个标量运算组织成矩阵块，由 Tensor Core 批量执行。以下展示这种组织方式。
+第二节展示了单个 query 块（若干个 query 行向量）对多个 key 块的标量运算。在 GPU 上，需将多个标量运算组织成矩阵块，由 Tensor Core 批量执行。以下展示这种组织方式。
 
 **目标：** 计算第 $i=1$ 个 query 块的输出 $O_1 \in \mathbb{R}^{2 \times 3}$，即同时计算 $\mathbf{q}_1$ 和 $\mathbf{q}_2$ 的 Attention 输出。
 
@@ -211,13 +210,13 @@ $$\frac{o^{(T_c)}}{\ell^{(T_c)}} = \frac{\sum_{m=1}^{N} \exp(s_m - m^{(T_c)}) v_
 
 ### 3.1 初始化
 
-对第 $i=1$ 个 query 块，维护以下变量：
+对**第 $i=1$ 个 query 块**，维护以下变量：
 
-- $O_1^{(0)} = \mathbf{0}^{2 \times 3} \in \mathbb{R}^{2 \times 3}$：**未归一化累积输出矩阵**。第 $r$ 行 $O_1^{(0)}[r,:] \in \mathbb{R}^{1 \times 3}$ 对应第 $r$ 个 query 的未归一化加权和 $o^{(0)}$ 的向量形式。初始为零矩阵，因为尚未处理任何 key/value。
+- $O_1^{(0)} = \mathbf{0}^{2 \times 3} \in \mathbb{R}^{2 \times 3}$：**未归一化累积输出矩阵**。第 $r$ 行 $O_1^{(0)}[r,:] \in \mathbb{R}^{1 \times 3}$ 对应第 $r$ 个 query 行向量的未归一化加权和 $o^{(0)}$ 的向量形式。初始为零矩阵，因为尚未处理任何 key/value。
 
-- $m_1^{(0)} = \begin{bmatrix} -\infty \\ -\infty \end{bmatrix} \in \mathbb{R}^{2}$：**全局行最大值向量**。第 $r$ 个元素 $m_1^{(0)}[r] \in \mathbb{R}$ 对应第 $r$ 个 query 的全局最大值 $m^{(0)}$。初始为负无穷，表示尚未处理任何 key。
+- $m_1^{(0)} = \begin{bmatrix} -\infty \\ -\infty \end{bmatrix} \in \mathbb{R}^{2}$：**全局行最大值向量**。第 $r$ 个元素 $m_1^{(0)}[r] \in \mathbb{R}$ 对应第 $r$ 个 query 行向量的全局最大值 $m^{(0)}$。初始为负无穷，表示尚未处理任何 key。
 
-- $\ell_1^{(0)} = \begin{bmatrix} 0 \\ 0 \end{bmatrix} \in \mathbb{R}^{2}$：**全局行指数和向量**。第 $r$ 个元素 $\ell_1^{(0)}[r] \in \mathbb{R}$ 对应第 $r$ 个 query 的全局指数和 $\ell^{(0)}$。初始为零，因为尚未累加任何指数。
+- $\ell_1^{(0)} = \begin{bmatrix} 0 \\ 0 \end{bmatrix} \in \mathbb{R}^{2}$：**全局行指数和向量**。第 $r$ 个元素 $\ell_1^{(0)}[r] \in \mathbb{R}$ 对应第 $r$ 个 query 行向量的全局指数和 $\ell^{(0)}$。初始为零，因为尚未累加任何指数。
 
 ---
 
@@ -227,7 +226,7 @@ $$\frac{o^{(T_c)}}{\ell^{(T_c)}} = \frac{\sum_{m=1}^{N} \exp(s_m - m^{(T_c)}) v_
 
 $$S_1^{(1)} = Q_1 K_1^\top = \begin{bmatrix} \mathbf{q}_1 \mathbf{k}_1^\top & \mathbf{q}_1 \mathbf{k}_2^\top \\ \mathbf{q}_2 \mathbf{k}_1^\top & \mathbf{q}_2 \mathbf{k}_2^\top \end{bmatrix} \in \mathbb{R}^{2 \times 2}$$
 
-$S_1^{(1)}[r,c] = \mathbf{q}_{2(r-1)+r} \mathbf{k}_c^\top \in \mathbb{R}$ 是标量内积。$S_1^{(1)}$ 的第 $r$ 行包含第 $r$ 个 query 与第 $j=1$ 块中所有 $B_c=2$ 个 key 的分数。
+$S_1^{(1)}[r,c] = \mathbf{q}_{r} \mathbf{k}_c^\top \in \mathbb{R}$ 是标量内积。$S_1^{(1)}$ 的第 $r$ 行包含第 $r$ 个 query 行向量与第 $j=1$ 块中所有 $B_c=2$ 个 key 行向量的分数。
 
 **用途：** $S_1^{(1)}$ 是当前 query 块与当前 key 块的所有两两内积，是 softmax 的输入。
 
@@ -240,7 +239,7 @@ $$m_1^{(1)} = \max\left(m_1^{(0)},\ \text{rowmax}\left(S_1^{(1)}\right)\right) \
 其中 $\text{rowmax}(S_1^{(1)}) \in \mathbb{R}^{2}$ 对 $S_1^{(1)}$ 每行取最大，输出长度为 $2$ 的列向量。由于 $m_1^{(0)} = -\infty$，故：
 $$m_1^{(1)} = \text{rowmax}\left(S_1^{(1)}\right) = \begin{bmatrix} \max(S_1^{(1)}[1,1], S_1^{(1)}[1,2]) \\ \max(S_1^{(1)}[2,1], S_1^{(1)}[2,2]) \end{bmatrix}$$
 
-$m_1^{(1)}[r] \in \mathbb{R}$ 的含义：第 $r$ 个 query 在处理完第 $1$ 个 key 块后，与**所有已处理 key** 的分数中的最大值。
+$m_1^{(1)}[r] \in \mathbb{R}$ 的含义：第 $r$ 个 query 行向量在处理完第 $1$ 个 key 块后，与**所有已处理 key** 的分数中的最大值。
 
 **用途：** $m_1^{(1)}$ 用于数值稳定性，后续指数运算将以此最大值为基准进行平移。
 
