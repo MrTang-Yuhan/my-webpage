@@ -239,3 +239,34 @@ You can learn very little by shadowing unless you pause after every sentence, im
 提升口语能力的唯一方法，就是练习造英文句子——要么通过写，要么通过说本身。在这个过程中，你会逐渐习惯运用所学过的全部英语知识。跟读充其量只能帮你练练发音和语调，因为你毕竟是在模仿说话者。但效果非常有限：你无法在不停顿的情况下听到自己的声音，因此根本没有机会去精确纠正和改进自己的发音与语调。
 
 除非你在每句话后停下来，模仿音频，并逐字逐句地学习其中的词汇、短语和句子结构，否则跟读几乎学不到东西。那不过是一种输入罢了。
+
+---
+
+## 012. 词汇量很大，但说不出来
+
+[词汇量很大，但说不出来](https://www.bilibili.com/video/BV1snRsB7EKX/?spm_id_from=333.1387.upload.video_card.click&vd_source=e98b669ccbafff4b5aa59dd6303b722f)
+
+You know their Chinese meanings at a glance, but when you want to speak a sentence or write a paragraph, your mind goes blank. You can only use those simple basic words, but all the advanced vocabulary you have learned just stays in your mind unused.
+
+The key reason is the difference between passive vocabulary and active vocabulary.
+
+Passive vocabulary consists of the words that you can only recognize and understand. You know what they mean when you see or hear them, but you cannot take the initiative to use them on your own. Most of the words you memorize by rote belong to passive vocabulary. They are just stored in your brain silently without being activated.
+
+By contrast, active vocabulary consists of the words that you can use freely. You can think of them immediately when you need to speak or write. You know their correct pronunciation, proper collocations, grammatical usage and real-life scenarios. These words truly belong to you and become part of your language ability.
+
+To change the situation, we don't need to blindly memorize more new words. Instead, we should dig into the words we've already learned. Try to make sentences with them, use them in real conversations and write short passages with them. Only when we keep practicing and applying can we turn passive vocabulary into active vocabulary.
+
+Remember: knowing a word is not equal to mastering a word. Real English ability is not about how many words you can recognize, but how many words you can use flexibly.
+
+你一眼就知道它们的中文意思，但当你想说一个句子或写一段时，你的大脑一片空白。你只能使用那些简单基础的词，但你学过的所有高级词汇就只是留在你脑子里没被使用。
+
+关键原因是被动词汇和主动词汇之间的区别。
+
+被动词汇由你只能识别和理解的词组成。当你看到或听到它们时你知道它们是什么意思，但你不能主动自己使用它们。你死记硬背记住的大部分词都属于被动词汇。它们只是静静地储存在你的大脑里而没有被激活。
+
+相比之下，主动词汇由你可以自由使用的词组成。当你需要说或写的时候你可以立刻想到它们。你知道它们的正确发音、恰当搭配、语法用法和真实生活场景。这些词真正属于你并成为你语言能力的一部分。
+
+为了改变这种情况，我们不需要盲目地记忆更多新词。相反，我们应该深入挖掘我们已经学过的词。试着用它们造句，在真实对话中使用它们并用它们写短文。只有当我们不断练习和应用时，我们才能把被动词汇变成主动词汇。
+
+记住：知道一个词不等于掌握一个词。真正的英语能力不在于你能识别多少词，而在于你能灵活使用多少词。
+
