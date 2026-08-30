@@ -56,6 +56,8 @@ $$
   $$
   此时 $\tilde{\mathbf{g}}_m = \frac{1}{M} \mathbf{g}_m$，累加后自然得到 $\sum_{m=1}^M \tilde{\mathbf{g}}_m = \mathbf{g}^\star$，无需额外缩放梯度。
 
+> 注：工程上，一般更常用的是**缩放损失**：在 forward 阶段对 loss 做缩放，backward 自动传播正确梯度，避免在优化器步骤额外处理。
+
 ---
 
 ## 2. 多卡数据并行（Data Parallel）
