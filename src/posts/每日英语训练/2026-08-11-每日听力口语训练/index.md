@@ -287,3 +287,26 @@ AI 完全改变了我进行听力和阅读练习的方式。过去，我要么�
 更重要的是，AI 成为了我专属且无限的口语教练。口语对自学者来说总是最难的部分，因为我们没人可以交谈，也没人纠正我们。我每天都用 AI 进行口语训练。我自由地和 AI 聊我的生活、我的想法和我的日常经历。AI 像真正的母语者一样回应，让对话保持自然流畅。每次我犯语法错误时，AI 给我实时纠正，解释错误，并给我更好、更自然的说法。我也和 AI 做各种场景模拟。我让 AI 扮演面试官、外国朋友或同事来模拟真实生活中的对话。我不再死记硬背僵硬的句型。我学会用英语即时思考和回应。
 
 经过 6000 小时的自学后，我想说 AI 从来不是一条偷懒的捷径。它不能替代你的努力或你的时间，但它肯定能接手那些无聊、低效的事情。
+
+---
+
+## 014. 无字幕听得懂，可以去外企工作了
+
+[无字幕听得懂，可以去外企工作了](https://www.bilibili.com/video/BV1zLRjBUEUJ/?spm_id_from=333.1387.upload.video_card.click&vd_source=e98b669ccbafff4b5aa59dd6303b722f)
+
+If you can understand me completely without any subtitles, you already have the core language skills to work in a foreign company. Let me explain this clearly.
+
+When we talk about working in a foreign company, many people think it's all about fancy business terms, complicated professional vocabulary, and perfect grammar. But that's not the truth. The most important and basic thing in working in a foreign company is smooth oral communication.
+
+In daily work, you have to talk with foreign clients, colleagues, or supervisors face-to-face. You need to join online meetings, discuss work projects, express your own opinions, and understand others' requirements. There are no subtitles in real communication scenarios. You can't check words or guess meanings with subtitles. You have to catch every key point, every tone, and every detail of what others are saying right away, just as you understand me now without subtitles.
+Some of you may worry about your accent or not using very advanced words, but don't be anxious. Foreign companies care more about whether you can communicate fluently and accurately. As long as you can understand other people's spoken English effortlessly without subtitles, it means you have excellent listening comprehension, which is the foundation of all workplace communication.
+
+And on this basis, you can slowly improve your oral expression, like learning simple professional terms, and adapt to the working rhythm of foreign companies easily.
+
+如果你能完全听懂我，不需要任何字幕，你就已经具备了在外企工作的核心语言能力。让我把这个说清楚。
+
+当我们谈到在外企工作时，很多人觉得全都是关于花哨的商业术语、复杂的专业词汇和完美的语法。但那不是事实。在外企工作中最重要、最基本的事情是顺畅的口头交流。
+
+在日常工作中，你必须和外国客户、同事或主管面对面交谈。你需要参加线上会议、讨论工作项目、表达你自己的观点，并理解他人的需求。在真实的交流场景中没有字幕。你不能查单词，也不能靠字幕去猜意思。你必须立刻抓住每一个关键点、每一种语气和每一个细节，就像你现在不用字幕听懂我一样。
+
+你们有些人可能会担心自己的口音，或者没有使用非常高级的词汇，但不要焦虑。外企更关心的是你是否能流利且准确地交流。只要你能毫不费力地不用字幕听懂别人的英语口语，就意味着你有出色的听力理解能力，这是所有职场沟通的基础。
