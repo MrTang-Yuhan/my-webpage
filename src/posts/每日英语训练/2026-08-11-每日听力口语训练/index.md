@@ -313,3 +313,21 @@ And on this basis, you can slowly improve your oral expression, like learning si
 你们有些人可能会担心自己的口音，或者没有使用非常高级的词汇，但不要焦虑。外企更关心的是你是否能流利且准确地交流。只要你能毫不费力地不用字幕听懂别人的英语口语，就意味着你有出色的听力理解能力，这是所有职场沟通的基础。
 
 在此基础上，你可以慢慢提高你的口语表达，比如学习简单的专业术语，并轻松适应外企的工作节奏。
+
+---
+
+## 015. 打工人自学英语增加收入，不用报班
+
+[打工人自学英语增加收入，不用报班](https://www.bilibili.com/video/BV1gHRgBnEdF/?spm_id_from=333.1387.upload.video_card.click&vd_source=e98b669ccbafff4b5aa59dd6303b722f)
+
+English is a lucrative professional skill. As an employee, it's desirable for you to get rid of low-pay, long-hour, unpromising jobs by learning English. You can use it to work in international companies or hotels, work abroad, deal with international trade, train students, interpret or translate for your foreign and domestic clients, or become a flight attendant, tour guide, overseas study consultant, English content creator, and so on. And guess what? Learning English by yourself is totally feasible. Let me help you with it.
+
+Number one: AI is your best friend. I recommend Doubao, which is perfectly suitable for learning English. Its free functions are completely enough for you to learn phonetics and grammar, acquire more input, and correct and improve your output. You can ask questions whenever you want, and it will explain the knowledge to you extremely thoroughly. Besides, the voice feature of Doubao allows you to practice speaking anything you learn, which means you don't have to worry about solely learning textbook English.
+
+Number two: make a reasonable study plan. Following a systematic plan makes everything easier and more efficient. After all, employees don't have much time and energy to fully immerse themselves in their studies. My suggestion is to have a framework of phonetics and grammar in your mind first, and then you just need to constantly acquire words and expressions and drill your writing and speaking skills. It's like building a house: phonetics and grammar are the skeleton of the house; words and expressions are the bricks; writing and speaking skills are the furniture, which allows you to eventually make good use of the whole building.
+
+英语是一项有利可图的专业技能。作为一名员工，通过学习英语来摆脱低薪、长时间、没有前途的工作是可取的。你可以用它去国际公司或酒店工作、出国工作、从事国际贸易、培训学生、为国内外客户做口译或笔译，或者成为一名空乘人员、导游、留学顾问、英语内容创作者等等。你猜怎么着？自学英语是完全可行的。让我来帮你。
+
+第一：AI是你最好的朋友。我推荐豆包，它非常适合学习英语。它的免费功能完全足够让你学习语音和语法、获取更多输入、以及纠正和改进你的输出。你可以随时提问，它会极其详尽地向你解释知识。此外，豆包的语音功能允许你练习说出你学到的任何东西，这意味着你不必担心只学习课本英语。
+
+第二：制定一个合理的学习计划。遵循一个系统的计划会让一切更容易、更高效。毕竟，员工没有太多时间和精力完全沉浸在学习中。我的建议是先在你的脑海中建立一个语音和语法的框架，然后你只需要不断获取单词和表达，并训练你的写作和口语技能。这就像盖房子：语音和语法是房子的骨架；单词和表达是砖块；写作和口语技能是家具，这让你最终能够好好利用整栋建筑。
