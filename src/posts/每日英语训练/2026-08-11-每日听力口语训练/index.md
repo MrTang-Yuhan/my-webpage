@@ -299,6 +299,7 @@ If you can understand me completely without any subtitles, you already have the 
 When we talk about working in a foreign company, many people think it's all about fancy business terms, complicated professional vocabulary, and perfect grammar. But that's not the truth. The most important and basic thing in working in a foreign company is smooth oral communication.
 
 In daily work, you have to talk with foreign clients, colleagues, or supervisors face-to-face. You need to join online meetings, discuss work projects, express your own opinions, and understand others' requirements. There are no subtitles in real communication scenarios. You can't check words or guess meanings with subtitles. You have to catch every key point, every tone, and every detail of what others are saying right away, just as you understand me now without subtitles.
+
 Some of you may worry about your accent or not using very advanced words, but don't be anxious. Foreign companies care more about whether you can communicate fluently and accurately. As long as you can understand other people's spoken English effortlessly without subtitles, it means you have excellent listening comprehension, which is the foundation of all workplace communication.
 
 And on this basis, you can slowly improve your oral expression, like learning simple professional terms, and adapt to the working rhythm of foreign companies easily.
