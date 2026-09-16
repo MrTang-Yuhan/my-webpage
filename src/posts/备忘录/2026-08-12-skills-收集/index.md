@@ -18,10 +18,11 @@ Spec Kit 是一个开源工具套件，为 **AI 编码助手** 提供结构化�
 - **判断一个想法是否值得投入**。
 
 ### 安装方法
-xxxx
+
+[Speckit才是codex的最佳编程搭配，看大瑜实操！](https://zhuanlan.zhihu.com/p/1964737305861398909) 这份比官网讲的清晰很多，并且有使用指南。
 
 
-### 文档
+### 使用指南
 
 [Spec Kit 中文文档](https://github.com/github/spec-kit/blob/main/README.zh-CN.md#%E8%A7%84%E8%8C%83%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91) 有详细说明三个功能各自的实战指南和命令参考。
 
@@ -34,7 +35,7 @@ Archify skill 可以在对话里，把代码仓库或系统描述变成漂亮、
 
 [Archify 快速上手](https://tt-a1i.github.io/archify/start.html?agent=codex&type=architecture&source=direct&input=repository)
 
-### 文档
+### 使用指南
 
 [Archify 中文文档](https://github.com/tt-a1i/archify/blob/main/README_ZH.md) 。
 
