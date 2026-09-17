@@ -9,6 +9,8 @@ tags:
 ---
 # 代码相关 skills
 
+安装时，优先将官网链接发送给对应的 harness，由其直接完成安装；若无法安装，再参照下方步骤操作。
+
 ## [spec-kit](https://github.com/github/spec-kit/tree/main)
 
 Spec Kit 是一个开源工具套件，为 **AI 编码助手** 提供结构化流程、可复用模板和有据可查的成果。它具备三个功能：
