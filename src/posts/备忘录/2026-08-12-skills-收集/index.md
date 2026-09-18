@@ -86,7 +86,7 @@ ECC 不止是配置文件，而是一整套完整系统：技能体系、本能�
 
 ## [ARIS](https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep)
 
-ARIS 是 2026 年目前最完整的 AI 自主研究框架，用 342 个可组合的 Markdown Skill 编排整个机器学习研究生命周期，通过 Claude/Codex 写代码、GPT-5.5 审稿的跨模型对抗协作，实现从"找 idea →做实验→改论文→投稿"的全流程自动化。
+ARIS 是 2026 年目前最完整的 AI 自主研究框架，用 342 个可组合的 Markdown Skill 编排整个机器学习研究生命周期，通过 Claude/Codex 写代码、GPT-5.5 审稿的跨模型对抗协作，**实现从"找 idea →做实验→改论文→投稿"的全流程自动化**。
 
 这里介绍已用的**代码层**功能：
 - [idea-discovery](https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep/blob/main/skills/idea-discovery/SKILL.md) 用于根据已有文章和用户要求来帮忙构思 idea。
