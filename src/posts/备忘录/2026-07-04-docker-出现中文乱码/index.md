@@ -58,7 +58,7 @@ rm /dev/shm/*
 ## 创建容器
 
 ```bash
-docker run -itd --gpus all --ipc=host --runtime=nvidia  --ulimit memlock=-1 --ulimit stack=67108864   -v /home/tangyuhan/workpath/docker-data/infra:/root --name tangyuhan-infra-tech nvcr.io/nvidia/pytorch:26.01-py3 /bin/bash
+docker run -itd --gpus all --ipc=host --network=host --runtime=nvidia  --ulimit memlock=-1 --ulimit stack=67108864   -v /home/tangyuhan/workpath/docker-data/nano-vllm:/workspace/nano-vllm --workdir=/workspace --name tangyuhan-nanovllm tangyuhan/nvcr.io/nvidia/pytorch:26.01-py3 /bin/bash
 ```
 
 - `-itd`: 容器在后台运行，但保留交互能力，后续可通过 `docker exec -it tangyuhan-infra-tech /bin/bash` 进入
@@ -67,7 +67,9 @@ docker run -itd --gpus all --ipc=host --runtime=nvidia  --ulimit memlock=-1 --ul
 - `--ipc=host`: 将容器的 IPC（Inter-Process Communication）命名空间与主机共享。让容器直接使用主机的 /dev/shm（通常为主机内存的 50%，如 256GB 服务器对应 128GB），彻底消除共享内存瓶颈。
 - `--ulimit memlock=-1`: 解除容器内进程的 locked memory（锁定内存）限制。
 - `--ulimit stack=67108864`: 设置容器内进程的 栈大小上限为 67,108,864 bytes = 64 MiB。
-- `-v /home/tangyuhan/workpath/docker-data/infra:/root`: 将主机路径挂载到容器内的 /root 目录。
+- `-v /home/tangyuhan/workpath/docker-data/nano-vllm:/workspace/nano-vllm`: 将主机路径挂载到容器内的 /workspace/nano-vllm 目录。
+- `--network=host`：容器没有自己的独立 IP，容器内进程看到的网络环境和宿主机完全一样。**从而宿主机开启 Tun 模式梯子后，容器可以直接共享该梯子。**
+- `workdir=/workspace`: 进入容器后，默认目录为 `/workspace`。
 
 **注**：
 - 可以加上 `--rm`，当容器 stop 时，会自动删除容器。
