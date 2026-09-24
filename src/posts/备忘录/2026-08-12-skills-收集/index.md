@@ -7,6 +7,8 @@ date: 2026-08-12
 tags:
   - post
 ---
+> [Harness 使用 (0)：目录](https://my-webpage-adu.pages.dev/posts/%E5%A4%87%E5%BF%98%E5%BD%95/2026-09-24-harness-%E4%BD%BF%E7%94%A8-0-%E7%9B%AE%E5%BD%95/)
+
 # 代码相关 skills
 
 **安装时，优先将官网链接发送给对应的 harness，由其直接完成安装；若无法安装，再参照下方步骤操作。**
