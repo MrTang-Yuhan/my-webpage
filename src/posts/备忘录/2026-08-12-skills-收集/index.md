@@ -2,7 +2,7 @@
 layout: post.njk
 post_id: 2026-08-12-skills-收集
 archive: 备忘录
-title: 受欢迎的 skills 收集
+title: Harness 使用 (1)：受欢迎的 skills 收集
 date: 2026-08-12
 tags:
   - post
