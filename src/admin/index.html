@@ -83,9 +83,9 @@
       .admin-markdown-editor-highlight .md-code { color: #047857; background: #ecfdf5; }
       .admin-markdown-editor-highlight .md-math { color: #be123c; }
       .admin-markdown-editor-highlight .md-quote { color: #0f766e; }
-      .admin-slate-markdown-highlight .md-heading { color: #7c3aed; font-weight: 700; }
+      .admin-slate-markdown-highlight .md-heading { color: #7c3aed; }
       .admin-slate-markdown-highlight .md-marker { color: #64748b; }
-      .admin-slate-markdown-highlight .md-emphasis { color: #b45309; font-weight: 600; }
+      .admin-slate-markdown-highlight .md-emphasis { color: #b45309; }
       .admin-slate-markdown-highlight .md-link { color: #0369a1; }
       .admin-slate-markdown-highlight .md-code { color: #047857; background: #ecfdf5; }
       .admin-slate-markdown-highlight .md-math { color: #be123c; }
@@ -99,7 +99,7 @@
       .admin-markdown-editor-status { position: absolute; z-index: 2; right: 0; bottom: 0; left: 0; display: flex; justify-content: space-between; gap: 12px; padding: 6px 10px; color: #64748b; background: #f8fafc; border-top: 1px solid #e2e8f0; font-size: 12px; }
       .admin-slate-markdown-editor { position: relative !important; }
       .admin-slate-markdown-editor > .admin-slate-markdown-highlight { position: absolute; inset: 0; z-index: 0; margin: 0; padding: 16px 20px; box-sizing: border-box; color: #334155; background: #fff; font: 15px/1.5 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, Courier, monospace; white-space: pre-wrap; overflow: hidden; pointer-events: none; tab-size: 2; }
-      .admin-slate-markdown-editor > [data-slate-editor="true"] { position: relative !important; z-index: 1; color: transparent !important; background: transparent !important; -webkit-text-fill-color: transparent; }
+      .admin-slate-markdown-editor > [data-slate-editor="true"] { position: relative !important; z-index: 1; color: transparent !important; caret-color: #0f172a !important; background: transparent !important; -webkit-text-fill-color: transparent; }
       .admin-slate-markdown-editor > [data-slate-editor="true"] ::selection { background: rgba(14, 116, 144, .2); }
     </style>
   </head>
@@ -602,6 +602,8 @@
         let markdownSlateHighlight = null;
         let markdownSlateEditorParent = null;
         let markdownSlateEditorParentPosition = '';
+        let markdownSlateHighlightFrame = null;
+        let markdownSlateEditorObserver = null;
         let editorRouteKey = '';
         async function getCachedArchiveDirs() {
           if (archiveDirsCache) return archiveDirsCache;
@@ -737,14 +739,61 @@
           highlight.setAttribute('aria-hidden', 'true');
           markdownSlateEditorParent.insertBefore(highlight, editor);
           markdownSlateHighlight = highlight;
-          editor.addEventListener('input', updateSlateMarkdownHighlight);
+          positionSlateMarkdownHighlight();
+          editor.addEventListener('beforeinput', scheduleSlateMarkdownHighlight);
+          editor.addEventListener('input', scheduleSlateMarkdownHighlight);
+          editor.addEventListener('keyup', scheduleSlateMarkdownHighlight);
+          editor.addEventListener('compositionend', scheduleSlateMarkdownHighlight);
+          editor.addEventListener('paste', scheduleSlateMarkdownHighlight);
           editor.addEventListener('scroll', syncSlateMarkdownHighlightScroll);
+          markdownSlateEditorObserver = new MutationObserver(scheduleSlateMarkdownHighlight);
+          markdownSlateEditorObserver.observe(editor, { childList: true, subtree: true, characterData: true });
           updateSlateMarkdownHighlight();
+        }
+
+        function getSlateMarkdownSource() {
+          if (!markdownSlateEditor) return '';
+          const blocks = Array.from(markdownSlateEditor.querySelectorAll(':scope > [data-slate-node="element"]'));
+          if (!blocks.length) return String(markdownSlateEditor.textContent || '').replace(/\uFEFF/g, '');
+          return blocks.map(function(block) {
+            const strings = Array.from(block.querySelectorAll('[data-slate-string="true"]'));
+            const value = strings.length
+              ? strings.map(function(node) { return String(node.textContent || ''); }).join('')
+              : String(block.textContent || '');
+            return value.replace(/\uFEFF/g, '');
+          }).join('\n');
+        }
+
+        function positionSlateMarkdownHighlight() {
+          if (!markdownSlateEditor || !markdownSlateHighlight || !markdownSlateEditorParent) return;
+          const editorStyle = getComputedStyle(markdownSlateEditor);
+          markdownSlateHighlight.style.font = editorStyle.font;
+          markdownSlateHighlight.style.lineHeight = editorStyle.lineHeight;
+          markdownSlateHighlight.style.letterSpacing = editorStyle.letterSpacing;
+          markdownSlateHighlight.style.padding = editorStyle.padding;
+          markdownSlateHighlight.style.whiteSpace = editorStyle.whiteSpace;
+          markdownSlateHighlight.style.wordBreak = editorStyle.wordBreak;
+          markdownSlateHighlight.style.overflowWrap = editorStyle.overflowWrap;
+          markdownSlateHighlight.style.tabSize = editorStyle.tabSize;
+          markdownSlateHighlight.style.top = markdownSlateEditor.offsetTop + 'px';
+          markdownSlateHighlight.style.left = markdownSlateEditor.offsetLeft + markdownSlateEditor.clientLeft + 'px';
+          markdownSlateHighlight.style.right = 'auto';
+          markdownSlateHighlight.style.bottom = '0px';
+          markdownSlateHighlight.style.width = markdownSlateEditor.clientWidth + 'px';
+        }
+
+        function scheduleSlateMarkdownHighlight() {
+          if (markdownSlateHighlightFrame !== null) return;
+          markdownSlateHighlightFrame = window.requestAnimationFrame(function() {
+            markdownSlateHighlightFrame = null;
+            updateSlateMarkdownHighlight();
+          });
         }
 
         function updateSlateMarkdownHighlight() {
           if (!markdownSlateEditor || !markdownSlateHighlight) return;
-          const source = String(markdownSlateEditor.innerText || '').replace(/\uFEFF/g, '');
+          positionSlateMarkdownHighlight();
+          const source = getSlateMarkdownSource();
           markdownSlateHighlight.innerHTML = source.split(/\r?\n/).map(highlightMarkdownLine).join('\n') + '\n';
           syncSlateMarkdownHighlightScroll();
         }
@@ -756,8 +805,20 @@
         }
 
         function disposeSlateMarkdownHighlight() {
+          if (markdownSlateHighlightFrame !== null) {
+            window.cancelAnimationFrame(markdownSlateHighlightFrame);
+            markdownSlateHighlightFrame = null;
+          }
+          if (markdownSlateEditorObserver) {
+            markdownSlateEditorObserver.disconnect();
+            markdownSlateEditorObserver = null;
+          }
           if (markdownSlateEditor) {
-            markdownSlateEditor.removeEventListener('input', updateSlateMarkdownHighlight);
+            markdownSlateEditor.removeEventListener('beforeinput', scheduleSlateMarkdownHighlight);
+            markdownSlateEditor.removeEventListener('input', scheduleSlateMarkdownHighlight);
+            markdownSlateEditor.removeEventListener('keyup', scheduleSlateMarkdownHighlight);
+            markdownSlateEditor.removeEventListener('compositionend', scheduleSlateMarkdownHighlight);
+            markdownSlateEditor.removeEventListener('paste', scheduleSlateMarkdownHighlight);
             markdownSlateEditor.removeEventListener('scroll', syncSlateMarkdownHighlightScroll);
             markdownSlateEditor.style.color = '';
             markdownSlateEditor.style.background = '';

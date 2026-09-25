@@ -173,6 +173,9 @@ function main() {
   if (!/admin-markdown-editor-highlight/.test(adminIndexText) || !/highlightMarkdownLine/.test(adminIndexText)) {
     throw new Error('admin body editor must provide Markdown syntax highlighting.');
   }
+  if (!/data-slate-editor="true"/.test(adminIndexText) || !/caret-color:\s*#0f172a\s*!important/.test(adminIndexText)) {
+    throw new Error('admin Slate Markdown editor must keep the text caret visible.');
+  }
   if (/String\(b\.value \|\| ''\)\.length - String\(a\.value \|\| ''\)\.length/.test(adminIndexText)) {
     throw new Error('admin body editor must not guess the Markdown field by textarea length.');
   }
