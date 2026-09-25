@@ -14,6 +14,7 @@ tags:
 >
 
 
+
 ## 1. 视频中的三种不收敛表现
 
 1. **Loss 完全不降**：一直在初始值附近晃动。
@@ -21,6 +22,8 @@ tags:
 3. **Loss 先降后升**：常见方向是过拟合或学习率太大。
 
 正常训练允许 Loss 小幅波动，但一段时间内应有整体下降趋势。
+
+![](img/loss-error-fig.png)
 
 ## 2. 视频规定的排查顺序
 
@@ -183,6 +186,8 @@ def lr_range_test(model, loader, criterion,
 
     return records
 ```
+
+![](img/lr-range-test.png)
 
 ## 4. 第二步：数据
 
