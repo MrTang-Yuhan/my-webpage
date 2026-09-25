@@ -37,7 +37,11 @@ description: 技术出版级阅读体验与在线编辑能力
           <span class="post-divider">·</span>
           <span>{{ post.content | readingTime }}</span>
         </div>
-        <p class="post-list-excerpt">{{ post.data.description or post.content | truncate(180) }}</p>
+        {% if post.data.description %}
+          <p class="post-list-excerpt">{{ post.data.description }}</p>
+        {% else %}
+          <p class="post-list-excerpt">{{ post.content | truncateRenderedHtml(180) | safe }}</p>
+        {% endif %}
       </li>
     {% endfor %}
   </ul>
