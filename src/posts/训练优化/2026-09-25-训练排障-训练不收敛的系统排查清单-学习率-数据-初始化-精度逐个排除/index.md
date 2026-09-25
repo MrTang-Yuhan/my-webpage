@@ -15,7 +15,7 @@ tags:
 
 
 
-## 1. 视频中的三种不收敛表现
+## 1. 三种不收敛表现
 
 1. **Loss 完全不降**：一直在初始值附近晃动。
 2. **Loss 持续震荡**：降一点、升一点，没有明确趋势。
@@ -25,109 +25,25 @@ tags:
 
 ![](img/loss-error-fig.png)
 
-## 2. 视频规定的排查顺序
+## 2. 排查顺序
 
 ![](img/step5.png)
 
 
 ## 3. 第一步：学习率
 
-### 视频中的方法
+### 排查点
 
 - 学习率太大：Loss 震荡或飙升。
 - 学习率太小：Loss 几乎不动。
 - 先比较：当前学习率、当前值的十分之一、当前值的十倍。
 - 更科学的方法：**LR Range Test**，从极小学习率逐步增大，画出 Loss 曲线，寻找 Loss 下降最陡的区间。
 
-### 代码：三个学习率对照
-
-```python
-from copy import deepcopy
-import torch
-
-
-def run_short(model, loader, criterion, lr, device="cuda", steps=100):
-    """使用指定学习率进行短程训练，观察 Loss 是否下降。
-
-    Args:
-        model: 待测试的 PyTorch 模型。
-        loader: 提供 inputs 和 labels 的训练数据加载器。
-        criterion: 损失函数。
-        lr: 本次实验使用的学习率。
-        device: 训练设备，例如 cuda 或 cpu。
-        steps: 最多执行的训练步数。
-
-    Returns:
-        包含学习率、状态和 Loss 记录的字典。
-    """
-    # 深拷贝模型，确保不同学习率实验互不影响。
-    model = deepcopy(model).to(device)
-    # 每次实验使用独立优化器，避免复用动量等历史状态。
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
-    losses = []
-    iterator = iter(loader)
-    model.train()  # 开启训练模式。
-
-    for _ in range(steps):
-        # 数据迭代器耗尽后重新开始，保证短实验能连续取到 batch。
-        try:
-            batch = next(iterator)
-        except StopIteration:
-            iterator = iter(loader)
-            batch = next(iterator)
-
-        # 将当前 batch 移动到模型所在设备。
-        inputs = batch["inputs"].to(device)
-        labels = batch["labels"].to(device)
-        # 清空上一轮梯度，避免梯度错误累积。
-        optimizer.zero_grad(set_to_none=True)
-
-        # 前向计算和损失。
-        outputs = model(inputs)
-        loss = criterion(outputs, labels)
-
-        # Loss 出现 NaN 或 Inf 时立即停止，避免继续污染参数。
-        if not torch.isfinite(loss):
-            return {"lr": lr, "status": "NaN/Inf", "losses": losses}
-
-        # 反向传播并更新参数。
-        loss.backward()
-        optimizer.step()
-        losses.append(loss.item())
-
-    return {
-        "lr": lr,
-        "status": "finite",
-        "first_loss": losses[0],
-        "last_loss": losses[-1],
-        "losses": losses,
-    }
-
-
-# 这里的数值只是示例；实际应替换为当前项目的学习率。
-base_lr = 1e-4
-
-# 按视频要求比较当前值、十分之一和十倍。
-for lr in [base_lr / 10, base_lr, base_lr * 10]:
-    print(run_short(model, train_loader, criterion, lr))
-```
-
-### 结果应该怎么看
-
-| 结果 | 视频中的判断 |
-|---|---|
-| Loss 震荡或飙升 | 学习率可能太大 |
-| Loss 几乎不动 | 学习率可能太小 |
-| 某个学习率区间下降明显 | 优先在该区间继续调节 |
-| 三组都不下降 | 转向检查数据、初始化和精度 |
-| 三组都出现 NaN/Inf | 优先检查数值稳定性和初始化 |
-
 
 ### 代码：LR Range Test
 
 ```python
 import math
-
 
 def lr_range_test(model, loader, criterion,
                   start_lr=1e-7, end_lr=1e-1,
@@ -187,7 +103,7 @@ def lr_range_test(model, loader, criterion,
 
 ## 4. 第三步：初始化
 
-### 视频中的原理
+### 排查点
 
 权重初始化方差不对，会让前向信号逐层放大或缩小，从而造成**梯度消失**或**梯度爆炸**。
 
@@ -219,7 +135,6 @@ for name, param in model.named_parameters():
 # 保存各层前向输出的范数，用于观察信号是否逐层放大或缩小。
 activation_norms = {}
 
-
 def make_hook(name):
     """创建记录指定模块激活值范数的 forward hook。"""
     def hook(module, inputs, output):
@@ -227,7 +142,6 @@ def make_hook(name):
         value = output[0] if isinstance(output, tuple) else output
         activation_norms[name] = value.detach().float().norm().item()
     return hook
-
 
 # 在线性层和 LayerNorm 上注册 hook，覆盖视频重点关注的层。
 for name, module in model.named_modules():
@@ -246,7 +160,7 @@ for name, value in activation_norms.items():
 ![](img/step3-data.png)
 
 
-### 视频要求检查的三件事
+### 排查点
 
 #### 5.1 DataLoader 是否 shuffle
 
@@ -304,7 +218,7 @@ print(label_counts)
 
 ![](img/step4-precision.png)
 
-### 视频中的风险
+### 排查点
 
 - 混合精度中的 FP16 可能导致某些层精度不够。
 
