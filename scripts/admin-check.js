@@ -196,6 +196,9 @@ function main() {
   if (!/upload-image-only-panel/.test(adminIndexText) || !/findGlobalMediaButton/.test(adminIndexText)) {
     throw new Error('admin editor must expose an upload-only image button that opens Decap native media.');
   }
+  if (!/添加图片[^\n]*\/img/.test(adminIndexText) || !/添加附件[^\n]*\/attach/.test(adminIndexText) || !/findMarkdownToolbarAnchor/.test(adminIndexText)) {
+    throw new Error('admin editor toolbar must expose image and attachment buttons with /img and /attach guidance.');
+  }
   if (!/name:\s*image_upload[\s\S]*?widget:\s*image[\s\S]*?media_folder:\s*img\b/.test(configText)) {
     throw new Error('posts editor must expose a Decap image upload widget scoped to the current post img directory.');
   }

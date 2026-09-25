@@ -38,13 +38,14 @@
         align-items: center;
         display: inline-flex;
         gap: 8px;
-        margin: 0 0 0 8px;
+        margin: 0 0 0 auto;
         padding: 0;
         border: 1px solid #cbd5e1;
         border-radius: 8px;
         background: #ffffff;
         color: #334155;
         font-size: 13px;
+        flex: 0 0 auto;
       }
       #upload-image-only-panel button {
         border: 0;
@@ -61,6 +62,8 @@
       }
       #upload-image-only-status {
         color: #475569;
+        padding: 0 8px 0 0;
+        white-space: nowrap;
       }
       [data-cms-editor-upload-toolbar="sticky"] {
         position: sticky !important;
@@ -108,7 +111,8 @@
       <p><strong>写作能力：</strong>支持 Markdown、内联/块级 HTML、脚注、KaTeX 公式、代码块、表格、图片。</p>
       <p><strong>归档目录：</strong><code>archive</code> 字段可直接输入新目录名；文章将保存到 <code>src/posts/&lt;archive&gt;/&lt;slug&gt;/index.md</code>。</p>
       <p><strong>正文编辑：</strong>Markdown 源码是权威格式；Rich Text 已禁用，避免自动改写源码格式。</p>
-      <p><strong>图片上传：</strong>当前集合配置会将图片存到文章目录下的 <code>img</code>，正文使用 <code>./img/文件名</code> 引用。</p>
+      <p><strong>图片上传：</strong>图片引用目录为 <code>/img</code>；正文 Markdown 使用 <code>img/文件名</code> 引用。</p>
+      <p><strong>附件上传：</strong>附件引用目录为 <code>/attach</code>；正文 Markdown 使用 <code>attach/文件名</code> 引用。</p>
       <p><strong>发布流程：</strong>先保存为草稿（Draft），审核后点击 Publish；发布模式为 Editorial Workflow，提交到 GitHub 仓库。</p>
     </div> -->
 
@@ -713,7 +717,7 @@
         }
 
         function findBodySlateEditor() {
-          const editors = Array.from(document.querySelectorAll('[contenteditable="true"][role="textbox"][data-slate-editor="true"]'));
+          const editors = Array.from(document.querySelectorAll('[contenteditable="true"][role="textbox"], [contenteditable="true"][data-slate-editor="true"]'));
           for (const element of editors) {
             let node = element.parentElement;
             for (let depth = 0; node && depth < 8; depth += 1, node = node.parentElement) {
@@ -1073,9 +1077,9 @@
             panel = document.createElement('span');
             panel.id = 'upload-image-only-panel';
             panel.innerHTML =
-              '<button id="upload-image-only-btn" type="button">上传图片</button>' +
-              '<button id="upload-attachment-only-btn" type="button">上传附件</button>' +
-              '<span id="upload-image-only-status">图片到 img/，附件到 attach/，不修改正文。</span>';
+              '<button id="upload-image-only-btn" type="button" aria-label="添加图片" title="添加图片，上传到 /img">添加图片</button>' +
+              '<button id="upload-attachment-only-btn" type="button" aria-label="添加附件" title="添加附件，上传到 /attach">添加附件</button>' +
+              '<span id="upload-image-only-status">图片引用 /img，附件引用 /attach</span>';
           }
           const anchor = findAddComponentToolbarAnchor();
           const fallbackAnchor = findEditorToolbarFallbackAnchor();
@@ -1135,7 +1139,7 @@
               }
 
               statusEl.style.color = '#475569';
-              statusEl.textContent = '已打开 Decap 图片上传；图片会进入当前文章 img/。';
+              statusEl.textContent = '已打开图片上传；文件进入 /img，正文引用 img/文件名。';
               startUploadOnlyMarkdownGuard(snapshot);
               imageControl.click();
             });
@@ -1153,7 +1157,7 @@
             }
 
             statusEl.style.color = '#475569';
-            statusEl.textContent = '已打开 Decap 附件上传；文件会进入当前文章 attach/。';
+            statusEl.textContent = '已打开附件上传；文件进入 /attach，正文引用 attach/文件名。';
             startUploadOnlyMarkdownGuard(snapshot);
             fileControl.click();
           });
@@ -1235,6 +1239,24 @@
           return textarea.parentElement || textarea.parentNode;
         }
 
+        function findMarkdownToolbarAnchor() {
+          const addComponent = Array.from(document.querySelectorAll('button, [role="button"], [role="tab"]')).find(function(control) {
+            return String(control.getAttribute('title') || '').trim().toLowerCase() === 'add component';
+          });
+          if (!addComponent) return null;
+          let node = addComponent.parentElement;
+          for (let depth = 0; node && depth < 6; depth += 1, node = node.parentElement) {
+            const controls = Array.from(node.querySelectorAll('button, [role="button"], [role="tab"]'));
+            const hasMarkdownToolbar = controls.some(function(control) {
+              return String(control.getAttribute('title') || '').trim().toLowerCase() === 'bold';
+            }) && controls.some(function(control) {
+              return String(control.getAttribute('title') || '').trim().toLowerCase() === 'add component';
+            });
+            if (hasMarkdownToolbar && !node.querySelector('[contenteditable="true"]')) return node;
+          }
+          return addComponent.parentElement;
+        }
+
         function isSafeUploadToolbarAnchor(node) {
           if (!node || !(node instanceof Element)) return false;
           if (node.id === 'cms-editor-tools-host') return false;
@@ -1244,6 +1266,8 @@
         }
 
         function findAddComponentToolbarAnchor() {
+          const markdownToolbar = findMarkdownToolbarAnchor();
+          if (markdownToolbar) return markdownToolbar;
           const controls = Array.from(document.querySelectorAll('button, [role="button"], [role="tab"]'));
           const addComponentControl = controls.find(function(control) {
             if (control.closest('#cms-editor-tools-host')) return false;
@@ -1281,7 +1305,8 @@
 
         function isEditorBodyReady() {
           const textarea = findBodyTextarea();
-          return !!(textarea && textarea.parentNode && !isPostsEditorLoading());
+          const slateEditor = findBodySlateEditor();
+          return !!(((textarea && textarea.parentNode) || slateEditor) && !isPostsEditorLoading());
         }
 
         function startUploadOnlyMarkdownGuard(snapshot) {

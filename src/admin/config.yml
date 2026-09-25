@@ -83,7 +83,7 @@ collections:
         media_folder: img
         public_folder: ./img
         choose_url: false
-        hint: 用于工具栏“上传图片”按钮；图片会上传到当前文章 img/ 目录。
+        hint: 工具栏“添加图片”按钮会上传到当前文章 /img 目录；正文引用写作 img/文件名。
       - label: 附件上传入口
         name: attachment_upload
         widget: file
@@ -91,4 +91,4 @@ collections:
         media_folder: attach
         public_folder: ./attach
         choose_url: false
-        hint: 用于工具栏“上传附件”按钮；文件会上传到当前文章 attach/ 目录。
+        hint: 工具栏“添加附件”按钮会上传到当前文章 /attach 目录；正文引用写作 attach/文件名。
