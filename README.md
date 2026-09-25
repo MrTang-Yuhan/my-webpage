@@ -39,17 +39,15 @@
 - 使用 `functions/api/auth.js` + `functions/api/callback.js` 提供 `/api/auth` 与 `/api/callback`。
 - `src/admin/config.yml` 中保持 `auth_endpoint: /api/auth` 不变。
 - 需配置环境变量：`GITHUB_CLIENT_ID`、`GITHUB_CLIENT_SECRET`，可选 `AUTH_BASE_URL`（用于固定回调域名）。
+- 访问统计接口使用 Cloudflare KV 绑定 `SITE_STATS` 持久化计数；同一 IP 每天只计数一次，服务端只保存日期与 IP 哈希，不保存原始 IP。未绑定 KV 时页面会自动降级为当前浏览器的本地每日统计。
 - 归档迁移接口额外需要：`GITHUB_ADMIN_TOKEN`（推荐细粒度 token，至少 `Contents: Read and write`）。
 - 建议额外配置：`ADMIN_SESSION_SECRET`（用于签名 admin session cookie；未配置时回退 `GITHUB_CLIENT_SECRET`）。
 - 备用方案：`oauth-worker/` 独立 Worker。仅在无法使用 Pages Functions 时启用，避免两套 OAuth 同时对外暴露造成漂移。
 
 ### 新建归档目录
 
-- `archive` 字段使用 `archive-combobox`，下拉只合并三类来源并做严格清洗：
-- `src/posts` 下真实一级目录（由 `/admin-archives.json` 生成）。
-- `config.yml` 中显式 `options`（同样会被清洗）。
-- 本地历史（`localStorage` 的 `admin_archive_history_v2`，旧 `v1` 会忽略）。
-- 输入的新目录会用于生成文章路径：`src/posts/<archive>/<slug>/index.md`。
+- `archive` 字段使用 `archive-combobox`，联想列表只读取 `src/posts` 下真实一级目录（由 `/admin-archives.json` 生成）。
+- 输入框仍允许直接输入合法的新目录名，新目录会用于生成文章路径：`src/posts/<archive>/<slug>/index.md`。
 - 目录名要求：非空、无 `/` 或 `\`、非 `.md/index.md`、非 `[object Object]`，仅允许中文/字母/数字/`_`/`-`。
 
 ### 已发布文章移动归档目录

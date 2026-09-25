@@ -40,13 +40,7 @@ collections:
         name: archive
         widget: archive-combobox
         required: true
-        options:
-          - model-parallelism
-          - interconnect
-          - 备忘录
-          - triosim模拟器
-          - 大模型显存和flops分析
-        hint: 可下拉选择已有目录，也可直接输入新目录；文章将写入 src/posts/<archive>/<slug>/index.md。
+        hint: 联想列表只显示 src/posts 下已有目录；也可直接输入新目录，文章将写入 src/posts/<archive>/<slug>/index.md。
       - label: 标题
         name: title
         widget: string
@@ -57,6 +51,15 @@ collections:
         format: YYYY-MM-DD
         date_format: YYYY-MM-DD
         time_format: false
+        hint: 文章创建日期
+      - label: 最近更新日期
+        name: updated
+        widget: datetime
+        required: false
+        format: YYYY-MM-DD
+        date_format: YYYY-MM-DD
+        time_format: false
+        hint: 文章内容最近一次更新的日期，可留空
       - label: 摘要
         name: description
         widget: text

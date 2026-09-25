@@ -20,10 +20,20 @@ description: 技术出版级阅读体验与在线编辑能力
       {% endfor %}
     {% endfor %}
     {% for post in allPosts | reverse %}
-      <li class="post-list-item">
-        <h3 class="post-list-title"><a href="{{ post.url }}">{{ post.data.title }}</a></h3>
+        <li class="post-list-item">
+          <h3 class="post-list-title"><a href="{{ post.url }}">{{ post.data.title }}</a></h3>
         <div class="post-list-meta">
-          <time datetime="{{ post.date | formatDate }}">{{ post.date | formatDate }}</time>
+          <span class="post-date-item">
+            <span class="post-date-label">创建</span>
+            <time datetime="{{ post.date | formatDate }}">{{ post.date | formatDate }}</time>
+          </span>
+          {% if post.data.updated %}
+            <span class="post-divider">·</span>
+            <span class="post-date-item">
+              <span class="post-date-label">更新</span>
+              <time datetime="{{ post.data.updated | formatDate }}">{{ post.data.updated | formatDate }}</time>
+            </span>
+          {% endif %}
           <span class="post-divider">·</span>
           <span>{{ post.content | readingTime }}</span>
         </div>

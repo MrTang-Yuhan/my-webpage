@@ -71,6 +71,36 @@
         border-bottom: 1px solid #e5e7eb;
         padding: 6px 0;
       }
+      .admin-markdown-editor-wrap { position: relative; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; min-height: 420px; background: #fff; }
+      .admin-markdown-editor-highlight, .admin-markdown-editor-wrap textarea { margin: 0; padding: 16px 18px; min-height: 420px; width: 100%; box-sizing: border-box; font: 14px/1.7 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; overflow: auto; tab-size: 2; }
+      .admin-markdown-editor-highlight { position: absolute; inset: 0 0 32px; color: #334155; pointer-events: none; }
+      .admin-markdown-editor-wrap textarea { position: relative; z-index: 1; display: block; resize: vertical; color: transparent !important; caret-color: #0f172a; background: transparent !important; -webkit-text-fill-color: transparent; }
+      .admin-markdown-editor-wrap textarea::selection { background: rgba(14, 116, 144, .2); }
+      .admin-markdown-editor-highlight .md-heading { color: #7c3aed; font-weight: 700; }
+      .admin-markdown-editor-highlight .md-marker { color: #64748b; }
+      .admin-markdown-editor-highlight .md-emphasis { color: #b45309; }
+      .admin-markdown-editor-highlight .md-link { color: #0369a1; }
+      .admin-markdown-editor-highlight .md-code { color: #047857; background: #ecfdf5; }
+      .admin-markdown-editor-highlight .md-math { color: #be123c; }
+      .admin-markdown-editor-highlight .md-quote { color: #0f766e; }
+      .admin-slate-markdown-highlight .md-heading { color: #7c3aed; font-weight: 700; }
+      .admin-slate-markdown-highlight .md-marker { color: #64748b; }
+      .admin-slate-markdown-highlight .md-emphasis { color: #b45309; font-weight: 600; }
+      .admin-slate-markdown-highlight .md-link { color: #0369a1; }
+      .admin-slate-markdown-highlight .md-code { color: #047857; background: #ecfdf5; }
+      .admin-slate-markdown-highlight .md-math { color: #be123c; }
+      .admin-slate-markdown-highlight .md-quote { color: #0f766e; }
+      .admin-body-markdown-highlight .cm-header, .admin-body-markdown-highlight .cm-formatting-header { color: #7c3aed; font-weight: 700; }
+      .admin-body-markdown-highlight .cm-strong { color: #b45309; font-weight: 700; }
+      .admin-body-markdown-highlight .cm-em { color: #b45309; font-style: italic; }
+      .admin-body-markdown-highlight .cm-link, .admin-body-markdown-highlight .cm-url { color: #0369a1; }
+      .admin-body-markdown-highlight .cm-comment, .admin-body-markdown-highlight .cm-quote { color: #0f766e; }
+      .admin-body-markdown-highlight .cm-string, .admin-body-markdown-highlight .cm-variable-2 { color: #047857; }
+      .admin-markdown-editor-status { position: absolute; z-index: 2; right: 0; bottom: 0; left: 0; display: flex; justify-content: space-between; gap: 12px; padding: 6px 10px; color: #64748b; background: #f8fafc; border-top: 1px solid #e2e8f0; font-size: 12px; }
+      .admin-slate-markdown-editor { position: relative !important; }
+      .admin-slate-markdown-editor > .admin-slate-markdown-highlight { position: absolute; inset: 0; z-index: 0; margin: 0; padding: 16px 20px; box-sizing: border-box; color: #334155; background: #fff; font: 15px/1.5 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, Courier, monospace; white-space: pre-wrap; overflow: hidden; pointer-events: none; tab-size: 2; }
+      .admin-slate-markdown-editor > [data-slate-editor="true"] { position: relative !important; z-index: 1; color: transparent !important; background: transparent !important; -webkit-text-fill-color: transparent; }
+      .admin-slate-markdown-editor > [data-slate-editor="true"] ::selection { background: rgba(14, 116, 144, .2); }
     </style>
   </head>
   <body>
@@ -492,8 +522,6 @@
           }
         });
 
-        const ARCHIVE_HISTORY_KEY = 'admin_archive_history_v2';
-        const LEGACY_ARCHIVE_HISTORY_KEY = 'admin_archive_history_v1';
         const ARCHIVE_DATALIST_ID = 'archive-combobox-options';
         const ARCHIVE_NAME_PATTERN = /^[\p{L}\p{N}_-]+$/u;
         const EMPTY_BODY_RECOVERY_KEY_PREFIX = 'admin_empty_body_recovery_v1:';
@@ -534,29 +562,6 @@
           });
         }
 
-        function readArchiveHistory() {
-          try {
-            const raw = localStorage.getItem(ARCHIVE_HISTORY_KEY);
-            const arr = raw ? JSON.parse(raw) : [];
-            return Array.isArray(arr) ? dedupeSortArchives(arr) : [];
-          } catch (_) {
-            return [];
-          }
-        }
-
-        function rememberArchiveHistory(value) {
-          const name = normalizeArchiveName(value);
-          if (!isValidArchiveName(name)) return;
-          const merged = dedupeSortArchives(readArchiveHistory().concat([name]));
-          localStorage.setItem(ARCHIVE_HISTORY_KEY, JSON.stringify(merged));
-        }
-
-        function clearLegacyArchiveHistory() {
-          try {
-            localStorage.removeItem(LEGACY_ARCHIVE_HISTORY_KEY);
-          } catch (_) {}
-        }
-
         function sanitizeArchiveInput(value) {
           const normalized = normalizeArchiveName(value);
           return isValidArchiveName(normalized) ? normalized : '';
@@ -588,6 +593,16 @@
 
         let archiveDirsCache = null;
         let archiveDirsPromise = null;
+        let markdownEditorHighlight = null;
+        let markdownEditorTextarea = null;
+        let markdownEditorShell = null;
+        let markdownCodeMirrorInstance = null;
+        let markdownCodeMirrorElement = null;
+        let markdownSlateEditor = null;
+        let markdownSlateHighlight = null;
+        let markdownSlateEditorParent = null;
+        let markdownSlateEditorParentPosition = '';
+        let editorRouteKey = '';
         async function getCachedArchiveDirs() {
           if (archiveDirsCache) return archiveDirsCache;
           if (!archiveDirsPromise) {
@@ -600,6 +615,195 @@
             });
           }
           return archiveDirsPromise;
+        }
+
+        function syncMarkdownHighlightEditor() {
+          if (!isPostsEditorRoute()) {
+            if (markdownEditorHighlight || markdownCodeMirrorInstance || markdownSlateEditor) disposeMarkdownHighlightEditor();
+            return;
+          }
+          const existingEditor = findBodyCodeMirror();
+          if (existingEditor) {
+            if (markdownEditorHighlight) disposeMarkdownHighlightEditor();
+            markdownCodeMirrorInstance = existingEditor.instance;
+            markdownCodeMirrorElement = existingEditor.element;
+            markdownCodeMirrorElement.classList.add('admin-body-markdown-highlight');
+            try {
+              markdownCodeMirrorInstance.setOption('mode', { name: 'markdown', fencedCodeBlockHighlighting: true, highlightFormatting: true });
+              markdownCodeMirrorInstance.setOption('lineNumbers', true);
+              markdownCodeMirrorInstance.setOption('lineWrapping', true);
+              markdownCodeMirrorInstance.refresh();
+            } catch (_) {}
+            return;
+          }
+          const existingSlateEditor = findBodySlateEditor();
+          if (existingSlateEditor) {
+            if (markdownEditorHighlight) disposeMarkdownHighlightEditor();
+            if (markdownSlateEditor !== existingSlateEditor) disposeSlateMarkdownHighlight();
+            if (!markdownSlateHighlight) setupSlateMarkdownHighlight(existingSlateEditor);
+            updateSlateMarkdownHighlight();
+            return;
+          }
+          if (markdownSlateEditor) disposeSlateMarkdownHighlight();
+          const textarea = findBodyTextarea();
+          if (markdownEditorHighlight && markdownEditorTextarea !== textarea) {
+            disposeMarkdownHighlightEditor();
+          }
+          if (!textarea) return;
+          if (markdownEditorHighlight && markdownEditorTextarea === textarea) {
+            updateMarkdownHighlight();
+            return;
+          }
+
+          const host = textarea.parentElement;
+          if (!host) return;
+          markdownEditorTextarea = textarea;
+          const shell = document.createElement('div');
+          shell.className = 'admin-markdown-editor-wrap';
+          host.insertBefore(shell, textarea);
+          shell.appendChild(textarea);
+          const highlight = document.createElement('pre');
+          highlight.className = 'admin-markdown-editor-highlight';
+          highlight.setAttribute('aria-hidden', 'true');
+          shell.insertBefore(highlight, textarea);
+          const status = document.createElement('div');
+          status.className = 'admin-markdown-editor-status';
+          status.innerHTML = '<span>正文 Markdown 语法高亮</span><span>保留原始 Markdown 格式</span>';
+          shell.appendChild(status);
+          markdownEditorShell = shell;
+          markdownEditorHighlight = highlight;
+          textarea.setAttribute('aria-label', '正文 Markdown 源码编辑器');
+          textarea.addEventListener('input', updateMarkdownHighlight);
+          textarea.addEventListener('scroll', syncMarkdownHighlightScroll);
+          updateMarkdownHighlight();
+        }
+
+        function escapeMarkdownHtml(value) {
+          return String(value || '').replace(/[&<>"']/g, function(char) {
+            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char];
+          });
+        }
+
+        function highlightMarkdownLine(line) {
+          let html = escapeMarkdownHtml(line);
+          if (/^\s*```/.test(line)) return '<span class="md-code">' + html + '</span>';
+          if (/^\s*#/.test(line)) return html.replace(/^(\s*#{1,6})(.*)$/, '<span class="md-heading">$1$2</span>');
+          if (/^\s*>/.test(line)) return '<span class="md-quote">' + html + '</span>';
+          html = html.replace(/(^|\s)([-*+] |\d+\. )/g, '$1<span class="md-marker">$2</span>');
+          html = html.replace(/(\[.*?\]\(.*?\))/g, '<span class="md-link">$1</span>');
+          html = html.replace(/(\*\*[^*\n]+\*\*|__[^_\n]+__|(?<!\*)\*[^*\n]+\*)/g, '<span class="md-emphasis">$1</span>');
+          html = html.replace(/(\$\$?[^$\n]+\$\$?)/g, '<span class="md-math">$1</span>');
+          html = html.replace(/(`[^`]+`)/g, '<span class="md-code">$1</span>');
+          return html;
+        }
+
+        function updateMarkdownHighlight() {
+          if (!markdownEditorHighlight || !markdownEditorTextarea) return;
+          const source = String(markdownEditorTextarea.value || '');
+          markdownEditorHighlight.innerHTML = source.split(/\r?\n/).map(highlightMarkdownLine).join('\n') + '\n';
+          syncMarkdownHighlightScroll();
+        }
+
+        function syncMarkdownHighlightScroll() {
+          if (!markdownEditorHighlight || !markdownEditorTextarea) return;
+          markdownEditorHighlight.scrollTop = markdownEditorTextarea.scrollTop;
+          markdownEditorHighlight.scrollLeft = markdownEditorTextarea.scrollLeft;
+        }
+
+        function findBodySlateEditor() {
+          const editors = Array.from(document.querySelectorAll('[contenteditable="true"][role="textbox"][data-slate-editor="true"]'));
+          for (const element of editors) {
+            let node = element.parentElement;
+            for (let depth = 0; node && depth < 8; depth += 1, node = node.parentElement) {
+              const label = String(node.getAttribute('aria-label') || '');
+              const text = String(node.textContent || '');
+              if (/markdown field/i.test(label) || (/(?:^|[\s：:])正文(?:$|[\s：:])/.test(text) && !/(?:^|[\s：:])摘要(?:$|[\s：:])/.test(text))) {
+                return element;
+              }
+            }
+          }
+          return null;
+        }
+
+        function setupSlateMarkdownHighlight(editor) {
+          if (!editor || !editor.parentElement) return;
+          markdownSlateEditor = editor;
+          markdownSlateEditorParent = editor.parentElement;
+          markdownSlateEditorParentPosition = markdownSlateEditorParent.style.position || '';
+          markdownSlateEditorParent.classList.add('admin-slate-markdown-editor');
+          if (getComputedStyle(markdownSlateEditorParent).position === 'static') markdownSlateEditorParent.style.position = 'relative';
+          const highlight = document.createElement('pre');
+          highlight.className = 'admin-slate-markdown-highlight';
+          highlight.setAttribute('aria-hidden', 'true');
+          markdownSlateEditorParent.insertBefore(highlight, editor);
+          markdownSlateHighlight = highlight;
+          editor.addEventListener('input', updateSlateMarkdownHighlight);
+          editor.addEventListener('scroll', syncSlateMarkdownHighlightScroll);
+          updateSlateMarkdownHighlight();
+        }
+
+        function updateSlateMarkdownHighlight() {
+          if (!markdownSlateEditor || !markdownSlateHighlight) return;
+          const source = String(markdownSlateEditor.innerText || '').replace(/\uFEFF/g, '');
+          markdownSlateHighlight.innerHTML = source.split(/\r?\n/).map(highlightMarkdownLine).join('\n') + '\n';
+          syncSlateMarkdownHighlightScroll();
+        }
+
+        function syncSlateMarkdownHighlightScroll() {
+          if (!markdownSlateEditor || !markdownSlateHighlight) return;
+          markdownSlateHighlight.scrollTop = markdownSlateEditor.scrollTop;
+          markdownSlateHighlight.scrollLeft = markdownSlateEditor.scrollLeft;
+        }
+
+        function disposeSlateMarkdownHighlight() {
+          if (markdownSlateEditor) {
+            markdownSlateEditor.removeEventListener('input', updateSlateMarkdownHighlight);
+            markdownSlateEditor.removeEventListener('scroll', syncSlateMarkdownHighlightScroll);
+            markdownSlateEditor.style.color = '';
+            markdownSlateEditor.style.background = '';
+            markdownSlateEditor.style.webkitTextFillColor = '';
+          }
+          if (markdownSlateHighlight && markdownSlateHighlight.parentNode) markdownSlateHighlight.parentNode.removeChild(markdownSlateHighlight);
+          if (markdownSlateEditorParent) {
+            markdownSlateEditorParent.classList.remove('admin-slate-markdown-editor');
+            markdownSlateEditorParent.style.position = markdownSlateEditorParentPosition;
+          }
+          markdownSlateEditor = null;
+          markdownSlateHighlight = null;
+          markdownSlateEditorParent = null;
+          markdownSlateEditorParentPosition = '';
+        }
+
+        function disposeMarkdownHighlightEditor() {
+          const textarea = markdownEditorTextarea;
+          if (textarea && markdownEditorShell && markdownEditorShell.contains(textarea) && markdownEditorShell.parentNode) {
+            markdownEditorShell.parentNode.insertBefore(textarea, markdownEditorShell);
+          }
+          if (markdownEditorShell && markdownEditorShell.parentNode) {
+            markdownEditorShell.parentNode.removeChild(markdownEditorShell);
+          }
+          markdownEditorHighlight = null;
+          markdownEditorTextarea = null;
+          markdownEditorShell = null;
+          if (markdownCodeMirrorElement) markdownCodeMirrorElement.classList.remove('admin-body-markdown-highlight');
+          markdownCodeMirrorInstance = null;
+          markdownCodeMirrorElement = null;
+          disposeSlateMarkdownHighlight();
+        }
+
+        function findBodyCodeMirror() {
+          const editors = Array.from(document.querySelectorAll('.CodeMirror'));
+          for (const element of editors) {
+            let node = element;
+            for (let depth = 0; node && depth < 10; depth += 1, node = node.parentElement) {
+              const text = String(node.textContent || '');
+              if (/正文/.test(text) && !/摘要/.test(text)) {
+                const instance = element.CodeMirror;
+                if (instance) return { element: element, instance: instance };
+              }
+            }
+          }
+          return null;
         }
 
         function ensureEditorToolsHost() {
@@ -621,47 +825,43 @@
           getInitialState: function () {
             return {
               currentValue: sanitizeArchiveInput(this.props.value || '') || String(this.props.value || ''),
-              options: this.getStaticOptions()
+              options: [],
+              isEditing: false
             };
           },
           componentDidMount: function () {
-            clearLegacyArchiveHistory();
             this.refreshOptions();
           },
           componentDidUpdate: function (prevProps) {
+            if (this.state.isEditing) return;
             const prev = prevProps.value || '';
             const next = this.props.value || '';
             if (prev !== next && next !== this.state.currentValue) {
               this.setState({ currentValue: sanitizeArchiveInput(next) || String(next || '') });
             }
           },
-          getStaticOptions: function () {
-            const field = this.props.field;
-            if (!field || typeof field.get !== 'function') return [];
-            const raw = field.get('options');
-            if (!raw) return [];
-            if (typeof raw.toJS === 'function') {
-              const arr = raw.toJS();
-              return Array.isArray(arr) ? arr.map(function (item) { return String(item); }) : [];
-            }
-            return Array.isArray(raw) ? raw.map(function (item) { return String(item); }) : [];
-          },
           refreshOptions: async function () {
-            const staticOptions = this.getStaticOptions();
-            const historyOptions = readArchiveHistory();
             const dynamicOptions = await fetchArchiveDirs();
-            const options = dedupeSortArchives([].concat(staticOptions, dynamicOptions, historyOptions));
+            const options = dedupeSortArchives(dynamicOptions);
             syncArchiveDatalist(options);
             this.setState({ options: options });
           },
           onInputChange: function (e) {
             const rawValue = String(e.target.value || '');
-            const sanitized = sanitizeArchiveInput(rawValue);
-            this.setState({ currentValue: rawValue });
-            if (sanitized) {
-              rememberArchiveHistory(sanitized);
-            }
-            this.props.onChange(sanitized);
+            this.setState({ currentValue: rawValue, isEditing: true });
+            // Keep the raw value in Decap while the user is typing. Sanitizing
+            // every keystroke used to turn a partially entered directory into
+            // an empty value, causing React to erase the visible input.
+            this.props.onChange(rawValue);
+          },
+          onInputFocus: function () {
+            this.setState({ isEditing: true });
+          },
+          onInputBlur: function () {
+            const rawValue = String(this.state.currentValue || '');
+            const normalized = sanitizeArchiveInput(rawValue);
+            this.setState({ currentValue: normalized || rawValue, isEditing: false });
+            if (normalized) this.props.onChange(normalized);
           },
           render: function () {
             return window.h('div', { style: { display: 'grid', gap: '8px' } }, [
@@ -671,6 +871,8 @@
                 list: ARCHIVE_DATALIST_ID,
                 value: this.state.currentValue,
                 onChange: this.onInputChange,
+                onFocus: this.onInputFocus,
+                onBlur: this.onInputBlur,
                 placeholder: '选择已有目录或输入新目录',
                 style: {
                   width: '100%',
@@ -1094,7 +1296,6 @@
                 slug: latest.slug
               });
 
-              rememberArchiveHistory(targetArchive);
               statusEl.style.color = '#065f46';
               statusEl.textContent = '迁移成功，共移动 ' + moved.movedCount + ' 个文件。提交: ' + (moved.commitSha || '-') + '。请刷新列表并重新打开新路径文章继续编辑。';
             } catch (err) {
@@ -1111,6 +1312,13 @@
           if (uploadPanel) uploadPanel.style.display = 'none';
           const movePanel = document.getElementById('archive-move-panel');
           if (movePanel) movePanel.style.display = 'none';
+        }
+
+        function removeEditorTransientPanels() {
+          ['upload-image-only-panel', 'archive-move-panel'].forEach(function(id) {
+            const panel = document.getElementById(id);
+            if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
+          });
         }
 
         function clearEmptyBodyRecovery() {
@@ -1175,15 +1383,30 @@
               el.getAttribute('placeholder') || '',
               el.getAttribute('data-testid') || ''
             ].join(' ').toLowerCase();
-            return /(^|[\s_-])(body|content|markdown)([\s_-]|$)|正文/.test(label);
+            if (/(^|[\s_-])body([\s_-]|$)/.test(label) || /(^|[\s_-])markdown([\s_-]|$)/.test(label)) return true;
+            let node = el.parentElement;
+            for (let depth = 0; node && depth < 8; depth += 1, node = node.parentElement) {
+              const marker = [node.getAttribute('data-field-name'), node.getAttribute('data-name'), node.getAttribute('data-testid'), node.getAttribute('name')].filter(Boolean).join(' ').toLowerCase();
+              if (/(^|[\s_-])body([\s_-]|$)/.test(marker) || /field[-_ ]body/.test(marker)) return true;
+              if (/(^|[\s_-])description([\s_-]|$)/.test(marker)) return false;
+            }
+            return false;
           });
           if (strongMatch) return strongMatch;
 
-          return textareas
-            .slice()
-            .sort(function (a, b) {
-              return String(b.value || '').length - String(a.value || '').length;
-            })[0] || null;
+          // Decap may omit a stable name from the raw Markdown textarea. In that
+          // case, only accept a textarea inside the single field labelled 正文;
+          // never guess from text length, which can attach the editor to 摘要.
+          for (const textarea of textareas) {
+            let node = textarea.parentElement;
+            for (let depth = 0; node && depth < 8; depth += 1, node = node.parentElement) {
+              const fields = node.querySelectorAll('textarea');
+              if (fields.length === 1 && /(?:^|[\s：:])正文(?:$|[\s：:])/.test(String(node.textContent || ''))) {
+                return textarea;
+              }
+            }
+          }
+          return null;
         }
 
         function forceRevealEditorPane() {
@@ -1211,6 +1434,10 @@
         window.CMS.registerEventListener({
           name: 'preSave',
           handler: function(args) {
+            if (markdownEditorTextarea) {
+              markdownEditorTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+              markdownEditorTextarea.dispatchEvent(new Event('change', { bubbles: true }));
+            }
             const entry = args && args.entry;
             const data = entry && typeof entry.get === 'function' ? entry.get('data') : null;
             if (!data || typeof data.get !== 'function' || typeof data.set !== 'function') return data;
@@ -1220,7 +1447,9 @@
               nextData = nextData.delete('attachment_upload');
             }
             const existingPostId = String(nextData.get('post_id') || '').trim();
-            if (existingPostId) return nextData;
+            const now = new Date();
+            const today = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
+            if (existingPostId) return nextData.set('updated', today);
 
             const title = String(nextData.get('title') || 'untitled').trim();
             const date = String(nextData.get('date') || '').slice(0, 10);
@@ -1232,7 +1461,7 @@
               .replace(/[^\w\u4e00-\u9fff-]+/g, '-')
               .replace(/-+/g, '-')
               .replace(/^-|-$/g, '') || 'untitled';
-            return nextData.set('post_id', generatedPostId);
+            return nextData.set('post_id', generatedPostId).set('updated', date || today);
           }
         });
 
@@ -1246,17 +1475,32 @@
         function syncEditorTabsVisibility() {
           try {
             const shouldHide = isPostsEditorRoute();
+            const currentRoute = getDecodedHash().split('?')[0];
+            const routeChanged = currentRoute !== editorRouteKey;
+            if (routeChanged) {
+              editorRouteKey = currentRoute;
+              disposeMarkdownHighlightEditor();
+              removeEditorTransientPanels();
+              clearEmptyBodyRecovery();
+            }
             document.body.classList.toggle('cms-editor-mode', shouldHide);
             const toolsHost = document.getElementById('cms-editor-tools-host');
             if (toolsHost && !shouldHide) toolsHost.style.display = 'none';
-            if (!shouldHide) hideEditorTransientPanels();
+            if (!shouldHide) {
+              disposeMarkdownHighlightEditor();
+              removeEditorTransientPanels();
+              hideEditorTransientPanels();
+            }
             const isLoading = syncLoadingEditorTools();
             if (isLoading) {
+              disposeMarkdownHighlightEditor();
+              removeEditorTransientPanels();
               hideEditorTransientPanels();
               syncGlobalAdminNavVisibility(shouldHide);
               syncEmptyBodyRecovery();
               return;
             }
+            syncMarkdownHighlightEditor();
             syncArchiveMovePanel();
             syncUploadImageOnlyPanel();
             syncEmptyBodyRecovery();
@@ -1308,6 +1552,11 @@
         }
 
         let editorSyncTimer = null;
+        let editorChromeTimeouts = [];
+        function clearEditorChromeTimeouts() {
+          editorChromeTimeouts.forEach(function(timer) { window.clearTimeout(timer); });
+          editorChromeTimeouts = [];
+        }
         function scheduleEditorChromeSync() {
           if (editorSyncTimer !== null) window.clearTimeout(editorSyncTimer);
           editorSyncTimer = window.setTimeout(function() {
@@ -1317,18 +1566,19 @@
         }
 
         function syncEditorChromeSoon() {
+          clearEditorChromeTimeouts();
           syncEditorTabsVisibility();
           syncUploadImageOnlyPanel();
           forceRevealEditorPane();
-          window.setTimeout(syncEditorTabsVisibility, 120);
-          window.setTimeout(syncUploadImageOnlyPanel, 130);
-          window.setTimeout(forceRevealEditorPane, 140);
-          window.setTimeout(syncEditorTabsVisibility, 500);
-          window.setTimeout(syncUploadImageOnlyPanel, 520);
-          window.setTimeout(forceRevealEditorPane, 540);
-          window.setTimeout(syncEditorTabsVisibility, 1200);
-          window.setTimeout(syncUploadImageOnlyPanel, 1220);
-          window.setTimeout(forceRevealEditorPane, 1240);
+          editorChromeTimeouts.push(window.setTimeout(syncEditorTabsVisibility, 120));
+          editorChromeTimeouts.push(window.setTimeout(syncUploadImageOnlyPanel, 130));
+          editorChromeTimeouts.push(window.setTimeout(forceRevealEditorPane, 140));
+          editorChromeTimeouts.push(window.setTimeout(syncEditorTabsVisibility, 500));
+          editorChromeTimeouts.push(window.setTimeout(syncUploadImageOnlyPanel, 520));
+          editorChromeTimeouts.push(window.setTimeout(forceRevealEditorPane, 540));
+          editorChromeTimeouts.push(window.setTimeout(syncEditorTabsVisibility, 1200));
+          editorChromeTimeouts.push(window.setTimeout(syncUploadImageOnlyPanel, 1220));
+          editorChromeTimeouts.push(window.setTimeout(forceRevealEditorPane, 1240));
         }
 
         window.addEventListener('hashchange', syncEditorChromeSoon);

@@ -12,6 +12,7 @@
   }
 
   async init() {
+    this.trackPageView();
     this.bindNav();
     this.bindTheme();
     this.bindSearchUI();
@@ -20,6 +21,36 @@
     this.bindAnchors();
     this.initLightbox();
     this.bindPostEnhancements();
+  }
+
+  trackPageView() {
+    if (location.pathname.startsWith('/admin') || location.pathname.startsWith('/stats') || location.pathname.startsWith('/api/')) return;
+    const payload = JSON.stringify({ path: location.pathname });
+    this.recordLocalPageView(location.pathname);
+    try {
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon('/api/track', new Blob([payload], { type: 'application/json' }));
+      } else {
+        fetch('/api/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload, keepalive: true }).catch(() => {});
+      }
+    } catch (_) {}
+  }
+
+  recordLocalPageView(path) {
+    try {
+      const key = 'site-local-stats-v1';
+      const today = new Date().toISOString().slice(0, 10);
+      const current = JSON.parse(localStorage.getItem(key) || '{}');
+      if (current.lastCountDate === today) return;
+      current.total = Number(current.total || 0) + 1;
+      current.days = current.days && typeof current.days === 'object' ? current.days : {};
+      current.pages = current.pages && typeof current.pages === 'object' ? current.pages : {};
+      current.days[today] = Number(current.days[today] || 0) + 1;
+      current.pages[path] = Number(current.pages[path] || 0) + 1;
+      current.lastCountDate = today;
+      current.updatedAt = new Date().toISOString();
+      localStorage.setItem(key, JSON.stringify(current));
+    } catch (_) {}
   }
 
   bindNav() {
@@ -96,7 +127,9 @@
       const title = this.escapeHTML(post.title || 'Untitled');
       const excerptRaw = (post.excerpt || post.content || '').replace(/<[^>]*>/g, '').slice(0, 120);
       const excerpt = this.escapeHTML(excerptRaw);
-      return `<a href="${post.url}" class="search-result-item"><div class="search-result-title">${title}</div><div class="search-result-excerpt">${excerpt}</div></a>`;
+      const created = this.escapeHTML(post.date || '');
+      const updated = post.updated ? `<span class="search-result-date-item">更新 ${this.escapeHTML(post.updated)}</span>` : '';
+      return `<a href="${post.url}" class="search-result-item"><div class="search-result-title">${title}</div><div class="search-result-date"><span class="search-result-date-item">创建 ${created}</span>${updated}</div><div class="search-result-excerpt">${excerpt}</div></a>`;
     }).join('');
   }
 

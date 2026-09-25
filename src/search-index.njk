@@ -11,6 +11,7 @@ eleventyExcludeFromCollections: true
       "title": {{ post.data.title | dump | safe }},
       "url": {{ post.url | dump | safe }},
       "date": {{ post.date | formatDate | dump | safe }},
+      "updated": {{ (post.data.updated or "") | formatDate | dump | safe }},
       "tags": {{ post.data.tags | dump | safe }},
       "content": {{ post.templateContent | dump | safe }},
       "excerpt": {{ (post.data.description or "") | dump | safe }}

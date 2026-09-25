@@ -142,6 +142,9 @@ function main() {
   if (!/name:\s*body[\s\S]*?widget:\s*markdown[\s\S]*?modes:\s*\n\s*-\s*raw\b/.test(configText)) {
     throw new Error('posts body markdown widget must keep raw mode enabled.');
   }
+  if (!/label:\s*最近更新日期[\s\S]*?name:\s*updated[\s\S]*?widget:\s*datetime\b/.test(configText)) {
+    throw new Error('posts editor must expose an optional updated date field.');
+  }
   if (!/identifier_field:\s*post_id\b/.test(configText)) {
     throw new Error('posts collection must use post_id as the stable identifier field.');
   }
@@ -162,6 +165,25 @@ function main() {
   }
 
   const adminIndexText = fs.readFileSync(adminIndexPath, 'utf8');
+  const baseLayoutPath = path.join(root, 'src', '_layouts', 'base.njk');
+  const baseLayoutText = fs.readFileSync(baseLayoutPath, 'utf8');
+  if (/href=["']\/rss\.xml["'][^>]*>RSS</.test(baseLayoutText)) {
+    throw new Error('base layout must not expose the RSS navigation link.');
+  }
+  if (!/admin-markdown-editor-highlight/.test(adminIndexText) || !/highlightMarkdownLine/.test(adminIndexText)) {
+    throw new Error('admin body editor must provide Markdown syntax highlighting.');
+  }
+  if (/String\(b\.value \|\| ''\)\.length - String\(a\.value \|\| ''\)\.length/.test(adminIndexText)) {
+    throw new Error('admin body editor must not guess the Markdown field by textarea length.');
+  }
+  if (!/disposeMarkdownHighlightEditor/.test(adminIndexText) || !/removeEditorTransientPanels/.test(adminIndexText)) {
+    throw new Error('admin editor must dispose stale editor panels during route changes.');
+  }
+  const trackFunctionPath = path.join(root, 'functions', 'api', 'track.js');
+  const trackFunctionText = fs.readFileSync(trackFunctionPath, 'utf8');
+  if (!/CF-Connecting-IP/.test(trackFunctionText) || !/site-stats-visitor:/.test(trackFunctionText) || !/alreadyCounted/.test(trackFunctionText)) {
+    throw new Error('visit tracking must deduplicate the same IP once per day.');
+  }
   if (/inline-image-button-wrap|inline-image-insert-btn|inline-image-file-input|在线插入|在线插入图片/.test(adminIndexText)) {
     throw new Error('admin editor must not show the retired custom inline image insert module.');
   }
@@ -200,6 +222,9 @@ function main() {
   }
   if (!/getCachedArchiveDirs/.test(adminIndexText)) {
     throw new Error('admin archive directory lookup must be cached to avoid slow repeated editor sync fetches.');
+  }
+  if (!/isEditing:\s*false/.test(adminIndexText) || !/this\.props\.onChange\(rawValue\)/.test(adminIndexText) || !/onInputBlur/.test(adminIndexText)) {
+    throw new Error('archive combobox must preserve partially typed new directory names.');
   }
   if (/protectMarkdownSourceForRichTextImages|restoreMarkdownSourceExceptNewImages|beginRichTextImageSession|richTextActive/.test(adminIndexText)) {
     throw new Error('admin editor must not keep Rich Text image insertion guards after disabling Rich Text.');

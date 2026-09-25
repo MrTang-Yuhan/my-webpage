@@ -1,7 +1,7 @@
 ---
 layout: post.njk
 post_id: 2026-08-12-apogee-adaptive-prefetching-on-gpus-for-energy-efficiency
-archive: GPU预取技术
+archive: gpu预取技术
 title: "APOGEE: Adaptive Prefetching On GPUs for Energy Efficiency"
 date: 2026-08-12
 tags:

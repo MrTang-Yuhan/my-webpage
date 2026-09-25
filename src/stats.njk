@@ -1,0 +1,102 @@
+---
+layout: base.njk
+title: 访问统计
+description: 网站访问量统计
+permalink: /stats/
+---
+
+<section class="stats-page" data-stats-page>
+  <header class="stats-header">
+    <p class="hero-kicker">Site Analytics</p>
+    <h1 class="stats-title">访问统计</h1>
+    <p class="stats-subtitle">记录站点总访问量、今日访问量与最近热门页面。</p>
+  </header>
+
+  <div class="stats-cards" aria-live="polite">
+    <article class="stats-card"><span class="stats-card-label">总访问量</span><strong data-stat="total">加载中</strong></article>
+    <article class="stats-card"><span class="stats-card-label">今日访问</span><strong data-stat="today">加载中</strong></article>
+    <article class="stats-card"><span class="stats-card-label">统计页面数</span><strong data-stat="pages">加载中</strong></article>
+  </div>
+
+  <div class="stats-grid">
+    <section class="stats-panel">
+      <h2>最近 14 天</h2>
+      <div class="stats-bars" data-stat="daily" aria-label="最近 14 天访问量"></div>
+    </section>
+    <section class="stats-panel">
+      <h2>热门页面</h2>
+      <ol class="stats-ranking" data-stat="topPages"></ol>
+    </section>
+  </div>
+  <p class="stats-updated" data-stat="updated"></p>
+</section>
+
+<script>
+  (function () {
+    var root = document.querySelector('[data-stats-page]');
+    if (!root) return;
+    var number = new Intl.NumberFormat('zh-CN');
+    var escapeHtml = function (value) {
+      return String(value || '').replace(/[&<>"']/g, function (char) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char];
+      });
+    };
+    var setText = function (name, value) {
+      var node = root.querySelector('[data-stat="' + name + '"]');
+      if (node) node.textContent = value;
+    };
+    var localFallback = function () {
+      try {
+        var value = JSON.parse(localStorage.getItem('site-local-stats-v1') || '{}');
+        return { persistent: false, total: Number(value.total || 0), days: value.days || {}, pages: value.pages || {}, updatedAt: value.updatedAt || null };
+      } catch (_) { return { persistent: false, total: 0, days: {}, pages: {}, updatedAt: null }; }
+    };
+    var normalize = function (data) {
+      if (data && data.persistent) return data;
+      var fallback = localFallback();
+      var days = data && data.days && Object.keys(data.days).length ? data.days : fallback.days;
+      var pages = data && data.topPages && data.topPages.length ? data.topPages.reduce(function (acc, item) { acc[item.path] = item.count; return acc; }, {}) : fallback.pages;
+      return { total: data && data.persistent ? data.total : fallback.total, days: days, pages: pages, updatedAt: (data && data.persistent && data.updatedAt) || fallback.updatedAt };
+    };
+    var render = function (data) {
+        data = normalize(data);
+        var todayKey = new Date().toISOString().slice(0, 10);
+        data.today = Number((data.days || {})[todayKey] || 0);
+        data.daily = Array.from({ length: 14 }, function (_, index) {
+          var date = new Date(); date.setUTCDate(date.getUTCDate() - (13 - index));
+          var key = date.toISOString().slice(0, 10);
+          return { date: key, count: Number((data.days || {})[key] || 0) };
+        });
+        if (!data.persistent) {
+          data.topPages = Object.entries(data.pages || {}).map(function (entry) { return { path: entry[0], count: Number(entry[1] || 0), title: entry[0] === '/' ? '首页' : entry[0] }; }).sort(function (a, b) { return b.count - a.count; }).slice(0, 10);
+        }
+        setText('total', number.format(Number(data.total || 0)));
+        setText('today', number.format(Number(data.today || 0)));
+        setText('pages', number.format(Array.isArray(data.topPages) ? data.topPages.length : 0));
+
+        var daily = Array.isArray(data.daily) ? data.daily : [];
+        var max = Math.max.apply(null, daily.map(function (item) { return Number(item.count || 0); }).concat([1]));
+        var bars = root.querySelector('[data-stat="daily"]');
+        bars.innerHTML = daily.map(function (item) {
+          var count = Number(item.count || 0);
+          var height = Math.max(4, Math.round((count / max) * 100));
+          return '<div class="stats-bar-item" title="' + escapeHtml(item.date) + ': ' + count + '">' +
+            '<span class="stats-bar-value">' + number.format(count) + '</span>' +
+            '<span class="stats-bar" style="height:' + height + '%"></span>' +
+            '<span class="stats-bar-label">' + escapeHtml(String(item.date || '').slice(5)) + '</span>' +
+          '</div>';
+        }).join('');
+
+        var topPages = Array.isArray(data.topPages) ? data.topPages : [];
+        var ranking = root.querySelector('[data-stat="topPages"]');
+        ranking.innerHTML = topPages.length ? topPages.map(function (item) {
+          return '<li><a href="' + escapeHtml(item.path) + '">' + escapeHtml(item.title || item.path) + '</a><span>' + number.format(Number(item.count || 0)) + '</span></li>';
+        }).join('') : '<li class="stats-empty">暂无访问记录</li>';
+        setText('updated', data.updatedAt ? '更新于 ' + new Date(data.updatedAt).toLocaleString('zh-CN') : '');
+    };
+    fetch('/api/stats', { cache: 'no-store' })
+      .then(function (response) { if (!response.ok) throw new Error('stats unavailable'); return response.json(); })
+      .then(render)
+      .catch(function () { render(localFallback()); });
+  })();
+</script>

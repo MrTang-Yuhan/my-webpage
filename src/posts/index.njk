@@ -17,10 +17,15 @@ permalink: /posts/
 {% for dir, posts in collections.postsByDir %}
   <section class="archive-section">
     <h2 class="archive-dir-title">{{ dir | replace("-", " ") | title }}</h2>
-    <ul class="archive-list">
+      <ul class="archive-list">
       {% for post in posts %}
         <li class="archive-list-item">
-          <span class="archive-date">{{ post.date | formatDate }}</span>
+          <span class="archive-date-list">
+            <span class="archive-date"><span class="post-date-label">创建</span>{{ post.date | formatDate }}</span>
+            {% if post.data.updated %}
+              <span class="archive-date"><span class="post-date-label">更新</span>{{ post.data.updated | formatDate }}</span>
+            {% endif %}
+          </span>
           <span class="archive-title"><a href="{{ post.url }}">{{ post.data.title }}</a></span>
         </li>
       {% endfor %}
