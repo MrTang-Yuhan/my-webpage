@@ -8,4 +8,4 @@ updated: 2026-09-26
 tags:
   - post
 ---
-1
+![](img/gdn-paper-figure1.png)
