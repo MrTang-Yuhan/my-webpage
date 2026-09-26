@@ -9,3 +9,9 @@ tags:
   - post
 ---
 ![](img/gdn-paper-figure1.png)
+
+重点介绍三个部分：
+
+- SWA (Sliding Window Attention, 滑动窗口注意力)
+- Gated DeltaNet
+- Mamba2 
