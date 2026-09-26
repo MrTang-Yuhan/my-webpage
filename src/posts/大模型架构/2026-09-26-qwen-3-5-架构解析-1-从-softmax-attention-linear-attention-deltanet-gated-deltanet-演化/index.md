@@ -45,6 +45,9 @@ $$\sum_{i=1}^{t} \phi(q_t)^\top \phi(k_i) v_i^\top = \phi(q_t)^\top \underbrace{
 
 此处关键观察在于：$\phi(k_i) \in \mathbb{R}^{d'}$ 为列向量，$v_i^\top \in \mathbb{R}^{1 \times d}$ 为行向量，其外积 $\phi(k_i) v_i^\top$ 构成一个 $d' \times d$ 的矩阵。因此，求和项 $S_t$ 为矩阵值量。
 
+![](img/step-2.png)
+
+
 ### 3.3 矩阵值隐状态及其递推
 
 定义矩阵值隐状态（matrix-valued hidden state）：
@@ -57,9 +60,13 @@ $$S_t = S_{t-1} + \phi(k_t) v_t^\top, \qquad o_t = \phi(q_t)^\top S_t. \tag{1}$$
 
 此即为 Linear Attention 的递归形式。
 
+![](img/step-3.png)
+
+![](img/step-4.png)
+
 ### 3.4 结构性局限
 
-由式 (1) 可见，$S_t$ 的更新为单调累加：旧信息通过外积永久嵌入状态矩阵，既无定向覆写机制，亦无时间衰减机制。随着序列增长，状态矩阵的秩与 Frobenius 范数持续膨胀，不同键值对之间产生记忆冲突（memory collision），长程建模能力受限。
+由式 (1) 可见，$S_t$ 的更新为单调累加：旧信息通过外积永久嵌入状态矩阵，既无定向覆写机制，亦无时间衰减机制。随着序列增长，不同键值对之间产生记忆冲突（memory collision），长程建模能力受限。
 
 
 ---
@@ -68,7 +75,7 @@ $$S_t = S_{t-1} + \phi(k_t) v_t^\top, \qquad o_t = \phi(q_t)^\top S_t. \tag{1}$$
 
 ### 4.1 问题建模
 
-为克服 Linear Attention 的单调累加缺陷，需赋予状态矩阵 $S$ 以可更新性。将 $S$ 视作一个线性预测模型：对于输入键 $k$，模型预测输出为 $S^\top k$。在第 $t$ 步，观测到目标值 $v_t$，定义瞬时平方损失：
+为克服 Linear Attention 的单调累加缺陷，需赋予状态矩阵 $S$ 以可更新性。既然 $S_t$ 里存的是键特征 $\phi(k)$ 到值 $v$ 的映射，那就把它看成一个线性预测器：输入是当前的键特征，输出应尽量等于当前的值 $v_t$。因此将 $S$ 视作一个线性预测模型：对于输入键 $k$，模型预测输出为 $S^\top k$。在第 $t$ 步，观测到目标值 $v_t$，定义瞬时平方损失：
 
 $$\mathcal{L}_t(S) = \frac{1}{2} \|S^\top k_t - v_t\|^2. \tag{2}$$
 
