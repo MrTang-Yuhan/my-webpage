@@ -8,6 +8,9 @@ updated: 2026-09-27
 tags:
   - post
 ---
+> 演示视频：
+
+
 # 脉动阵列（Systolic Array）
 
 ## 1. 介绍
@@ -23,7 +26,7 @@ tags:
 - `in_a` 向右传递
 - `in_b` 向下传递
 
-![systolic_array](./img/systolic.png)
+![systolic_array](img/systolic.png)
 
 ### [注意事项](#supplement)
 
@@ -37,7 +40,7 @@ tags:
 
 下图展示了把整个矩阵 `L` 输入到脉动阵列中并存储起来，然后才开始处理矩阵 `T` 的各行的情况。
 
-![](./img/systolic-preload.png)
+![](img/systolic-preload.png)
 
 ---
 
@@ -54,7 +57,7 @@ tags:
 
 ---
 
-## 3. 代码说明（[`systolic_array.py`](./systolic_array.py)）
+## 3. 代码说明（[`systolic_array.py`](attach/systolic_array.py)）
 
 - **`PE (脉动阵列 cell)`**
   - `compute(in_a, in_b)`：执行乘加，保存下一拍输出
