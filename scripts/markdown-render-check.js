@@ -55,12 +55,12 @@ function runChecks(label, html) {
 function loadAdminMarkdownIt() {
   const adminPath = path.join(__dirname, "..", "src", "admin", "index.html");
   const adminIndex = fs.readFileSync(adminPath, "utf8");
-  const match = adminIndex.match(/function registerVsCodeMarkdownItKatex\(md, options\) \{[\s\S]*?\n        \}\n\n        const md =/);
+  const match = adminIndex.match(/function registerVsCodeMarkdownItKatex\(md, options\) \{[\s\S]*?\r?\n        \}\r?\n\r?\n        const md =/);
   if (!match) {
     throw new Error("Admin VS Code KaTeX plugin function was not found.");
   }
 
-  const functionSource = match[0].replace(/\n\n        const md =$/, "");
+  const functionSource = match[0].replace(/\r?\n\r?\n        const md =$/, "");
   const sandbox = {
     window: { katex },
     console

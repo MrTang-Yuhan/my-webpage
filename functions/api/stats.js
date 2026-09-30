@@ -15,7 +15,9 @@ export async function onRequestGet(context) {
     .map(([path, count]) => ({ path, count: Number(count || 0), title: path === "/" ? "首页" : path }))
     .sort((a, b) => b.count - a.count || a.path.localeCompare(b.path))
     .slice(0, 10);
-  return json({ persistent: Boolean(env.SITE_STATS), total: stats.total, today: Number(stats.days[today] || 0), daily, topPages, updatedAt: stats.updatedAt });
+  // Supply the complete counts so the client can select published articles before
+  // limiting the ranking. General pages must not crowd articles out of the top ten.
+  return json({ persistent: Boolean(env.SITE_STATS), total: stats.total, today: Number(stats.days[today] || 0), daily, pageCount: Object.keys(stats.pages).length, pageViews: stats.pages, topPages, updatedAt: stats.updatedAt });
 }
 
 async function readStats(env) {
