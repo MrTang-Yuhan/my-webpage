@@ -39,7 +39,7 @@
 - 使用 `functions/api/auth.js` + `functions/api/callback.js` 提供 `/api/auth` 与 `/api/callback`。
 - `src/admin/config.yml` 中保持 `auth_endpoint: /api/auth` 不变。
 - 需配置环境变量：`GITHUB_CLIENT_ID`、`GITHUB_CLIENT_SECRET`，可选 `AUTH_BASE_URL`（用于固定回调域名）。
-- 访问统计接口使用 Cloudflare KV 绑定 `SITE_STATS` 持久化计数；同一 IP 每天只计数一次，服务端只保存日期与 IP 哈希，不保存原始 IP。未绑定 KV 时页面会自动降级为当前浏览器的本地每日统计。
+- 访问统计接口使用 Cloudflare KV 绑定 `SITE_STATS` 持久化计数：所有 IP 的总访问量按每次访问累计，不同 IP 总量按整个统计期间去重；所有 IP 今日访问量按每次访问累计，不同 IP 今日访问量按当天去重。热门文章按所有 IP 的累计访问次数排序。服务端只保存日期与加盐后的 IP 哈希，不保存原始 IP。未绑定 KV 时页面不会显示伪造的全站统计数字。
 - 归档迁移接口额外需要：`GITHUB_ADMIN_TOKEN`（推荐细粒度 token，至少 `Contents: Read and write`）。
 - 建议额外配置：`ADMIN_SESSION_SECRET`（用于签名 admin session cookie；未配置时回退 `GITHUB_CLIENT_SECRET`）。
 - 备用方案：`oauth-worker/` 独立 Worker。仅在无法使用 Pages Functions 时启用，避免两套 OAuth 同时对外暴露造成漂移。

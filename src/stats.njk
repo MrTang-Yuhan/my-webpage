@@ -9,26 +9,30 @@ permalink: /stats/
   <header class="stats-header">
     <p class="hero-kicker">Site Analytics</p>
     <h1 class="stats-title">访问统计</h1>
-    <p class="stats-subtitle">记录站点总访问量、今日访问量与热门文章。</p>
+    <p class="stats-subtitle">区分所有 IP 与不同 IP 的访问量，热门文章按所有 IP 总访问量排序。</p>
   </header>
 
   <div class="stats-cards" aria-live="polite">
-    <article class="stats-card"><span class="stats-card-label">总访问量</span><strong data-stat="total">加载中</strong></article>
-    <article class="stats-card"><span class="stats-card-label">今日访问</span><strong data-stat="today">加载中</strong></article>
-    <article class="stats-card"><span class="stats-card-label">统计页面数</span><strong data-stat="pages">加载中</strong></article>
+    <article class="stats-card"><span class="stats-card-label">所有 IP 总访问量</span><strong data-stat="allTotal">加载中</strong><small>每次访问均计入，包含重复访问</small></article>
+    <article class="stats-card"><span class="stats-card-label">不同 IP 总访问量</span><strong data-stat="uniqueTotal">加载中</strong><small>整个统计期间，同一 IP 只计一次</small></article>
+    <article class="stats-card"><span class="stats-card-label">所有 IP 今日访问量</span><strong data-stat="allToday">加载中</strong><small>今日每次访问均计入</small></article>
+    <article class="stats-card"><span class="stats-card-label">不同 IP 今日访问量</span><strong data-stat="uniqueToday">加载中</strong><small>今日同一 IP 只计一次</small></article>
   </div>
+  <p class="stats-note" data-stat="status" aria-live="polite"></p>
 
   <div class="stats-grid">
     <section class="stats-panel">
-      <h2>最近 14 天</h2>
-      <div class="stats-bars" data-stat="daily" aria-label="最近 14 天访问量"></div>
+      <h2>最近 14 天（所有 IP）</h2>
+      <div class="stats-bars" data-stat="daily" aria-label="最近 14 天所有 IP 访问量"></div>
     </section>
     <section class="stats-panel">
       <h2>热门文章</h2>
+      <p class="stats-note">按所有 IP 的累计访问次数排序，包含重复访问。</p>
       <ol class="stats-ranking" data-stat="topPages"></ol>
     </section>
   </div>
-  <p class="stats-updated" data-stat="updated"></p>
+  <p class="stats-note" data-stat="period"></p>
+  <p class="stats-updated">统计页面数：<span data-stat="pages">加载中</span> · <span data-stat="updated"></span></p>
 </section>
 
 <template id="stats-page-titles">

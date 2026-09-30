@@ -184,8 +184,8 @@ function main() {
   }
   const trackFunctionPath = path.join(root, 'functions', 'api', 'track.js');
   const trackFunctionText = fs.readFileSync(trackFunctionPath, 'utf8');
-  if (!/CF-Connecting-IP/.test(trackFunctionText) || !/site-stats-visitor:/.test(trackFunctionText) || !/alreadyCounted/.test(trackFunctionText)) {
-    throw new Error('visit tracking must deduplicate the same IP once per day.');
+  if (!/CF-Connecting-IP/.test(trackFunctionText) || !/site-stats-visitor-total:/.test(trackFunctionText) || !/site-stats-visitor-day:/.test(trackFunctionText) || !/uniqueTotalCounted/.test(trackFunctionText) || !/uniqueTodayCounted/.test(trackFunctionText)) {
+    throw new Error('visit tracking must separate all-IP page views from all-time and daily unique-IP counts.');
   }
   if (/inline-image-button-wrap|inline-image-insert-btn|inline-image-file-input|在线插入|在线插入图片/.test(adminIndexText)) {
     throw new Error('admin editor must not show the retired custom inline image insert module.');

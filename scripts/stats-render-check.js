@@ -16,6 +16,12 @@ function decode(value) {
     return { amp: '&', quot: '"', lt: '<', gt: '>', apos: "'" }[entity];
   });
 }
+function pathKey(value) {
+  return String(value).split(/[?#]/)[0].split('/').map(part => {
+    try { return encodeURIComponent(decodeURIComponent(part)); }
+    catch (_) { return part; }
+  }).join('/').replace(/\/+$/, '') || '/';
+}
 const links = [...template.matchAll(/<a href="([^"]*)">([\s\S]*?)<\/a>/g)].map(match => ({
   href: decode(match[1]), textContent: decode(match[2]), getAttribute() { return this.href; }
 }));
@@ -26,31 +32,32 @@ assert.ok(article, 'The screenshot article must be present in the title index');
 const encoded = encodeURI(article.href);
 const today = new Date().toISOString().slice(0, 10);
 const fixture = {
-  persistent: true, total: 6, today: 1, pageCount: 2,
+  persistent: true, version: 2,
+  allTotal: 6, allToday: 1, uniqueTotal: 4, uniqueToday: 1, pageCount: 2,
   daily: Array.from({ length: 14 }, (_, index) => {
     const date = new Date();
     date.setUTCDate(date.getUTCDate() - 13 + index);
-    return { date: date.toISOString().slice(0, 10), count: index < 8 ? 0 : 1 };
+    return { date: date.toISOString().slice(0, 10), count: index < 8 ? 0 : 1, unique: index < 9 ? 0 : 1 };
   }),
-  topPages: [{ path: '/', count: 5, title: '首页' }, { path: encoded, title: encoded, count: 1 }],
+  pageViews: { '/': 5, [encoded]: 1 },
   updatedAt: new Date().toISOString()
 };
 const stress = {
-  ...fixture, total: 987654321, pageCount: 25,
+  ...fixture, allTotal: 987654321, allToday: 123456, uniqueTotal: 7654321, uniqueToday: 2345, pageCount: 25,
   daily: fixture.daily.map((item, i) => ({ ...item, count: i * 123456 })),
-  topPages: [
-    ...fixture.topPages,
-    ...links.slice(0, 8).map((link, i) => ({ path: encodeURI(link.href), count: 123456789 - i })),
-    { path: '/unknown/' + '超长中文标题'.repeat(60) + '/', count: 123456789 },
-    { path: '/unknown/' + 'UnbrokenEnglishTitle'.repeat(30) + '/', count: 12345 },
-    { path: '/unknown/' + encodeURIComponent('没有索引的中文文章') + '/', count: 4 },
-    { path: '/broken/%E0%A4%A/', count: 3 },
-    { path: '/quoted/%22%3Cscript%3E/', title: '<script>alert("test")</script>', count: 2 }
-  ]
+  pageViews: {
+    ...fixture.pageViews,
+    ...Object.fromEntries(links.slice(0, 8).map((link, i) => [encodeURI(link.href), 123456789 - i])),
+    ['/unknown/' + '超长中文标题'.repeat(60) + '/']: 123456789,
+    ['/unknown/' + 'UnbrokenEnglishTitle'.repeat(30) + '/']: 12345,
+    ['/unknown/' + encodeURIComponent('没有索引的中文文章') + '/']: 4,
+    '/broken/%E0%A4%A/': 3,
+    '/quoted/%22%3Cscript%3E/': 2
+  }
 };
 
 async function render(data, local = '{}', index = links) {
-  const nodes = Object.fromEntries(['total', 'today', 'pages', 'daily', 'topPages', 'updated'].map(key => [key, { textContent: '', innerHTML: '' }]));
+  const nodes = Object.fromEntries(['allTotal', 'uniqueTotal', 'allToday', 'uniqueToday', 'pages', 'daily', 'topPages', 'status', 'period', 'updated'].map(key => [key, { textContent: '', innerHTML: '' }]));
   let rejectError;
   const done = new Promise(resolve => {
     Object.defineProperty(nodes.updated, 'textContent', { set(value) { this.value = value; resolve(); } });
@@ -74,19 +81,32 @@ async function render(data, local = '{}', index = links) {
 }
 
 async function check() {
-  const serverSource = fs.readFileSync(path.join(root, 'functions/api/stats.js'), 'utf8');
-  const { onRequestGet } = await import('data:text/javascript;base64,' + Buffer.from(serverSource).toString('base64'));
+  const libSource = fs.readFileSync(path.join(root, 'functions/_lib/stats.js'), 'utf8');
+  const statsSource = fs.readFileSync(path.join(root, 'functions/api/stats.js'), 'utf8')
+    .replace(/^import[^\n]+\n/, '');
+  const { onRequestGet } = await import('data:text/javascript;base64,' + Buffer.from(libSource + '\n' + statsSource).toString('base64'));
   const pages = Object.fromEntries(links.slice(0, 15).map((link, i) => [link.href, i + 1]));
   const generalPages = Object.fromEntries(['/', '/posts/', '/about/', '/stats/', '/admin/', '/posts/missing/deleted/', article.href + 'attach/demo.html',
     ...Array.from({ length: 12 }, (_, i) => '/landing-' + i + '/')].map(url => [url, 9999]));
   Object.assign(pages, generalPages);
-  const response = await onRequestGet({ env: { SITE_STATS: { get: async () => JSON.stringify({ total: 120, pages, days: { [today]: 7 } }) } } });
+  const response = await onRequestGet({ env: { SITE_STATS: { get: async key => key === 'site-stats-v2' ? JSON.stringify({
+    version: 2,
+    all: { total: 120, pages, days: { [today]: 7 } },
+    unique: { total: 42, days: { [today]: 3 } },
+    missingIpViews: 0, startedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), legacy: null
+  }) : null } } });
   const api = await response.json();
   assert.equal(api.pageCount, Object.keys(pages).length);
-  assert.equal(api.topPages.length, 10);
+  assert.equal(api.allTotal, 120);
+  assert.equal(api.allToday, 7);
+  assert.equal(api.uniqueTotal, 42);
+  assert.equal(api.uniqueToday, 3);
   assert.deepEqual(api.pageViews, pages);
   const serverNodes = await render(api);
-  assert.equal(serverNodes.today.textContent, '7');
+  assert.equal(serverNodes.allTotal.textContent, '120');
+  assert.equal(serverNodes.allToday.textContent, '7');
+  assert.equal(serverNodes.uniqueTotal.textContent, '42');
+  assert.equal(serverNodes.uniqueToday.textContent, '3');
   assert.equal(serverNodes.pages.textContent, String(Object.keys(pages).length));
   assert.equal((serverNodes.topPages.innerHTML.match(/<li>/g) || []).length, 10, 'General pages must not crowd out articles');
   assert.ok(decode(serverNodes.topPages.innerHTML).includes(links[14].textContent.trim()), 'Highest-view article should lead');
@@ -96,34 +116,32 @@ async function check() {
   assert.match(serverNodes.daily.innerHTML, /stats-bar-value">7</);
   for (const link of links) {
     for (const variant of [link.href, encodeURI(link.href), encodeURI(link.href).replace(/%[A-F0-9]{2}/g, s => s.toLowerCase()).replace(/\/$/, '') || '/']) {
-      const nodes = await render({ ...fixture, topPages: [{ path: variant, title: variant, count: 1 }] });
+      const nodes = await render({ ...fixture, pageViews: { [variant]: 1 } });
       const title = decode(nodes.topPages.innerHTML.match(/class="stats-ranking-title">([\s\S]*?)<\/span>/)[1]);
       assert.equal(title, link.textContent.trim(), 'Title lookup failed for ' + variant);
       assert.equal(decode(nodes.topPages.innerHTML.match(/href="([^"]+)"/)[1]), variant, 'Navigation URL must remain unchanged');
     }
   }
-  const local = JSON.stringify({ total: 120, days: { [today]: 8 }, pages: { ...pages, [encoded]: 100 } });
-  for (const data of [new Error('offline'), { persistent: false }]) {
-    const nodes = await render(data, local);
-    assert.equal(nodes.today.textContent, '8');
-    assert.equal(nodes.pages.textContent, String(Object.keys({ ...pages, [encoded]: 100 }).length));
-    assert.equal((nodes.topPages.innerHTML.match(/<li>/g) || []).length, 10);
-    assert.ok(decode(nodes.topPages.innerHTML).includes(article.textContent));
+  for (const data of [new Error('offline'), { persistent: false }, { version: 1, persistent: true }]) {
+    const nodes = await render(data);
+    assert.equal(nodes.allToday.textContent, '—');
+    assert.equal(nodes.uniqueToday.textContent, '—');
+    assert.equal(nodes.pages.textContent, '—');
+    assert.ok(nodes.status.textContent.includes('全站统计暂不可用'));
+    assert.ok(nodes.topPages.innerHTML.includes('文章访问统计暂不可用'));
   }
   const empty = await render(new Error('offline'), '{broken');
-  assert.equal(empty.total.textContent, '0');
-  assert.ok(empty.topPages.innerHTML.includes('暂无文章访问记录'));
+  assert.equal(empty.allTotal.textContent, '—');
+  assert.ok(empty.topPages.innerHTML.includes('文章访问统计暂不可用'));
   const stressNodes = await render(stress);
   assert.ok(!stressNodes.topPages.innerHTML.includes('没有索引的中文文章'));
   assert.ok(!stressNodes.topPages.innerHTML.includes('<script>'));
-  const unsafe = await render({ ...fixture, topPages: [{ path: 'javascript:alert(1)', count: 1 }, { path: '//example.com', count: 1 }] });
+  const unsafe = await render({ ...fixture, pageViews: { 'javascript:alert(1)': 1, '//example.com': 1 } });
   assert.ok(!unsafe.topPages.innerHTML.includes('href='));
   const noIndex = await render(fixture, '{}', []);
   assert.ok(noIndex.topPages.innerHTML.includes('暂无文章访问记录'));
   const onlyGeneral = await render({ ...fixture, pageViews: generalPages });
   assert.ok(onlyGeneral.topPages.innerHTML.includes('暂无文章访问记录'));
-  const onlyGeneralLocal = await render(new Error('offline'), JSON.stringify({ pages: generalPages }));
-  assert.ok(onlyGeneralLocal.topPages.innerHTML.includes('暂无文章访问记录'));
   const merged = await render({ ...fixture, pageViews: { [article.href]: 3, [encoded]: 4, '/': 999 } });
   assert.equal((merged.topPages.innerHTML.match(/<li>/g) || []).length, 1);
   assert.match(merged.topPages.innerHTML, /stats-ranking-count">7</);
@@ -131,6 +149,38 @@ async function check() {
   const escaped = await render({ ...fixture, pageViews: { [special.href]: 1 } }, '{}', [special]);
   assert.ok(escaped.topPages.innerHTML.includes('&lt;script&gt;'));
   assert.ok(!escaped.topPages.innerHTML.includes('<script>'));
+
+  const trackSource = fs.readFileSync(path.join(root, 'functions/api/track.js'), 'utf8')
+    .replace(/^import[^\n]+\n/, '');
+  const { onRequestPost } = await import('data:text/javascript;base64,' + Buffer.from(libSource + '\n' + trackSource).toString('base64'));
+  const kvData = new Map();
+  const kv = {
+    get: async key => kvData.get(key) || null,
+    put: async (key, value) => { kvData.set(key, String(value)); }
+  };
+  const trackEnv = { SITE_STATS: kv, SITE_STATS_SALT: 'test-salt' };
+  async function track(ip, path = article.href) {
+    const request = new Request('https://example.test/api/track', { method: 'POST', body: JSON.stringify({ path }), headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': ip } });
+    const result = await onRequestPost({ request, env: trackEnv });
+    assert.equal(result.status, 200);
+  }
+  await track('203.0.113.10');
+  await track('203.0.113.10');
+  let tracked = await onRequestGet({ env: trackEnv }).then(result => result.json());
+  assert.equal(tracked.allTotal, 2);
+  assert.equal(tracked.uniqueTotal, 1);
+  assert.equal(tracked.uniqueToday, 1);
+  const trackedArticlePath = Object.keys(tracked.pageViews).find(path => {
+    try { return pathKey(path) === pathKey(article.href); } catch (_) { return false; }
+  });
+  assert.ok(trackedArticlePath, 'Tracked article path should be present: ' + JSON.stringify({ article: article.href, pageViews: tracked.pageViews }));
+  assert.equal(tracked.pageViews[trackedArticlePath], 2);
+  await track('203.0.113.11');
+  tracked = await onRequestGet({ env: trackEnv }).then(result => result.json());
+  assert.equal(tracked.allTotal, 3);
+  assert.equal(tracked.uniqueTotal, 2);
+  assert.equal(tracked.uniqueToday, 2);
+  assert.equal(tracked.pageViews[trackedArticlePath], 3, 'Popular article ranking must use all-IP page views');
   console.log('Stats checks passed: ' + links.length + ' articles × 3 URL forms; article-only ranking before top-ten limit, merged paths, API/local/offline, totals and HTML escaping.');
 }
 
@@ -172,8 +222,8 @@ function serve() {
         'const frame = document.createElement("iframe"); frame.width = width; frame.height = 1200; frame.style.border = "0";' +
         'const ready = new Promise(resolve => frame.onload = resolve); frame.src = "/stats/?fixture=stress"; document.getElementById("frames").append(frame); await ready;' +
         'const doc = frame.contentDocument; doc.documentElement.dataset.theme = theme; await doc.fonts.ready;' +
-        'for (let i=0; i<100 && doc.querySelector("[data-stat=total]").textContent === "加载中"; i++) await new Promise(r => setTimeout(r, 20));' +
-        'const errors = frame.contentWindow.eval("(" + check.toString() + ")()"); if(doc.querySelector("[data-stat=total]").textContent === "加载中") errors.push("render timeout");' +
+        'for (let i=0; i<100 && doc.querySelector("[data-stat=allTotal]").textContent === "加载中"; i++) await new Promise(r => setTimeout(r, 20));' +
+        'const errors = frame.contentWindow.eval("(" + check.toString() + ")()"); if(doc.querySelector("[data-stat=allTotal]").textContent === "加载中") errors.push("render timeout");' +
         'results.push({width, theme, errors}); document.getElementById("results").textContent = JSON.stringify(results, null, 2); frame.remove();' +
         '} } document.title = results.some(r=>r.errors.length) ? "FAIL" : "PASS"; })();</script>');
     }

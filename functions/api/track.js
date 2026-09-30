@@ -1,73 +1,64 @@
-const STATS_KEY = "site-stats-v1";
+import { STATS_KEY, dayKey, readStats, json } from "../_lib/stats.js";
 
-export async function onRequestPost(context) {
-  const { request, env } = context;
-  if (!isSameOrigin(request)) return json({ error: "Invalid origin" }, 403);
+export async function onRequestPost({ request, env }) {
+  const origin = request.headers.get("Origin");
+  if (origin && origin !== new URL(request.url).origin) return json({ error: "Invalid origin" }, 403);
+  let body;
+  try { body = await request.json(); } catch (_) { return json({ error: "Invalid payload" }, 400); }
+  const path = normalizePath(body?.path);
+  if (!path) return json({ error: "Invalid page path" }, 400);
+  if (/^\/(?:admin|stats|api)(?:\/|$)/.test(path)) return json({ ok: true, counted: false });
+  if (!env.SITE_STATS) return json({ ok: true, counted: false, persistent: false });
 
-  let body = {};
-  try { body = await request.json(); } catch (_) {}
-  const path = normalizePath(body.path || "/");
-  const today = new Date().toISOString().slice(0, 10);
-  const stats = await readStats(env);
-  const visitorKey = await getVisitorKey(request, env, today);
-  if (visitorKey && env.SITE_STATS) {
-    const alreadyCounted = await env.SITE_STATS.get(visitorKey);
-    if (alreadyCounted) return json({ ok: true, counted: false, persistent: true });
-    await env.SITE_STATS.put(visitorKey, "1", { expirationTtl: 172800 });
+  try {
+    const stats = await readStats(env);
+    const now = new Date();
+    const today = dayKey(now);
+    const hash = await visitorHash(request, env);
+    let uniqueTotalCounted = false;
+    let uniqueTodayCounted = false;
+    // Every page load counts, including repeat visits by the same IP.
+    stats.all.total += 1;
+    stats.all.days[today] = Number(stats.all.days[today] || 0) + 1;
+    stats.all.pages[path] = Number(stats.all.pages[path] || 0) + 1;
+    if (hash) {
+      const totalKey = "site-stats-visitor-total:" + hash;
+      const dailyKey = "site-stats-visitor-day:" + today + ":" + hash;
+      uniqueTotalCounted = !(await env.SITE_STATS.get(totalKey));
+      uniqueTodayCounted = !(await env.SITE_STATS.get(dailyKey));
+      if (uniqueTotalCounted) stats.unique.total += 1;
+      if (uniqueTodayCounted) stats.unique.days[today] = Number(stats.unique.days[today] || 0) + 1;
+      if (uniqueTotalCounted) await env.SITE_STATS.put(totalKey, "1");
+      if (uniqueTodayCounted) await env.SITE_STATS.put(dailyKey, "1", { expirationTtl: 172800 });
+    } else {
+      // Missing IPs contribute PV, but must never be invented as unique visitors.
+      stats.missingIpViews += 1;
+    }
+    stats.startedAt = stats.startedAt || now.toISOString();
+    stats.updatedAt = now.toISOString();
+    await env.SITE_STATS.put(STATS_KEY, JSON.stringify(stats));
+    return json({ ok: true, allCounted: true, uniqueTotalCounted, uniqueTodayCounted, persistent: true });
+  } catch (_) {
+    return json({ error: "Statistics could not be saved" }, 503);
   }
-  stats.total += 1;
-  stats.days[today] = Number(stats.days[today] || 0) + 1;
-  stats.pages[path] = Number(stats.pages[path] || 0) + 1;
-  stats.updatedAt = new Date().toISOString();
-  try { await writeStats(env, stats); } catch (_) {}
-  return json({ ok: true, counted: true, persistent: Boolean(env.SITE_STATS) });
 }
 
-async function getVisitorKey(request, env, date) {
-  const forwarded = request.headers.get("CF-Connecting-IP") || request.headers.get("X-Forwarded-For") || "";
-  const ip = String(forwarded).split(",")[0].trim();
-  if (!ip) return "";
-  const salt = String(env.SITE_STATS_SALT || env.ADMIN_SESSION_SECRET || "site-stats-v1");
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${salt}:${date}:${ip}`));
-  const hash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-  return `site-stats-visitor:${date}:${hash}`;
+async function visitorHash(request, env) {
+  // Trust Cloudflare's header, not a client-supplied forwarding list.
+  const ip = (request.headers.get("CF-Connecting-IP") || "").trim().toLowerCase();
+  if (!ip) return null;
+  const salt = String(env.SITE_STATS_SALT || env.ADMIN_SESSION_SECRET || "site-stats-v2");
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(salt + ":" + ip));
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function normalizePath(value) {
-  const path = String(value || "/").trim();
-  if (!path.startsWith("/") || path.startsWith("//") || path.includes("\0")) return "/";
-  return path.slice(0, 300);
-}
-
-function isSameOrigin(request) {
-  const origin = request.headers.get("Origin");
-  return !origin || origin === new URL(request.url).origin;
-}
-
-async function readStats(env) {
-  if (!env.SITE_STATS) return emptyStats();
+  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//") ||
+      /[\\\u0000-\u0020]/.test(value) || value.length > 4096) return null;
+  const path = value.split(/[?#]/)[0];
   try {
-    const raw = await env.SITE_STATS.get(STATS_KEY);
-    const parsed = raw ? JSON.parse(raw) : null;
-    if (parsed && typeof parsed === "object") return normalizeStats(parsed);
-  } catch (_) {}
-  return emptyStats();
-}
-
-async function writeStats(env, stats) {
-  if (!env.SITE_STATS) return;
-  await env.SITE_STATS.put(STATS_KEY, JSON.stringify(stats));
-}
-
-function emptyStats() { return { total: 0, days: {}, pages: {}, updatedAt: null }; }
-function normalizeStats(value) {
-  return {
-    total: Number(value.total || 0),
-    days: value.days && typeof value.days === "object" ? value.days : {},
-    pages: value.pages && typeof value.pages === "object" ? value.pages : {},
-    updatedAt: value.updatedAt || null
-  };
-}
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
+    // Do not truncate encoded Chinese URLs or merge encoded slashes into paths.
+    return path.split("/").map(part => encodeURIComponent(decodeURIComponent(part)))
+      .join("/").replace(/\/+$/, "") || "/";
+  } catch (_) { return null; }
 }

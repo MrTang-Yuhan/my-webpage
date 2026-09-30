@@ -64,34 +64,18 @@
       '"><span class="stats-ranking-title">' + escapeHtml(label) + '</span></a>';
   }
 
-  function localFallback() {
-    var value;
-    try { value = JSON.parse(localStorage.getItem('site-local-stats-v1') || '{}') || {}; }
-    catch (_) { value = {}; }
-    var days = value.days || {};
-    var pages = value.pages || {};
-    var todayKey = new Date().toISOString().slice(0, 10);
-    return {
-      total: count(value.total),
-      today: count(days[todayKey]),
-      daily: Array.from({ length: 14 }, function (_, index) {
-        var date = new Date();
-        date.setUTCDate(date.getUTCDate() - (13 - index));
-        var key = date.toISOString().slice(0, 10);
-        return { date: key, count: count(days[key]) };
-      }),
-      pageCount: Object.keys(pages).length,
-      pageViews: pages,
-      topPages: Object.entries(pages).map(function (entry) {
-        return { path: entry[0], count: count(entry[1]) };
-      }).sort(function (a, b) { return b.count - a.count || a.path.localeCompare(b.path); }).slice(0, 10),
-      updatedAt: value.updatedAt || null
-    };
-  }
-
   function render(data) {
-    // The API already supplies today/daily; it does not return the raw days map.
-    if (!data || !data.persistent) data = localFallback();
+    // A browser cannot identify IPs or measure traffic from other visitors.
+    // Never present localStorage counters as site-wide or IP-based statistics.
+    if (!data || !data.persistent || data.version !== 2) {
+      ['allTotal', 'allToday', 'uniqueTotal', 'uniqueToday', 'pages'].forEach(function (key) { setText(key, '—'); });
+      setText('status', '全站统计暂不可用，请稍后刷新。');
+      setText('period', '');
+      root.querySelector('[data-stat="daily"]').innerHTML = '<p class="stats-empty">暂无可用的全站数据</p>';
+      root.querySelector('[data-stat="topPages"]').innerHTML = '<li class="stats-empty">文章访问统计暂不可用</li>';
+      setText('updated', '');
+      return;
+    }
     var candidates = data.pageViews && typeof data.pageViews === 'object'
       ? Object.entries(data.pageViews).map(function (entry) { return { path: entry[0], count: count(entry[1]) }; })
       : (Array.isArray(data.topPages) ? data.topPages : []);
@@ -108,16 +92,24 @@
     var topPages = Object.values(articles).sort(function (a, b) {
       return b.count - a.count || a.path.localeCompare(b.path);
     }).slice(0, 10);
-    setText('total', number.format(count(data.total)));
-    setText('today', number.format(count(data.today)));
+    setText('allTotal', number.format(count(data.allTotal)));
+    setText('allToday', number.format(count(data.allToday)));
+    setText('uniqueTotal', number.format(count(data.uniqueTotal)));
+    setText('uniqueToday', number.format(count(data.uniqueToday)));
     setText('pages', number.format(count(data.pageCount == null ? topPages.length : data.pageCount)));
+    setText('status', data.missingIpViews ? '部分访问未能识别 IP；不同 IP 统计仅包含已识别的访问。' : '');
+    var period = data.startedAt
+      ? '统计起点：' + new Date(data.startedAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) + '。今日按北京时间 00:00 划分。'
+      : '等待新口径下的首次访问。今日按北京时间 00:00 划分。';
+    if (data.legacy) period += ' 旧版每日去重记录已保留（' + number.format(count(data.legacy.total)) + ' 次），无法还原重复访问和跨日 IP 去重，未混入新统计。';
+    setText('period', period);
 
     var daily = Array.isArray(data.daily) ? data.daily.slice(-14) : [];
     var max = Math.max.apply(null, daily.map(function (item) { return count(item.count); }).concat([1]));
     root.querySelector('[data-stat="daily"]').innerHTML = daily.map(function (item) {
       var value = count(item.count);
       var height = Math.round((value / max) * 100);
-      return '<div class="stats-bar-item" title="' + escapeHtml(item.date) + ': ' + number.format(value) + '">' +
+      return '<div class="stats-bar-item" title="' + escapeHtml(item.date) + '：所有 IP ' + number.format(value) + ' 次，不同 IP ' + number.format(count(item.unique)) + ' 个">' +
         '<span class="stats-bar-value">' + compactNumber.format(value) + '</span>' +
         '<span class="stats-bar-track"><span class="stats-bar" style="height:' + height + '%"></span></span>' +
         '<span class="stats-bar-label">' + escapeHtml(String(item.date || '').slice(5)) + '</span></div>';
@@ -128,7 +120,7 @@
         number.format(count(item.count)) + '</span></li>';
     }).join('') : '<li class="stats-empty">暂无文章访问记录</li>';
     var updated = data.updatedAt ? new Date(data.updatedAt) : null;
-    setText('updated', updated && !Number.isNaN(updated.getTime()) ? '更新于 ' + updated.toLocaleString('zh-CN') : '');
+    setText('updated', updated && !Number.isNaN(updated.getTime()) ? '更新于 ' + updated.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) : '暂无访问记录');
   }
 
   fetch('/api/stats', { cache: 'no-store' })
