@@ -294,14 +294,16 @@ a:hover { text-decoration: underline; }
 .stats-card-label { display: block; color: var(--muted); font-size: 0.9rem; }
 .stats-card strong { display: block; font-size: 2rem; margin-top: 0.3rem; }
 .stats-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); gap: 1rem; }
+.stats-panel { min-width: 0; }
 .stats-panel h2 { margin: 0 0 1rem; font-size: 1.1rem; }
 .stats-bars { min-height: 220px; display: flex; align-items: end; gap: 0.35rem; }
 .stats-bar-item { flex: 1; height: 190px; display: flex; flex-direction: column; justify-content: end; align-items: center; gap: 0.25rem; min-width: 0; }
 .stats-bar { width: 100%; max-width: 32px; min-height: 4px; border-radius: 6px 6px 2px 2px; background: var(--brand); }
 .stats-bar-value, .stats-bar-label { color: var(--muted); font-size: 0.72rem; white-space: nowrap; }
 .stats-ranking { margin: 0; padding-left: 1.5rem; }
-.stats-ranking li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.55rem 0; border-bottom: 1px solid var(--line); }
-.stats-ranking li span { color: var(--muted); font-family: var(--font-mono); }
+.stats-ranking li { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; min-width: 0; padding: 0.55rem 0; border-bottom: 1px solid var(--line); }
+.stats-ranking li a { display: block; min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
+.stats-ranking li span { flex: 0 0 auto; color: var(--muted); font-family: var(--font-mono); white-space: nowrap; }
 .stats-empty, .stats-updated { color: var(--muted); }
 .stats-updated { font-size: 0.85rem; margin-top: 1rem; }
 
