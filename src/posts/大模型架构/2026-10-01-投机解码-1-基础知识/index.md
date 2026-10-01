@@ -147,22 +147,50 @@ $$
 设 $\tilde{x}_{t+1} \sim q(\cdot \mid x_{1:t})$ 是草稿采样。由全概率公式：
 
 $$
+\mathbb{P}^{\mathcal{A}}(x_{t+1} \mid x_{1:t}) = \underbrace{q(x_{t+1} \mid x_{1:t}) \cdot \alpha(x_{t+1} \mid x_{1:t})}_{\text{草稿采样到 } x_{t+1} \text{ 且被接受}} \;+\; \underbrace{\beta(x_{1:t}) \cdot \mu(x_{t+1} \mid x_{1:t})}_{\text{拒绝后从残差分布重采样到 } x_{t+1}}.
+$$
+
+**第一项（接受路径）** 的计算与单步情形完全相同：
+
+$$
+q(x_{t+1} \mid x_{1:t}) \cdot \min\!\Big(1, \frac{p(x_{t+1} \mid x_{1:t})}{q(x_{t+1} \mid x_{1:t})}\Big) = \min\big(q(x_{t+1} \mid x_{1:t}),\; p(x_{t+1} \mid x_{1:t})\big).
+$$
+
+**第二项（拒绝路径）** 中，先算拒绝总概率，用到 $a - \min(a,b) = \max(0, a-b)$：
+
+$$
 \begin{aligned}
-\mathbb{P}^{\mathcal{A}}(x_{t+1} \mid x_{1:t})
-&= \mathbb{P}^{\mathcal{A}}(\tilde{x}_{t+1} = x_{t+1} \mid x_{1:t}) \cdot \mathbb{P}^{\mathcal{A}}(\text{acc} \mid \tilde{x}_{t+1} = x_{t+1}, x_{1:t}) \\
-&\quad + \mathbb{P}^{\mathcal{A}}(\tilde{x}_{t+1} \text{ rej} \mid x_{1:t}) \cdot \mathbb{P}^{\mathcal{A}}(x_{t+1} \mid \tilde{x}_{t+1} \text{ rej}, x_{1:t})
+\beta(x_{1:t})
+&= \sum_{x'} \max\big(0,\; q(x' \mid x_{1:t}) - p(x' \mid x_{1:t})\big) \\
+&= \sum_{x'} \Big(q(x' \mid x_{1:t}) - \min\big(q(x' \mid x_{1:t}),\; p(x' \mid x_{1:t})\big)\Big) \\
+&= \sum_{x'} q(x' \mid x_{1:t}) \;-\; \sum_{x'} \min\big(p(x' \mid x_{1:t}),\; q(x' \mid x_{1:t})\big) \\
+&= 1 - \sum_{x'} \min\big(p(x' \mid x_{1:t}),\; q(x' \mid x_{1:t})\big),
 \end{aligned}
 $$
 
-第一项（接受路径）的计算与单步情形完全相同：
+其中最后一步用到 $\sum_{x'} q(x' \mid x_{1:t}) = 1$。于是拒绝路径的概率质量为
 
 $$
-q(x_{t+1} \mid x_{1:t}) \cdot \min\!\left(1, \frac{p(x_{t+1} \mid x_{1:t})}{q(x_{t+1} \mid x_{1:t})}\right) = \min(p, q)(x_{t+1} \mid x_{1:t})
+\beta(x_{1:t}) \cdot \mu(x_{t+1} \mid x_{1:t}) = \max\big(0,\; p(x_{t+1} \mid x_{1:t}) - q(x_{t+1} \mid x_{1:t})\big).
 $$
 
-第二项（拒绝路径）中，拒绝概率为 $1 - \sum_{x'} \min(p, q)(x' \mid x_{1:t})$，而重采样分布正是以 $\max(0, p - q)$ 为比例的归一化分布。两项相加再次得到 $p(x_{t+1} \mid x_{1:t})$。
+**两项相加。** 由 §2.5 的逐点恒等式 $\min(q, p) + \max(0, p - q) = p$（两种情形逐一验证见 §2.5），
 
-因此 $\mathbb{P}^{\mathcal{A}}(x_{t+1} \mid x_{1:t}) = p(x_{t+1} \mid x_{1:t})$，结合归纳假设即得长度为 $t+1$ 的联合分布匹配。归纳完成，**Speculative Decoding 在序列层面也严格 lossless**。
+$$
+\mathbb{P}^{\mathcal{A}}(x_{t+1} \mid x_{1:t}) = p(x_{t+1} \mid x_{1:t}).
+$$
+
+**收尾。** 代回链式分解：
+
+$$
+\mathbb{P}^{\mathcal{A}}_{t+1}(x_{1:t+1}) = \mathbb{P}^{\mathcal{A}}_t(x_{1:t}) \cdot \mathbb{P}^{\mathcal{A}}(x_{t+1} \mid x_{1:t}) \;\overset{\text{归纳假设}}{=}\; p_t(x_{1:t}) \cdot p(x_{t+1} \mid x_{1:t}) = p_{t+1}(x_{1:t+1}).
+$$
+
+归纳完成。**Speculative Decoding 在序列层面也严格 lossless**：对任意长度 $T$ 与任意序列 $x_{1:T}$，
+
+$$
+\boxed{\;\mathbb{P}^{\mathcal{A}}_T(x_{1:T}) = p_T(x_{1:T}) = \prod_{t=1}^{T} p(x_t \mid x_{1:t-1})\;}
+$$
 
 ---
 
