@@ -305,6 +305,18 @@ a:hover { text-decoration: underline; }
 .stats-card strong { display: block; font-size: 2rem; margin-top: 0.3rem; }
 .stats-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); gap: 1rem; }
 .stats-card, .stats-panel { min-width: 0; }
+.stats-date-panel { margin: 1rem 0; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 1rem; }
+.stats-date-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; }
+.stats-date-heading h2 { margin: 0; font-size: 1.1rem; }
+.stats-date-heading .stats-note { margin: 0.35rem 0 0; }
+.stats-date-form { display: flex; align-items: end; gap: 0.5rem; flex-wrap: wrap; }
+.stats-date-form label { color: var(--muted); font-size: 0.85rem; }
+.stats-date-form input, .stats-date-form button { font: inherit; border: 1px solid var(--line); border-radius: 8px; padding: 0.55rem 0.7rem; background: var(--bg); color: var(--ink); }
+.stats-date-form button { cursor: pointer; background: var(--brand); color: #fff; border-color: var(--brand); }
+.stats-date-form button:disabled { cursor: wait; opacity: 0.65; }
+.stats-date-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; margin-top: 1rem; }
+.stats-date-card { border-top: 1px solid var(--line); padding-top: 0.75rem; min-width: 0; }
+.stats-date-card strong { display: block; font-size: 1.6rem; margin-top: 0.2rem; }
 .stats-panel h2 { margin: 0 0 1rem; font-size: 1.1rem; }
 .stats-bars { min-height: 220px; display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); align-items: end; gap: 0.35rem; }
 .stats-bars > .stats-empty { grid-column: 1 / -1; align-self: center; justify-self: stretch; text-align: left; }
@@ -371,6 +383,7 @@ a:hover { text-decoration: underline; }
   .archive-date-list { flex-direction: row; flex-wrap: wrap; gap: 0.5rem; }
   .stats-grid { grid-template-columns: minmax(0, 1fr); }
   .stats-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stats-date-heading { align-items: stretch; flex-direction: column; }
 }
 
 @media (max-width: 640px) {
@@ -379,6 +392,7 @@ a:hover { text-decoration: underline; }
   .post-title { font-size: 1.75rem; }
   .footer-inner { flex-direction: column; justify-content: center; gap: 0.5rem; padding: 0.7rem 0; }
   .stats-cards, .stats-grid { grid-template-columns: 1fr; }
+  .stats-date-cards { grid-template-columns: 1fr; }
   .stats-bars { gap: 0.15rem; }
 }
 

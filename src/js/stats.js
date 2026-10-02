@@ -36,6 +36,10 @@
     if (node) node.textContent = value;
   }
 
+  function statNode(name) {
+    return root.querySelector('[data-stat="' + name + '"]');
+  }
+
   function readablePath(path) {
     return path.split('/').map(function (part) {
       try { return decodeURIComponent(part); }
@@ -74,6 +78,9 @@
       root.querySelector('[data-stat="daily"]').innerHTML = '<p class="stats-empty">暂无可用的全站数据</p>';
       root.querySelector('[data-stat="topPages"]').innerHTML = '<li class="stats-empty">文章访问统计暂不可用</li>';
       setText('updated', '');
+      setText('selectedAll', '—');
+      setText('selectedUnique', '—');
+      setText('selectedStatus', '日期统计暂不可用。');
       return;
     }
     var candidates = data.pageViews && typeof data.pageViews === 'object'
@@ -121,10 +128,82 @@
     }).join('') : '<li class="stats-empty">暂无文章访问记录</li>';
     var updated = data.updatedAt ? new Date(data.updatedAt) : null;
     setText('updated', updated && !Number.isNaN(updated.getTime()) ? '更新于 ' + updated.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) : '暂无访问记录');
+    renderSelected(data.selected);
+  }
+
+  function renderSelected(selected) {
+    if (!selected) {
+      setText('selectedAll', '—');
+      setText('selectedUnique', '—');
+      setText('selectedStatus', '暂无日期统计数据。');
+      return;
+    }
+    var messages = {
+      future: '不能查询未来日期。',
+      'before-start': '该日期早于统计起点，暂无可用记录。',
+      'no-data': '该日期没有访问记录。'
+    };
+    if (selected.status !== 'ok') {
+      setText('selectedAll', '—');
+      setText('selectedUnique', '—');
+      setText('selectedStatus', messages[selected.status] || '该日期暂无可用记录。');
+      return;
+    }
+    setText('selectedAll', number.format(count(selected.all)));
+    setText('selectedUnique', number.format(count(selected.unique)));
+    setText('selectedStatus', '日期：' + selected.date + '（北京时间）');
+  }
+
+  var dateInput = statNode('dateInput');
+  var dateForm = statNode('dateForm');
+  var latestRequest = 0;
+  function applyDate(data) {
+    if (!data || !data.persistent || data.version !== 2) {
+      renderSelected(null);
+      return;
+    }
+    renderSelected(data.selected);
+  }
+  function queryDate(date) {
+    var requestId = ++latestRequest;
+    var submitButton = dateForm && dateForm.querySelector ? dateForm.querySelector('button') : null;
+    if (submitButton) submitButton.disabled = true;
+    fetch('/api/stats?date=' + encodeURIComponent(date), { cache: 'no-store' })
+      .then(function (response) { if (!response.ok) throw new Error('date stats unavailable'); return response.json(); })
+      .then(function (data) { if (requestId === latestRequest) applyDate(data); })
+      .catch(function () { if (requestId === latestRequest) renderSelected(null); })
+      .finally(function () { if (submitButton) submitButton.disabled = false; });
+  }
+
+  function localDateKey(value) {
+    var parts = new Intl.DateTimeFormat('en', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(value));
+    var values = {};
+    parts.forEach(function (part) { values[part.type] = part.value; });
+    return values.year + '-' + values.month + '-' + values.day;
+  }
+
+  if (dateInput) {
+    if (dateInput.value) queryDate(dateInput.value);
+    if (dateForm && dateForm.addEventListener) {
+      dateForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        if (dateInput.value) queryDate(dateInput.value);
+      });
+    }
   }
 
   fetch('/api/stats', { cache: 'no-store' })
     .then(function (response) { if (!response.ok) throw new Error('stats unavailable'); return response.json(); })
-    .then(render)
+    .then(function (data) {
+      if (dateInput && data && data.persistent && data.version === 2) {
+        dateInput.max = data.today || '';
+        if (data.startedAt) {
+          var started = new Date(data.startedAt);
+          if (!Number.isNaN(started.getTime())) dateInput.min = localDateKey(started);
+        }
+        dateInput.value = data.selected && data.selected.date ? data.selected.date : (data.today || '');
+      }
+      render(data);
+    })
     .catch(function () { render(null); });
 })();

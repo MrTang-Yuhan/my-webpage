@@ -20,6 +20,25 @@ permalink: /stats/
   </div>
   <p class="stats-note" data-stat="status" aria-live="polite"></p>
 
+  <section class="stats-date-panel" aria-labelledby="stats-date-title">
+    <div class="stats-date-heading">
+      <div>
+        <h2 id="stats-date-title">按日期查看</h2>
+        <p class="stats-note">选择具体日期，查看当天所有 IP 与不同 IP 的访问量。日期按北京时间计算。</p>
+      </div>
+      <form class="stats-date-form" data-stat="dateForm">
+        <label for="stats-date-input">日期</label>
+        <input id="stats-date-input" data-stat="dateInput" type="date" required>
+        <button type="submit">查看</button>
+      </form>
+    </div>
+    <div class="stats-date-cards" aria-live="polite">
+      <article class="stats-date-card"><span class="stats-card-label">所选日期所有 IP 访问量</span><strong data-stat="selectedAll">加载中</strong></article>
+      <article class="stats-date-card"><span class="stats-card-label">所选日期不同 IP 访问量</span><strong data-stat="selectedUnique">加载中</strong></article>
+    </div>
+    <p class="stats-note" data-stat="selectedStatus" aria-live="polite"></p>
+  </section>
+
   <div class="stats-grid">
     <section class="stats-panel">
       <h2>最近 14 天（所有 IP）</h2>

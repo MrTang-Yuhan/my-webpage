@@ -5,6 +5,14 @@ export function dayKey(date = new Date()) {
   return new Date(date.getTime() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
+export function parseDateKey(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))) return null;
+  const [year, month, day] = String(value).split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return String(value);
+}
+
 export function emptyStats(legacy = null) {
   return {
     version: 2,
@@ -38,7 +46,25 @@ export async function readStats(env) {
   return emptyStats({ total: Number(old.total || 0), updatedAt: old.updatedAt || null });
 }
 
-export function snapshot(stats, now = new Date()) {
+export function selectedDay(stats, date, now = new Date()) {
+  const today = dayKey(now);
+  const requested = parseDateKey(date) || today;
+  const startedValue = stats.startedAt ? new Date(stats.startedAt) : null;
+  const started = startedValue && !Number.isNaN(startedValue.getTime()) ? dayKey(startedValue) : null;
+  let status = 'ok';
+  if (requested > today) status = 'future';
+  else if (started && requested < started) status = 'before-start';
+  else if (!Object.prototype.hasOwnProperty.call(stats.all.days, requested) &&
+      !Object.prototype.hasOwnProperty.call(stats.unique.days, requested)) status = 'no-data';
+  return {
+    date: requested,
+    status,
+    all: Number(stats.all.days[requested] || 0),
+    unique: Number(stats.unique.days[requested] || 0)
+  };
+}
+
+export function snapshot(stats, now = new Date(), requestedDate = null) {
   const today = dayKey(now);
   const daily = Array.from({ length: 14 }, (_, index) => {
     const date = dayKey(new Date(now.getTime() - (13 - index) * 86400000));
@@ -47,6 +73,7 @@ export function snapshot(stats, now = new Date()) {
   return {
     version: 2,
     timeZone: TIME_ZONE,
+    today,
     allTotal: stats.all.total,
     allToday: Number(stats.all.days[today] || 0),
     uniqueTotal: stats.unique.total,
@@ -57,7 +84,8 @@ export function snapshot(stats, now = new Date()) {
     missingIpViews: stats.missingIpViews || 0,
     startedAt: stats.startedAt,
     updatedAt: stats.updatedAt,
-    legacy: stats.legacy
+    legacy: stats.legacy,
+    selected: selectedDay(stats, requestedDate || today, now)
   };
 }
 

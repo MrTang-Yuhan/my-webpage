@@ -30,9 +30,10 @@ assert.ok(html.includes('<h2>热门文章</h2>'));
 const article = links.find(link => link.href.includes('tensor-parallelism张量并行（一）'));
 assert.ok(article, 'The screenshot article must be present in the title index');
 const encoded = encodeURI(article.href);
-const today = new Date().toISOString().slice(0, 10);
+const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 const fixture = {
   persistent: true, version: 2,
+  today,
   allTotal: 6, allToday: 1, uniqueTotal: 4, uniqueToday: 1, pageCount: 2,
   daily: Array.from({ length: 14 }, (_, index) => {
     const date = new Date();
@@ -40,6 +41,7 @@ const fixture = {
     return { date: date.toISOString().slice(0, 10), count: index < 8 ? 0 : 1, unique: index < 9 ? 0 : 1 };
   }),
   pageViews: { '/': 5, [encoded]: 1 },
+  selected: { date: today, status: 'ok', all: 1, unique: 1 },
   updatedAt: new Date().toISOString()
 };
 const stress = {
@@ -57,7 +59,7 @@ const stress = {
 };
 
 async function render(data, local = '{}', index = links) {
-  const nodes = Object.fromEntries(['allTotal', 'uniqueTotal', 'allToday', 'uniqueToday', 'pages', 'daily', 'topPages', 'status', 'period', 'updated'].map(key => [key, { textContent: '', innerHTML: '' }]));
+  const nodes = Object.fromEntries(['allTotal', 'uniqueTotal', 'allToday', 'uniqueToday', 'pages', 'daily', 'topPages', 'status', 'period', 'updated', 'selectedAll', 'selectedUnique', 'selectedStatus'].map(key => [key, { textContent: '', innerHTML: '' }]));
   let rejectError;
   const done = new Promise(resolve => {
     Object.defineProperty(nodes.updated, 'textContent', { set(value) { this.value = value; resolve(); } });
@@ -102,11 +104,30 @@ async function check() {
   assert.equal(api.uniqueTotal, 42);
   assert.equal(api.uniqueToday, 3);
   assert.deepEqual(api.pageViews, pages);
+  const dateResponse = await onRequestGet({
+    request: new Request('https://example.test/api/stats?date=' + api.today),
+    env: { SITE_STATS: { get: async key => key === 'site-stats-v2' ? JSON.stringify({
+      version: 2, all: { total: 120, pages, days: { [api.today]: 7 } },
+      unique: { total: 42, days: { [api.today]: 3 } }, missingIpViews: 0,
+      startedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), legacy: null
+    }) : null } }
+  });
+  const selectedApi = await dateResponse.json();
+  assert.equal(selectedApi.selected.date, api.today);
+  assert.equal(selectedApi.selected.status, 'ok');
+  assert.equal(selectedApi.selected.all, 7);
+  assert.equal(selectedApi.selected.unique, 3);
+  const invalidDate = await onRequestGet({ request: new Request('https://example.test/api/stats?date=2026-02-30'), env: {} });
+  assert.equal(invalidDate.status, 400);
+  const futureDate = await onRequestGet({ request: new Request('https://example.test/api/stats?date=2999-01-01'), env: { SITE_STATS: { get: async () => null } } });
+  assert.equal((await futureDate.json()).selected.status, 'future');
   const serverNodes = await render(api);
   assert.equal(serverNodes.allTotal.textContent, '120');
   assert.equal(serverNodes.allToday.textContent, '7');
   assert.equal(serverNodes.uniqueTotal.textContent, '42');
   assert.equal(serverNodes.uniqueToday.textContent, '3');
+  assert.equal(serverNodes.selectedAll.textContent, '7');
+  assert.equal(serverNodes.selectedUnique.textContent, '3');
   assert.equal(serverNodes.pages.textContent, String(Object.keys(pages).length));
   assert.equal((serverNodes.topPages.innerHTML.match(/<li>/g) || []).length, 10, 'General pages must not crowd out articles');
   assert.ok(decode(serverNodes.topPages.innerHTML).includes(links[14].textContent.trim()), 'Highest-view article should lead');
@@ -212,7 +233,13 @@ function serve() {
     res.setHeader('Cache-Control', 'no-store');
     if (url.pathname === '/api/stats') {
       res.setHeader('Content-Type', 'application/json');
-      return res.end(JSON.stringify((req.headers.referer || '').includes('fixture=stress') ? stress : fixture));
+      const base = (req.headers.referer || '').includes('fixture=stress') ? stress : fixture;
+      const requested = url.searchParams.get('date');
+      const selectedItem = requested ? base.daily.find(item => item.date === requested) : null;
+      const selected = requested
+        ? { date: requested, status: requested > base.today ? 'future' : selectedItem ? 'ok' : 'no-data', all: selectedItem ? selectedItem.count : 0, unique: selectedItem ? selectedItem.unique : 0 }
+        : base.selected;
+      return res.end(JSON.stringify({ ...base, selected }));
     }
     if (url.pathname === '/__stats-check/') {
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
