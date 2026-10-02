@@ -337,7 +337,7 @@ $$
 
 ---
 
-### 4. 序列层面的一致性
+## 4. 序列层面的一致性
 
 **目标**：**证明从任意初始历史 $h_0$ 出发，Speculative Decoding 算法 $\mathcal{A}$ 生成完整序列的分布，与目标模型自回归采样完全一致。**
 
@@ -370,7 +370,9 @@ $$
 > 
 > 推广到多个事件：
 >
-> $$P(Y_1, Y_2, \dots, Y_T) = P(Y_1) \cdot P(Y_2 \mid Y_1) \cdot P(Y_3 \mid Y_1, Y_2) \cdots P(Y_T \mid Y_1, \dots, Y_{T-1})$$
+> $$
+> P(Y_1, Y_2, \dots, Y_T) = P(Y_1) \cdot P(Y_2 \mid Y_1) \cdot P(Y_3 \mid Y_1, Y_2) \cdots P(Y_T \mid Y_1, \dots, Y_{T-1})
+> $$
 
 **第四步：代入单步引理**
 
