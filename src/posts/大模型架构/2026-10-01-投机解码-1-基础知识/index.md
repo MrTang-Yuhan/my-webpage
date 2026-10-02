@@ -8,7 +8,10 @@ updated: 2026-10-02
 tags:
   - post
 ---
-# Speculative Sampling：从单步正确性到序列级无损生成
+
+## 0. 证明目标
+
+目标：**从任意初始历史 $h_0$ 出发，Speculative Sampling 算法从草稿模型生成完整序列的分布，与目标模型自回归采样完全一致。**
 
 ## 1. 问题设定与动机
 
@@ -35,6 +38,7 @@ tags:
 - **$\gamma$**：每轮由草稿模型预生成的候选 token 数量；
 - **$\tau_p$**：目标模型单次常规自回归前向的延迟；
 - **$\tau_q$**：草稿模型生成一个 token 的平均延迟。
+- $Pr$ : Speculative Sample 算法的输出概率。
 
 除非特别说明，所有分布都定义在同一个词表 $\mathcal V$ 上，并满足
 
@@ -75,7 +79,7 @@ $$
 1. 以概率 $a(\tilde X\mid h)$ 接受候选，并输出 $\tilde X$；
 2. 以剩余概率拒绝候选，并从残差分布 $\mu(\cdot\mid h)$ 中重新采样一个 token 输出。
 
-定义
+$[\cdot]_+$ 表示**正部函数（Positive Part Function）**，具体定义为：
 
 $$
 [z]_+ \coloneqq \max(0,z),
@@ -114,6 +118,7 @@ q(x\mid h)\,
 \min\bigl(q(x\mid h),p(x\mid h)\bigr).
 \end{aligned}
 $$
+
 
 这个等式可以直接按两种情况验证：
 
@@ -160,7 +165,9 @@ $$
 u-\min(u,v)=[u-v]_+.
 $$
 
-另一方面，由于 $p(\cdot\mid h)$ 与 $q(\cdot\mid h)$ 都是归一化分布，
+> 证明 $u-\min(u,v)=[u-v]_+$ 使用分类讨论：（1）$u \ge v$； （2） $u < v$。
+
+另一方面，由于 $p(\cdot\mid h)$ 与 $q(\cdot\mid h)$ 都是归一化分布（所有概率求和为 1），
 
 $$
 \sum_{x\in\mathcal V}
@@ -173,6 +180,8 @@ $$
 $$
 u-v=[u-v]_+-[v-u]_+.
 $$
+
+> 证明 $u-v=[u-v]_+-[v-u]_+$ 使用分类讨论：（1）$u \ge v$； （2） $u < v$。
 
 令 $u=p(x\mid h)$、$v=q(x\mid h)$，并对 $x$ 求和，可得
 
@@ -203,6 +212,10 @@ $$
 d_{\mathrm{TV}}
 \bigl(p(\cdot\mid h),q(\cdot\mid h)\bigr).
 $$
+
+> $d_{\text{TV}}$ 代表 **Total Variation Distance（全变差距离）**。它是概率论和统计学中用来衡量**两个概率分布之间差异程度**的一种度量（距离）。
+> 定义为：
+> $$d_{\text{TV}}(p(\cdot \mid h), q(\cdot \mid h)) = \frac{1}{2} \sum_{x \in \mathcal{V}} |p(x \mid h) - q(x \mid h)|$$
 
 因此，$\beta(h)$ 同时表示拒绝概率和两个条件分布之间的总变差距离。
 
@@ -251,7 +264,7 @@ $$
 }
 $$
 
-这说明草稿模型的作用只是提出候选。草稿模型越接近目标模型，通常接受率越高；即使草稿模型较差，只会增加拒绝次数和计算开销，不会改变单步输出分布。
+这说明草稿模型的作用只是提出候选。草稿模型越接近目标模型，通常接受率越高；即使草稿模型较差，只会增加拒绝次数和计算开销，**不会改变单步输出分布**。
 
 ---
 
@@ -321,532 +334,69 @@ $$
 
 首次拒绝后，后面的预生成草稿会被丢弃，因为它们依赖于尚未被接受的候选前缀。若某次输出为 EOS，则在该位置停止生成。
 
----
-
-## 4. 块级算法为何仍然严格无损
-
-原始的序列证明容易出现一个问题：草稿模型已经预先生成了整块候选，不能直接把“下一个候选 token”不加条件地写成 $q(\cdot\mid\text{当前真实前缀})$。正确做法是对**已经到达的验证阶段**进行条件化。
-
-### 4.1 到达第 $i$ 个验证位置时的条件分布
-
-在固定轮次起点历史 $h$ 和已揭示前缀 $\tilde X_{1:i-1}$ 下，定义事件
-
-$$
-E_i
-=
-\{\text{前 }i-1\text{ 个草稿 token 全部被接受}\}.
-$$
-
-在事件 $E_i$ 发生时，当前已经输出的历史正好是
-
-$$
-h,\tilde X_1,\ldots,\tilde X_{i-1}.
-$$
-
-第 $i$ 个候选 $\tilde X_i$ 在预生成时只依赖于草稿前缀 $\tilde X_{1:i-1}$，而 $E_i$ 只涉及前 $i-1$ 个候选及其接受随机数。因此，在给定当前前缀后，
-
-$$
-\boxed{
-\Pr\left(
-\tilde X_i=x
-\mid
-h,\tilde X_{1:i-1},E_i
-\right)
-=
-q_i(x).
-}
-$$
-
-这一步只对“当前已经到达的阶段”进行条件化，不能把完整的未来草稿值一起固定后再声称其仍服从 $q_i$。更直观地，可以把预生成理解为“延迟揭示”：验证第 $i$ 位之前，只揭示已经接受的前缀和当前所需的候选，未来候选全部边缘化。因为草稿序列的联合分布满足
-
-$$
-q(\tilde x_{1:\gamma}\mid h)
-=
-\prod_{i=1}^{\gamma}q\bigl(\tilde x_i\mid h,\tilde x_{1:i-1}\bigr),
-$$
-
-所以预先生成整块与按需揭示具有相同的相关分布。
-
-### 4.2 验证阶段的下一个输出 token
-
-在给定事件 $E_i$ 和当前历史 $h,\tilde X_{1:i-1}$ 后，第 $i$ 个验证位置完全符合第 2 节的单步算法：
-
-- 候选分布是 $q_i$；
-- 目标分布是 $p_i$；
-- 接受概率是 $\min(1,p_i/q_i)$；
-- 拒绝后使用残差分布 $\mu_i$。
-
-因此，由单步结论，
-
-$$
-\boxed{
-\Pr(\text{该阶段输出 }x
-\mid h,\tilde X_{1:i-1},E_i)
-=
-p_i(x).
-}
-$$
-
-由于 $E_i$ 表示前面的草稿都已被接受，
-
-$$
-h,\tilde X_{1:i-1}
-$$
-
-就是当前真实输出历史。注意这里的结论是把当前候选的“接受”和“拒绝后残差”两条路径一起混合后的结论；如果单独条件在接受路径或拒绝路径上，分布一般不再等于 $p_i$。
-
-因此，上式正是目标模型在当前真实历史下的条件分布。若同一真实历史可以通过不同的轮次或验证阶段到达，则对这些到达方式再使用全概率公式，混合结果仍然是同一个目标条件分布。
-
-### 4.3 全部接受后的 bonus 阶段
-
-如果所有 $\gamma$ 个草稿 token 都被接受且此前没有输出 EOS，则进入 bonus 阶段。下文将 $E_{\gamma+1}$ 理解为“前 $\gamma$ 个候选全部接受且此前没有输出 EOS”的事件，此时当前真实历史为
-
-$$
-h,\tilde X_{1:\gamma}.
-$$
-
-bonus token 直接从
-
-$$
-p_{\gamma+1}(\cdot)
-=
-p\bigl(\cdot\mid h,\tilde X_{1:\gamma}\bigr)
-$$
-
-中采样，因此
-
-$$
-\boxed{
-\Pr(\text{bonus}=x
-\mid
-h,\tilde X_{1:\gamma},E_{\gamma+1})
-=
-p_{\gamma+1}(x).
-}
-$$
-
-因此，在验证阶段，必须把当前候选的接受路径和拒绝后的残差路径合并后，才能得到目标分布；不能在额外条件化于某一条路径后，单独声称该路径仍服从 $p$。全接受后的 bonus token 则直接从目标分布采样。
-
-### 4.4 序列级 lossless 结论
-
-令 $\mathcal A$ 表示块级 Speculative Decoding 算法，令 $Y_t$ 表示算法输出的第 $t$ 个 token，令
-
-$$
-H_t=Y_{<t}
-$$
-
-表示生成第 $t$ 个 token 前已经输出的真实历史。再令 $S_t$ 表示算法内部当前所处的阶段，例如某个验证位置、bonus 阶段或新一轮的起点。这里的阶段状态只记录当前真实历史、阶段索引和已经公开的接受结果，不把尚未揭示的草稿尾部作为条件信息。
-
-对任意可达的阶段 $s$，上一节的阶段条件化结论都给出
-
-$$
-\Pr^{\mathcal A}(Y_t=y\mid H_t=h,S_t=s)
-=
-p(y\mid h).
-$$
-
-因此，对隐藏阶段变量使用全概率公式，得到
-
-$$
-\begin{aligned}
-\Pr^{\mathcal A}(Y_t=y\mid H_t=h)
-&=
-\sum_s
-\Pr^{\mathcal A}(Y_t=y\mid H_t=h,S_t=s)
-\Pr(S_t=s\mid H_t=h)\\
-&=
-\sum_s p(y\mid h)\Pr(S_t=s\mid H_t=h)\\
-&=
- p(y\mid h).
-\end{aligned}
-$$
-
-所以，对任意真实输出历史 $y_{<t}$，都有
-
-$$
-\boxed{
-\Pr^{\mathcal A}(Y_t=y\mid Y_{<t}=y_{<t})
-=
-p(y\mid y_{<t}).
-}
-$$
-
-再由链式法则，对于任意长度为 $T$ 的 token 序列 $y_{1:T}$，
-
-$$
-\begin{aligned}
-\Pr^{\mathcal A}(Y_{1:T}=y_{1:T})
-&=
-\prod_{t=1}^{T}
-\Pr^{\mathcal A}(Y_t=y_t\mid Y_{<t}=y_{<t})\\
-&=
-\prod_{t=1}^{T}
-p(y_t\mid y_{<t})\\
-&=
-p(y_{1:T}).
-\end{aligned}
-$$
-
-因此，
-
-$$
-\boxed{
-\Pr^{\mathcal A}(Y_{1:T}=y_{1:T})
-=
-p(y_{1:T}).
-}
-$$
-
-如果把 EOS 视为词表中的普通 token，那么对于在 EOS 处终止的序列，上式应理解为一直相乘到 EOS 所在位置；一旦输出 EOS，就停止后续生成。该结论说明 Speculative Decoding 在理想数学条件下与直接运行目标模型具有相同的序列分布。[Leviathan et al., ICML 2023](https://proceedings.mlr.press/v202/leviathan23a.html)
 
 ---
 
-## 5. 接受率与总变差距离
+### 4. 序列层面的一致性
 
-### 5.1 固定上下文下的平均接受率
+**目标**：**证明从任意初始历史 $h_0$ 出发，Speculative Decoding 算法 $\mathcal{A}$ 生成完整序列的分布，与目标模型自回归采样完全一致。**
 
-需要区分两种量：
+**证明**：
 
-- $a(x\mid h)$：给定候选 token $x$ 时的接受概率；
-- $\alpha(h)$：先从草稿分布采样，再对候选取平均后的接受率。
+**第一步：明确单步引理（复用第2节结论）**
 
-定义
-
+由第2节单步 Speculative Sampling 的证明可知：
+对于任意给定的历史 $h$，算法 $\mathcal{A}$ 在生成下一个 token 时，其输出分布严格等于目标模型的条件分布。即：
 $$
-\begin{aligned}
-\alpha(h)
-&\coloneqq
-\sum_{x\in\mathcal V}
-q(x\mid h)a(x\mid h)\\
-&=
-\sum_{x\in\mathcal V}
-\min\bigl(p(x\mid h),q(x\mid h)\bigr).
-\end{aligned}
+\Pr\nolimits(X=x \mid h) = p(x \mid h), \qquad \forall x \in \mathcal{V}.
 $$
+*注意：这个引理涵盖了第3节块级流程中的所有情况（无论是验证位置被接受、被拒绝后残差采样、还是全接受后的 bonus token）。只要算法在历史 $h$ 下输出下一个 token，其边缘分布就是 $p(\cdot \mid h)$。*
 
-利用
+**第二步：定义算法生成的随机过程**
 
+令算法生成的 token 序列为 $Y_1, Y_2, \ldots$，实际历史为 $H_0 = h_0$，$H_t = (h_0, Y_{1:t})$。
+定义停止时间 $T = \min\{t \ge 1 : Y_t = \mathrm{EOS}\}$。
+
+**第三步：应用概率链式法则**
+
+对于任意以 EOS 结尾的序列 $y_{1:T}$（其中 $y_T = \mathrm{EOS}$），算法生成该序列的概率为：
 $$
-\min(u,v)
-=
-\frac{u+v-|u-v|}{2},
+\Pr\nolimits(Y_{1:T} = y_{1:T} \mid h_0) = \prod_{t=1}^{T} \Pr\nolimits(Y_t = y_t \mid H_{t-1}).
 $$
 
-并使用 $p$ 与 $q$ 都归一化这一事实，有
+> 根据概率论的基本乘法公式：
+>
+> $$P(A, B) = P(A) \cdot P(B \mid A)$$
+> 
+> 推广到多个事件：
+>
+> $$P(Y_1, Y_2, \dots, Y_T) = P(Y_1) \cdot P(Y_2 \mid Y_1) \cdot P(Y_3 \mid Y_1, Y_2) \cdots P(Y_T \mid Y_1, \dots, Y_{T-1})$$
 
-$$
-\begin{aligned}
-\alpha(h)
-&=
-1-
-\frac12
-\sum_{x\in\mathcal V}
-|p(x\mid h)-q(x\mid h)|\\
-&=
-1-
-d_{\mathrm{TV}}
-\bigl(p(\cdot\mid h),q(\cdot\mid h)\bigr),
-\end{aligned}
-$$
+**第四步：代入单步引理**
 
-其中
-
+因为 $H_{t-1}$ 是算法生成 $Y_t$ 时的实际历史，根据第一步的引理，我们有：
 $$
-d_{\mathrm{TV}}(p,q)
-\coloneqq
-\frac12\sum_{x\in\mathcal V}|p(x)-q(x)|
+\Pr\nolimits(Y_t = y_t \mid H_{t-1}) = p(y_t \mid H_{t-1}) = p(y_t \mid h_0, y_{1:t-1}).
+$$
+将其代入第三步的连乘式中：
+$$
+\Pr\nolimits(Y_{1:T} = y_{1:T} \mid h_0) = \prod_{t=1}^{T} p(y_t \mid h_0, y_{1:t-1}).
 $$
 
-是总变差距离。因此，对每个固定上下文 $h$，都有精确关系
+**第五步：与目标模型对比**
 
+目标模型自回归采样从同一初始历史 $h_0$ 生成同一序列的概率恰好为：
+$$
+P_{\mathrm{tar}}(Y_{1:T} = y_{1:T} \mid h_0) = \prod_{t=1}^{T} p(y_t \mid h_0, y_{1:t-1}).
+$$
+
+因此：
 $$
 \boxed{
-\alpha(h)
-=
-1-
-d_{\mathrm{TV}}
-\bigl(p(\cdot\mid h),q(\cdot\mid h)\bigr).
+\Pr\nolimits(Y_{1:T} = y_{1:T} \mid h_0) = P_{\mathrm{tar}}(Y_{1:T} = y_{1:T} \mid h_0).
 }
 $$
-
-在真实自回归生成中，上下文会不断变化，因此接受率通常也是上下文相关的，不能默认存在一个对所有位置都完全相同的常数 $\alpha$。
+证毕。
 
 ---
 
-## 6. 每轮输出 token 数与期望值
-
-### 6.1 精确计数
-
-设 $A\in\{0,1,\ldots,\gamma\}$ 表示本轮从第一个位置开始连续接受的草稿 token 数量。
-
-无论本轮在哪个位置首次拒绝，还是所有草稿都被接受，本轮都会额外输出一个 token：
-
-- 首次拒绝时，额外输出一个残差采样 token；
-- 全部接受时，额外输出一个 bonus token。
-
-因此，在暂时忽略 EOS 和最大长度截断时，本轮输出 token 总数 $N$ 满足
-
-$$
-\boxed{
-N=A+1.
-}
-$$
-
-由非负整数随机变量的尾和公式（以下期望均条件于本轮起点历史 $h$），
-
-$$
-\mathbb E[A\mid h]
-=
-\sum_{i=1}^{\gamma}
-\Pr(A\ge i\mid h),
-$$
-
-从而
-
-$$
-\boxed{
-\mathbb E[N\mid h]
-=
-1+
-\sum_{i=1}^{\gamma}
-\Pr(A\ge i\mid h).
-}
-$$
-
-这里的事件 $A\ge i$ 等价于“前 $i$ 个草稿 token 全部被接受”。这个公式不需要独立性假设。
-
-### 6.2 一般的条件接受率表达式
-
-固定本轮起点历史 $h$，令
-
-$$
-r_i(h)
-\coloneqq
-\Pr\bigl(
-\text{第 }i\text{ 个草稿被接受}
-\mid
-h,\ \text{前 }i-1\text{ 个草稿均被接受}
-\bigr).
-$$
-
-由条件概率的乘法公式，
-
-$$
-\Pr(A\ge i\mid h)
-=
-\prod_{j=1}^{i}r_j(h).
-$$
-
-因此，精确地有
-
-$$
-\boxed{
-\mathbb E[N\mid h]
-=
-1+
-\sum_{i=1}^{\gamma}
-\prod_{j=1}^{i}r_j(h).
-}
-$$
-
-在真实模型中，$r_i(h)$ 会受到当前已接受前缀和上下文的影响，因此通常随 $i$ 变化。
-
-### 6.3 齐次接受率近似
-
-为了得到简洁的闭式，可以作一个明确的性能近似：沿着连续接受路径，各位置的条件接受率近似相同，即
-
-$$
-r_i(h)\approx\alpha,
-\qquad i=1,\ldots,\gamma.
-$$
-
-于是
-
-$$
-\Pr(A\ge i\mid h)\approx\alpha^i.
-$$
-
-当 $0\le\alpha<1$ 时，
-
-$$
-\boxed{
-\mathbb E[A\mid h]
-\approx
-\sum_{i=1}^{\gamma}\alpha^i
-=
-\frac{1-\alpha^{\gamma+1}}{1-\alpha}-1,
-}
-$$
-
-而每轮实际输出 token 数的期望为
-
-$$
-\boxed{
-\mathbb E[N\mid h]
-\approx
-\sum_{i=0}^{\gamma}\alpha^i
-=
-\frac{1-\alpha^{\gamma+1}}{1-\alpha}.
-}
-$$
-
-两个边界情况为：
-
-- $\alpha=0$ 时，$\mathbb E[A\mid h]=0$，但 $\mathbb E[N\mid h]=1$；
-- $\alpha=1$ 时，$\mathbb E[A\mid h]=\gamma$，且 $\mathbb E[N\mid h]=\gamma+1$。
-
-因此，$\mathbb E[A\mid h]$ 不能直接作为每轮吞吐量的分子，因为它漏掉了每轮必然输出的残差 token 或 bonus token。仅知道单步平均接受率，或知道各位置边际接受率相同，也不足以严格推出 $\Pr(A\ge i\mid h)=\alpha^i$；该等式需要额外的齐次条件接受率近似。
-
----
-
-## 7. 加速比与时间开销
-
-### 7.1 一般时间模型
-
-每轮计算时间可以拆成三部分：
-
-- 草稿模型生成 $\gamma$ 个候选的时间；
-- 目标模型并行验证候选并计算 bonus 分布的时间；
-- 接受判断、残差采样和缓存管理等额外时间。
-
-记
-
-- $\tau_{\mathrm{ver}}(\gamma)$：一次目标模型验证长度为 $\gamma$ 的草稿并计算 bonus 分布的延迟；
-- $\tau_{\mathrm{extra}}(\gamma)$：其他额外开销。
-
-则一轮平均计算时间可写为
-
-$$
-C_\gamma
-\approx
-\gamma\tau_q
-+
-\tau_{\mathrm{ver}}(\gamma)
-+
-\tau_{\mathrm{extra}}(\gamma).
-$$
-
-直接使用目标模型逐 token 生成时，每输出一个 token 的平均时间约为 $\tau_p$。下式中的 $\mathbb E[N]$ 表示对实际轮次起点历史 $h$ 的长期平均；若固定某个 $h$，则使用 $\mathbb E[N\mid h]$。因此，以长期平均吞吐量估计，加速比为
-
-$$
-\boxed{
-\mathrm{Speedup}
-\approx
-\frac{\mathbb E[N]\tau_p}
-{\gamma\tau_q
-+\tau_{\mathrm{ver}}(\gamma)
-+\tau_{\mathrm{extra}}(\gamma)}.
-}
-$$
-
-### 7.2 理想化闭式
-
-如果进一步采用经典理想化假设
-
-$$
-\tau_{\mathrm{ver}}(\gamma)\approx\tau_p,
-\qquad
-\tau_{\mathrm{extra}}(\gamma)\approx 0,
-$$
-
-并令
-
-$$
-c\coloneqq\frac{\tau_q}{\tau_p},
-$$
-
-则
-
-$$
-\mathrm{Speedup}
-\approx
-\frac{\mathbb E[N]}{1+\gamma c}.
-$$
-
-在齐次接受率近似下，当 $0\le\alpha<1$ 时，
-
-$$
-\boxed{
-\mathrm{Speedup}
-\approx
-\frac{\displaystyle\sum_{i=0}^{\gamma}\alpha^i}
-{1+\gamma c}
-=
-\frac{1-\alpha^{\gamma+1}}
-{(1-\alpha)(1+\gamma c)}.
-}
-$$
-
-边界情况为
-
-$$
-\boxed{
-\mathrm{Speedup}
-\approx
-\frac{\gamma+1}{1+\gamma c},
-\qquad \alpha=1,
-}
-$$
-
-以及
-
-$$
-\boxed{
-\mathrm{Speedup}
-\approx
-\frac{1}{1+\gamma c},
-\qquad \alpha=0.
-}
-$$
-
-这里的闭式是明确假设下的性能估计，不是所有硬件和实现中的精确公式。尤其是一次并行验证的延迟不一定严格等于一次单 token 目标模型前向，$\tau_{\mathrm{ver}}(\gamma)$ 可能随 $\gamma$、硬件、批大小和缓存状态变化。[Chen et al., 2023](https://arxiv.org/abs/2302.01318)
-
----
-
-## 8. 精确结论、近似结论与边界条件
-
-### 8.1 精确结论
-
-在以下条件成立时，Speculative Sampling 的输出分布严格等于目标模型分布：
-
-1. $p$ 和 $q$ 使用相同的词表；
-2. 接受概率使用
-
-   $$
-   \min\left(1,\frac{p}{q}\right);
-   $$
-
-3. 拒绝后使用归一化残差分布
-
-   $$
-   \frac{[p-q]_+}{\sum_x[p(x)-q(x)]_+};
-   $$
-
-4. 块内按照从左到右的验证阶段执行；
-5. 首次拒绝后丢弃后续未验证草稿；
-6. 全部接受后从目标分布生成 bonus token。
-
-### 8.2 近似结论
-
-下列结论需要额外近似：
-
-- $\Pr(A\ge i\mid h)\approx\alpha^i$；
-- $\mathbb E[N]\approx(1-\alpha^{\gamma+1})/(1-\alpha)$；
-- $\tau_{\mathrm{ver}}(\gamma)\approx\tau_p$；
-- 用单一常数 $\alpha$ 代表所有上下文和所有验证位置的条件接受率。
-
-因此，**无损性是概率分布层面的精确结论，而加速比闭式是带有性能建模假设的估计**。
-
-### 8.3 数值实现中的限制
-
-实际实现使用有限精度浮点数，可能出现极小的数值误差。因此工程文献通常将无损性表述为在数值精度范围内保持目标分布，而数学推导对应的是理想精确算术。[Chen et al., 2023](https://arxiv.org/abs/2302.01318)
-
----
-
-## 参考资料
-
-1. Yaniv Leviathan, Matan Kalman, Yossi Matias. **Fast Inference from Transformers via Speculative Decoding**. ICML 2023.  
-   <https://proceedings.mlr.press/v202/leviathan23a.html>
-
-2. Charlie Chen, Sebastian Borgeaud, Geoffrey Irving, Jean-Baptiste Lespiau, Laurent Sifre, John Jumper. **Accelerating Large Language Model Decoding with Speculative Sampling**. 2023.  
-   <https://arxiv.org/abs/2302.01318>
