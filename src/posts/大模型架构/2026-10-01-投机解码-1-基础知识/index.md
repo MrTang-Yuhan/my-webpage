@@ -8,7 +8,10 @@ updated: 2026-10-02
 tags:
   - post
 ---
-# Speculative Sampling：从单步正确性到序列级无损生成
+
+## 0. 证明目标
+
+目标：**从任意初始历史 $h_0$ 出发，Speculative Sampling 算法从草稿模型生成完整序列的分布，与目标模型自回归采样完全一致。**
 
 ## 1. 问题设定与动机
 
