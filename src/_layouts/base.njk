@@ -28,8 +28,7 @@
           <a href="/stats">统计</a>
           <a href="/about">关于</a>
           <button class="theme-toggle" id="themeToggle" type="button" aria-label="切换深色模式">主题</button>
-          <a href="/admin" id="adminLoginLink">登录</a>
-          <a href="/admin" id="adminWriteLink" style="display:none;">写作后台</a>
+          <a href="/admin" id="adminWriteLink">写作后台</a>
         </nav>
       </div>
       <div class="container">
@@ -53,63 +52,13 @@
         <div class="footer-links">
           <a href="https://github.com/MrTang-Yuhan" target="_blank" rel="noopener noreferrer">GitHub</a>
           <a href="/stats">访问统计</a>
-          <a href="/admin" id="footerAdminLoginLink">登录</a>
-          <a href="/admin" id="footerAdminWriteLink" style="display:none;">写作后台</a>
+          <a href="/admin" id="footerAdminWriteLink">写作后台</a>
         </div>
       </div>
     </footer>
   </div>
 
   <script src="/js/main.js"></script>
-  <script>
-    (function() {
-      const OWNER_LOGIN = "MrTang-Yuhan";
-      const loginLinks = [
-        document.getElementById("adminLoginLink"),
-        document.getElementById("footerAdminLoginLink")
-      ];
-      const writeLinks = [
-        document.getElementById("adminWriteLink"),
-        document.getElementById("footerAdminWriteLink")
-      ];
-
-      function setWriteVisible(isVisible) {
-        loginLinks.forEach(function(el) {
-          if (el) el.style.display = isVisible ? "none" : "";
-        });
-        writeLinks.forEach(function(el) {
-          if (el) el.style.display = isVisible ? "" : "none";
-        });
-      }
-
-      async function detectOwnerLogin() {
-        const raw = localStorage.getItem("netlify-cms-user") || localStorage.getItem("decap-cms-user");
-        if (!raw) return false;
-        let parsed;
-        try {
-          parsed = JSON.parse(raw);
-        } catch {
-          return false;
-        }
-
-        const token = parsed && (parsed.token || parsed.access_token || parsed.jwt);
-        if (!token) return false;
-
-        try {
-          const res = await fetch("https://api.github.com/user", {
-            headers: { Authorization: "token " + token }
-          });
-          if (!res.ok) return false;
-          const user = await res.json();
-          return user && user.login === OWNER_LOGIN;
-        } catch {
-          return false;
-        }
-      }
-
-      detectOwnerLogin().then(setWriteVisible);
-    })();
-  </script>
   {% block scripts %}{% endblock %}
 </body>
 </html>
