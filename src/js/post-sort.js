@@ -34,7 +34,7 @@
         updated: Number(element.dataset.updated)
       };
     });
-    control.value = 'updated';
+    control.value = 'created';
     control.disabled = false;
     control.addEventListener('change', function () {
       posts.sort(function (a, b) { return compare(a, b, control.value); });

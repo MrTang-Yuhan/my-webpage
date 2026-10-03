@@ -21,8 +21,8 @@ permalink: /posts/
       <div class="archive-sort-control">
         <label for="archive-sort-{{ loop.index }}">排序方式</label>
         <select id="archive-sort-{{ loop.index }}" data-post-sort aria-label="{{ dir | replace("-", " ") | title }}排序方式" disabled>
-          <option value="updated" selected>按更新时间排序</option>
-          <option value="created">按创建日期排序</option>
+          <option value="updated">按更新时间排序</option>
+          <option value="created" selected>按创建日期排序</option>
           <option value="name">按名称排序</option>
         </select>
       </div>
