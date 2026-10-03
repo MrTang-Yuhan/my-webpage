@@ -290,7 +290,11 @@ a:hover { text-decoration: underline; }
 .archive-title { font-size: 1.0rem; margin: 0; }
 .archive-subtitle { color: var(--muted); margin-top: 0.35rem; }
 .archive-section { margin-bottom: 1.4rem; }
-.archive-dir-title { margin: 0 0 0.6rem; font-size: 1.1rem; border-bottom: 1px solid var(--line); padding-bottom: 0.3rem; }
+.archive-dir-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--line); margin-bottom: 0.35rem; }
+.archive-dir-title { margin: 0; font-size: 1.1rem; padding-bottom: 0.3rem; }
+.archive-sort-control { display: flex; align-items: center; gap: 0.5rem; padding-bottom: 0.35rem; color: var(--muted); font-size: 0.85rem; }
+.archive-sort-control select { padding: 0.4rem 0.55rem; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); color: var(--ink); font: inherit; cursor: pointer; }
+.archive-sort-control select:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .archive-list { list-style: none; margin: 0; padding: 0; }
 .archive-list-item { display: grid; grid-template-columns: 190px minmax(0,1fr); gap: 0.7rem; padding: 0.55rem 0; border-bottom: 1px solid var(--line); }
 .archive-date-list { display: flex; flex-direction: column; gap: 0.15rem; }
@@ -386,6 +390,8 @@ a:hover { text-decoration: underline; }
   .post-navigation { grid-template-columns: 1fr; }
   .archive-list-item { grid-template-columns: 1fr; gap: 0.2rem; }
   .archive-date-list { flex-direction: row; flex-wrap: wrap; gap: 0.5rem; }
+  .archive-dir-heading { align-items: stretch; flex-direction: column; gap: 0.35rem; }
+  .archive-sort-control { justify-content: space-between; padding-bottom: 0.5rem; }
   .stats-grid { grid-template-columns: minmax(0, 1fr); }
   .stats-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stats-date-heading { align-items: stretch; flex-direction: column; }

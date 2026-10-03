@@ -15,11 +15,21 @@ permalink: /posts/
 </section>
 
 {% for dir, posts in collections.postsByDir %}
-  <section class="archive-section">
-    <h2 class="archive-dir-title">{{ dir | replace("-", " ") | title }}</h2>
-      <ul class="archive-list">
+  <section class="archive-section" data-sort-scope>
+    <div class="archive-dir-heading">
+      <h2 class="archive-dir-title">{{ dir | replace("-", " ") | title }}</h2>
+      <div class="archive-sort-control">
+        <label for="archive-sort-{{ loop.index }}">排序方式</label>
+        <select id="archive-sort-{{ loop.index }}" data-post-sort aria-label="{{ dir | replace("-", " ") | title }}排序方式" disabled>
+          <option value="updated" selected>按更新时间排序</option>
+          <option value="created">按创建日期排序</option>
+          <option value="name">按名称排序</option>
+        </select>
+      </div>
+    </div>
+      <ul class="archive-list" data-sort-list>
       {% for post in posts %}
-        <li class="archive-list-item">
+        <li class="archive-list-item" data-created="{{ post.date | sortTimestamp }}" data-updated="{{ post.data.updated | sortTimestamp(post.date) }}">
           <span class="archive-date-list">
             <span class="archive-date"><span class="post-date-label">创建</span>{{ post.date | formatDate }}</span>
             {% if post.data.updated %}
@@ -32,3 +42,4 @@ permalink: /posts/
     </ul>
   </section>
 {% endfor %}
+<script src="/js/post-sort.js" defer></script>

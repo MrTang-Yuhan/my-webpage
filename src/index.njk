@@ -10,19 +10,19 @@ description: 技术出版级阅读体验与在线编辑能力
   <p class="hero-subtitle">体系结构——权衡的艺术，性能的诗歌</p>
 </section>
 
-<section class="post-list-section">
+<section class="post-list-section" data-sort-scope>
   <div class="post-list-toolbar">
     <h2 class="section-title">最新文章</h2>
     <div class="post-sort-control">
       <label for="post-sort">排序方式</label>
-      <select id="post-sort" aria-controls="home-posts" disabled>
+      <select id="post-sort" data-post-sort aria-controls="home-posts" disabled>
         <option value="updated" selected>按更新时间排序</option>
         <option value="created">按创建日期排序</option>
         <option value="name">按名称排序</option>
       </select>
     </div>
   </div>
-  <ul class="post-list" id="home-posts" data-home-posts>
+  <ul class="post-list" id="home-posts" data-home-posts data-sort-list>
     {% set allPosts = [] %}
     {% for dir, posts in collections.postsByDir %}
       {% for post in posts %}

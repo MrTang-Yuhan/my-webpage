@@ -20,22 +20,25 @@
     module.exports = { timestamp: timestamp, compare: compare };
     return;
   }
-  var list = root.document.querySelector('[data-home-posts]');
-  var control = root.document.getElementById('post-sort');
-  if (!list || !control) return;
-  var posts = Array.from(list.children).map(function (element) {
-    return {
-      element: element,
-      title: element.querySelector('.post-list-title').textContent.trim(),
-      url: element.querySelector('.post-list-title a').getAttribute('href'),
-      created: Number(element.dataset.created),
-      updated: Number(element.dataset.updated)
-    };
-  });
-  control.value = 'updated';
-  control.disabled = false;
-  control.addEventListener('change', function () {
-    posts.sort(function (a, b) { return compare(a, b, control.value); });
-    posts.forEach(function (post) { list.appendChild(post.element); });
+  Array.from(root.document.querySelectorAll('[data-sort-scope]')).forEach(function (scope) {
+    var list = scope.querySelector('[data-sort-list]');
+    var control = scope.querySelector('[data-post-sort]');
+    if (!list || !control) return;
+    var posts = Array.from(list.children).map(function (element) {
+      var link = element.querySelector('a');
+      return {
+        element: element,
+        title: link ? link.textContent.trim() : '',
+        url: link ? link.getAttribute('href') : '',
+        created: Number(element.dataset.created),
+        updated: Number(element.dataset.updated)
+      };
+    });
+    control.value = 'updated';
+    control.disabled = false;
+    control.addEventListener('change', function () {
+      posts.sort(function (a, b) { return compare(a, b, control.value); });
+      posts.forEach(function (post) { list.appendChild(post.element); });
+    });
   });
 })(typeof window === 'undefined' ? null : window);
