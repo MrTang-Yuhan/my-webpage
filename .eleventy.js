@@ -1,6 +1,7 @@
 const markdownIt = require("markdown-it");
 const markdownItFootnote = require("markdown-it-footnote");
 const markdownItKatex = require("@vscode/markdown-it-katex").default;
+const postSort = require('./src/js/post-sort.js');
 
 function findMatchingSpanEnd(html, start) {
   const tagPattern = /<\/?span\b[^>]*>/gi;
@@ -147,6 +148,16 @@ module.exports = async function(eleventyConfig) {
   eleventyConfig.addPassthroughCopy("src/posts/**/attach");
 
   // Add filter for formatting dates
+  eleventyConfig.addFilter('sortTimestamp', postSort.timestamp);
+  eleventyConfig.addFilter('sortHomePosts', function(posts) {
+    return posts.map(post => ({
+      post,
+      title: String(post.data.title || ''),
+      url: post.url,
+      created: postSort.timestamp(post.date),
+      updated: postSort.timestamp(post.data.updated, post.date)
+    })).sort((a, b) => postSort.compare(a, b, 'updated')).map(item => item.post);
+  });
   eleventyConfig.addFilter("formatDate", function(date) {
     if (!date) return "";
     const d = new Date(date);

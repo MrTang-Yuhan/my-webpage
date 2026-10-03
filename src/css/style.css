@@ -103,6 +103,11 @@ a:hover { text-decoration: underline; }
 .section-title { font-size: 1.25rem; margin: 0 0 1rem; color: var(--muted); }
 
 .post-list { list-style: none; padding: 0; margin: 0; }
+.post-list-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem 1rem; margin-bottom: 1rem; }
+.post-list-toolbar .section-title { margin: 0; }
+.post-sort-control { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; color: var(--muted); font-size: 0.9rem; }
+.post-sort-control select { max-width: 100%; padding: 0.55rem 0.75rem; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); font: inherit; cursor: pointer; }
+.post-sort-control select:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .post-list-item { border-top: 1px solid var(--line); padding: 1.4rem 0; }
 .post-list-title { margin: 0 0 0.45rem; font-size: 1.38rem; }
 .post-list-title a { color: var(--ink); }

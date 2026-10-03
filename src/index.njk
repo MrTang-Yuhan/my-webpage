@@ -11,16 +11,26 @@ description: 技术出版级阅读体验与在线编辑能力
 </section>
 
 <section class="post-list-section">
-  <h2 class="section-title">最新文章</h2>
-  <ul class="post-list">
+  <div class="post-list-toolbar">
+    <h2 class="section-title">最新文章</h2>
+    <div class="post-sort-control">
+      <label for="post-sort">排序方式</label>
+      <select id="post-sort" aria-controls="home-posts" disabled>
+        <option value="updated" selected>按更新时间排序</option>
+        <option value="created">按创建日期排序</option>
+        <option value="name">按名称排序</option>
+      </select>
+    </div>
+  </div>
+  <ul class="post-list" id="home-posts" data-home-posts>
     {% set allPosts = [] %}
     {% for dir, posts in collections.postsByDir %}
       {% for post in posts %}
         {% set allPosts = allPosts.concat([post]) %}
       {% endfor %}
     {% endfor %}
-    {% for post in allPosts | reverse %}
-        <li class="post-list-item">
+    {% for post in allPosts | sortHomePosts %}
+        <li class="post-list-item" data-created="{{ post.date | sortTimestamp }}" data-updated="{{ post.data.updated | sortTimestamp(post.date) }}">
           <h3 class="post-list-title"><a href="{{ post.url }}">{{ post.data.title }}</a></h3>
         <div class="post-list-meta">
           <span class="post-date-item">
@@ -46,3 +56,4 @@ description: 技术出版级阅读体验与在线编辑能力
     {% endfor %}
   </ul>
 </section>
+<script src="/js/post-sort.js" defer></script>
