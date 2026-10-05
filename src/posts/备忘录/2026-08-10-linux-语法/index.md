@@ -274,3 +274,14 @@ source ~/.bashrc
 再次执行 `nvcc --version`，如果能看到版本信息，说明配置成功。
 
 
+## 四、Codex-cli 下载
+
+Linux 命令行模式 codex-cli 下载（需要梯子）：
+
+1.下载 node.js 和 nvm：https://nodejs.org/zh-cn/download
+
+2.下载 cc-switch-cli: https://github.com/SaladDay/cc-switch-cli
+
+3.下载 codex（大概需要1分钟~30分钟，取决网速）: `npm install -g @openai/codex`
+
+
