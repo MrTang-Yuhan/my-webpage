@@ -241,7 +241,6 @@ $$
 
 其中 $p=\mathrm{precision}$，单位为 B/元素；$T_N,T_C,T_M$ 分别表示单个 Tile 的标称 N/C/M 长度；$S_{\mathrm{SPAD}}$、$S_{\mathrm{ACC}}$ 分别是 Scratchpad、Accumulator 的**总容量字节数**。这两个 S 是容量符号，与前面的卷积 S 字段无关。
 
-> 上次看到这儿。
 ## 2.4 从候选长度算出外层 Tile 数，再调整内部长度
 
 `tile_I`、`tile_J`、`tile_K` 分别是 I/J/K 方向的外层 Tile 数，也就是 N/M/C 方向的 Tile 数。初选公式为：
@@ -408,7 +407,7 @@ $$
 
 ## 3.5 第四步：为什么一条完整 PRELOAD 对应 512 MAC
 
-**MAC（Multiply-Accumulate）**指一次“乘法并累加到部分和”的逻辑工作：
+**MAC（Multiply-Accumulate）** 指一次“乘法并累加到部分和”的逻辑工作：
 
 $$
 \text{部分和}\leftarrow\text{部分和}+\text{激活}\times\text{权重}.
@@ -475,7 +474,6 @@ $$
 | 每 Tile 的工作量 | $16\times512$ | 8192 MAC |
 | 全 GEMM 的工作量 | $128\times512$ | 65536 MAC |
 
-这些乘积吻合，说明该手工划分在逻辑范围上覆盖了全部工作。第 5、6 节将把这些数字与实际生成循环一一对应。
 
 # 4. GemmWS 怎样创建这 8 个 Tile
 
@@ -887,29 +885,4 @@ $$
 最后一个 C Tile 仍会生成 MOVOUT，因为第 5.5 节的条件是 $64+32\ge70$，并不要求有效 `c_in_loop` 必须等于标称 32。
 
 这三条指令的尺寸及 264 MAC 已通过实际生成器核对；核对对象是指令范围，不是矩阵数值或任意张量布局下的搬运字节完整性。
-
-## 5.7 阅读裁剪代码时，还需要保留三个实现限制
-
-**第一，裁剪不会重写标称布局。** 局部地址标签继续使用 `mapping.tile_in_loop` 的标称步长。例如 Accumulator 标签的偏移项是：
-
-~~~text
-Ns * mapping.tile_in_loop.M + Ms
-~~~
-
-`Ns`、`Ms` 是当前输出微块的 Tile 内行、列偏移；`mapping.tile_in_loop.M` 是标称输出行跨度。BERT 角落 Tile 虽然只有 24 个有效 M 元素，`Ns=8`、`Ms=0` 时仍使用 $8\times40$，不会改成 $8\times24$。这是局部标签规则，不能直接当作真实矩阵字节数组的连续分配证明。
-
-**第二，MOVIN 的尺寸元数据与 PRELOAD 的有效尺寸不同。** 当前生成器填写：
-
-| 指令 | 明确填写的尺寸字段 | 字段值的性质 |
-|---|---|---|
-| 权重 MOVIN | `tile_m=tile_in_loop.M`、`tile_k=tile_in_loop.C` | 标称内部长度 |
-| 激活 MOVIN | `tile_k=tile_in_loop.C`、`tile_n=tile_in_loop.N` | 标称内部长度 |
-| GEMM_PRELOAD | `tile_m=m_loop`、`tile_k=c_iter_size`、`tile_n=n_loop` | 当前微块的有效长度 |
-
-表中的 `tile_in_loop` 指当前 `mapping.tile_in_loop`。MOVIN 的实际请求数由裁剪后的下标循环及地址集合决定，不能从它的标称 `tile_m/tile_k/tile_n` 字段直接推算边界数据量。计算范围裁剪也不把固定粒度的 DRAM 请求变成逐元素大小的搬运。
-
-**第三，M/N 只检查全局矩阵末端，没有独立检查手工 Tile 的局部末端。** 源码没有另外取“阵列步长”和“内部长度减去局部偏移”的较小值。例如手工内部 M 长度若为 10，而全局 M 仍很长，`Ms=8` 时仍可能得到 `m_loop=8`，超出当前 Tile 标称的 10 个元素。
-
-因此，本文主例及两个边界例子的**标称 M/N 内部长度均为 8 的倍数**。这些例子足以说明当前生成器的规则分块、全局尾部裁剪和有效指令尺寸；不能把这段实现概括为支持任意手工内部尺寸的通用裁剪器。
-
 
