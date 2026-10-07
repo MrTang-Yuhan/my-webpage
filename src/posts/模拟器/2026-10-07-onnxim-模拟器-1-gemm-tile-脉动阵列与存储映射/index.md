@@ -50,7 +50,7 @@ tags:
 - `mapping.tile_out_loop.M=2`：M 方向有两个调度 Tile。
 - `mapping.tile_in_loop.M=16`：一个规则 Tile 标称覆盖 16 个输出列。
 
-主例各维度恰好整除，所以有 $32=2\times16$、$64=2\times32$、$32=2\times16$。一般情况下，最后一个 Tile 可以只使用标称范围的一部分；**源码不会因此改写 `tile_in_loop`，而是在生成指令时裁剪有效长度。** 第 6 节会逐项解释这种裁剪。
+主例各维度恰好整除，所以有 $32=2\times16$、$64=2\times32$、$32=2\times16$。一般情况下，最后一个 Tile 可以只使用标称范围的一部分；**源码不会因此改写 `tile_in_loop`，而是在生成指令时裁剪有效长度。**
 
 
 
@@ -108,7 +108,6 @@ entry 通过**局部地址标签和缓冲编号**查找。指令中的 `spad_id`
 
 容量也按元数据记账：entry 的占用字节数为 `size × dram_req_size`，其中 `dram_req_size` 是配置中的单个 DRAM 请求字节数。它不能直接解释为 entry 内保存了多少个真实矩阵元素。
 
-来源：[Sram.h](../src/Sram.h) 第 48–64 行；[Sram.cc](../src/Sram.cc) 第 47–49、76–134 行；[SystolicWS.cc](../src/SystolicWS.cc) 第 28–33 行。
 
 ## 1.5 一个 Tile 用哪些指令连接这些对象
 
@@ -130,9 +129,7 @@ entry 通过**局部地址标签和缓冲编号**查找。指令中的 `spad_id`
 | 一个调度 Tile | N16/C32/M16 | `Tile`、`tile_in_loop` |
 | 一条完整阵列计算指令 | N8/K8/M8 | `Instruction`、`GEMM_PRELOAD` |
 
-下一节解释第二层尺寸可以怎样自动选取；第 4 节再按手工 Mapping 推导第三层的指令数量。
 
-来源：[Common.h](../src/Common.h) 第 63–84 行；[Core.cc](../src/Core.cc) 第 262–279、397–485 行；[SystolicWS.cc](../src/SystolicWS.cc) 第 54–79 行。
 
 # 2. 自动 Mapping 怎样根据阵列和容量选取 Tile
 
@@ -159,7 +156,6 @@ entry 通过**局部地址标签和缓冲编号**查找。指令中的 `spad_id`
 
 `target_core` 在生成 Mapping 时选择用于计算容量和阵列尺寸的硬件配置；第 5 节中的 `core_id` 则记录某个 Tile 被分配给哪个 Core，两者不能混为同一用途。还要注意当前 `Mapping::LoopCounts` 的比较键不包含 `target_core`：如果不同 Core 配置下查询相同的 N/C/M 形状，缓存可能复用先前生成的 Mapping；因此这里的“按 `target_core` 选择配置”是生成阶段的行为，不能理解为缓存一定按 Core 隔离。
 
-来源：[Mapping.cc](../src/Mapping.cc) 第 89–120、314–337 行；[Mapping.h](../src/Mapping.h) 第 50–90 行；[Common.h](../src/Common.h) 第 29–30 行。
 
 ## 2.2 把全局长度补齐到阵列基础块的边界
 
@@ -180,9 +176,9 @@ dim_K_padded = (dim_K / dim + (dim_K % dim != 0)) * dim;
 | 变量 | 含义 |
 |---|---|
 | `dim` | 阵列边长；主例为 8 |
-| `dim_I` | 全局 N 长度 |
-| `dim_J` | 全局 M 长度 |
-| `dim_K` | 全局 C/K 长度 |
+| `dim_I` | GEMM 全局 N 长度 |
+| `dim_J` | GEMM 全局 M 长度 |
+| `dim_K` | GEMM 全局 C/K 长度 |
 | `dim_I_padded` | 将 N 向上补齐到 `dim` 倍数后的长度 |
 | `dim_J_padded` | 将 M 向上补齐到 `dim` 倍数后的长度 |
 | `dim_K_padded` | 将 C 向上补齐到 `dim` 倍数后的长度 |
@@ -211,7 +207,7 @@ max_acc_rows =
 
 `kNumBuffers` 是固定为 2 的缓冲数量。`max_spad_rows` 是按每行 `dim×precision` 字节计算的单缓冲 Scratchpad 行数预算；`max_acc_rows` 是按每行 `dim×4` 字节计算的单缓冲 Accumulator 行数预算。
 
-这里的 **4 是容量估算采用的每元素 4 B 累加精度**。代码注释称其为 FP32，但 `Sram` 并不存储 FP32 数值数组，不能据此声称发生了真实浮点加法。
+这里的 **4 是 Accumulator 采用的每元素 4 B 累加精度，即 FP32**。
 
 接下来，Scratchpad 的单缓冲预算再分给激活和权重两类数据：
 
@@ -245,10 +241,7 @@ $$
 
 其中 $p=\mathrm{precision}$，单位为 B/元素；$T_N,T_C,T_M$ 分别表示单个 Tile 的标称 N/C/M 长度；$S_{\mathrm{SPAD}}$、$S_{\mathrm{ACC}}$ 分别是 Scratchpad、Accumulator 的**总容量字节数**。这两个 S 是容量符号，与前面的卷积 S 字段无关。
 
-这些公式解释逻辑矩阵容量预算；实际运行时仍由 `Sram` 按 `size×dram_req_size` 检查分配，不能用逻辑容量公式替代运行时检查。
-
-
-
+> 上次看到这儿。
 ## 2.4 从候选长度算出外层 Tile 数，再调整内部长度
 
 `tile_I`、`tile_J`、`tile_K` 分别是 I/J/K 方向的外层 Tile 数，也就是 N/M/C 方向的 Tile 数。初选公式为：
