@@ -82,4 +82,8 @@ curl --noproxy '*' http://127.0.0.1:8000/v1/models
 curl http://localhost:8000/v1/models
 ```
 
+同样地，在 cc-switch 中配置如下图：
 
+![](img/cc-switch-wsl.png)
+
+关键的配置部分，我用**红框**进行了标记，请确保一致。
