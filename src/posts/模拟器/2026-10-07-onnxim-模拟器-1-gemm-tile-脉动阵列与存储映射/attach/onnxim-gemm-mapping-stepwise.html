@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ONNXim：GEMM Tile、C 归约与片上地址逐步映射</title>
+<style>
+:root{
+  --bg:#09111f; --panel:#101c2e; --panel2:#0c1728; --line:#243a55;
+  --text:#e7eef8; --muted:#96a9bd; --blue:#57a6ff; --violet:#a78bfa;
+  --orange:#f6a35b; --green:#38d39f; --red:#ff6b7a; --yellow:#f4cc67;
+  --cyan:#61d4e8; --shadow:0 16px 40px rgba(0,0,0,.22);
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;color:var(--text);background:
+  radial-gradient(circle at 10% 0%,rgba(61,115,182,.18),transparent 34rem),
+  radial-gradient(circle at 100% 10%,rgba(127,81,190,.14),transparent 28rem),
+  var(--bg);font-family:Inter,"Noto Sans CJK SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;line-height:1.45}
+.app{max-width:1540px;margin:0 auto;padding:24px}
+.hero{display:flex;justify-content:space-between;gap:24px;align-items:flex-start;margin-bottom:18px}
+h1{margin:0 0 7px;font-size:clamp(24px,3vw,40px);letter-spacing:-.03em}
+h2{font-size:17px;margin:0}
+h3{font-size:14px;margin:0 0 10px;color:#c9d8e8}
+p{margin:0;color:var(--muted);font-size:13px}
+.eyebrow{color:var(--cyan);text-transform:uppercase;font-size:11px;letter-spacing:.16em;font-weight:700;margin-bottom:7px}
+.badge-row{display:flex;flex-wrap:wrap;gap:7px;justify-content:flex-end}
+.badge{border:1px solid var(--line);background:rgba(19,38,62,.75);padding:7px 10px;border-radius:999px;color:#cfe0f3;font-size:12px;white-space:nowrap}
+.layout{display:grid;grid-template-columns:minmax(280px,.78fr) minmax(0,2.22fr);gap:14px;align-items:start}
+.panel{background:linear-gradient(145deg,rgba(18,32,52,.96),rgba(10,22,38,.96));border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:16px;min-width:0}
+.control-panel{grid-row:span 3}
+.panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:13px}
+.panel-head small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+.control-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+button{font:inherit;color:var(--text);border:1px solid #355170;background:#142a45;border-radius:9px;padding:8px 11px;cursor:pointer}
+button:hover{border-color:var(--blue);background:#183452}
+button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+button.primary{background:#2369a1;border-color:#4aabec}
+button.warn{background:#5c3b1d;border-color:#b88142}
+input[type=range]{width:100%;accent-color:var(--cyan)}
+.range-label{display:flex;justify-content:space-between;color:var(--muted);font-size:12px}
+.current-box{border:1px solid #345678;background:rgba(20,48,76,.46);border-radius:12px;padding:12px;margin:13px 0}
+.current-box strong{display:block;font-size:16px;color:white;margin-bottom:5px}
+.event-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:9px}
+.kv{border:1px solid rgba(75,111,148,.55);border-radius:8px;padding:7px;background:rgba(6,15,27,.38)}
+.kv span{display:block;color:var(--muted);font-size:10px}.kv b{display:block;font-size:12px;margin-top:2px}
+.phase{font-weight:800;font-size:11px;letter-spacing:.08em;padding:4px 7px;border-radius:6px;display:inline-block}
+.phase.MOVIN{color:#8deaff;background:rgba(49,155,186,.2)}.phase.GEMM_PRELOAD{color:#ffc487;background:rgba(202,118,46,.2)}.phase.MOVOUT{color:#ff9fa9;background:rgba(201,59,82,.2)}
+.tile-list{display:grid;gap:6px;margin-top:13px}
+.tile-button{text-align:left;display:grid;grid-template-columns:38px 1fr auto;align-items:center;gap:8px;padding:8px;border-radius:9px;background:rgba(8,19,33,.48);border-color:transparent}
+.tile-button.active{border-color:var(--violet);background:rgba(132,96,211,.2);box-shadow:inset 3px 0 var(--violet)}
+.tile-button.done{border-color:#2d5449;background:rgba(35,76,63,.13)}
+.tile-button .num{color:var(--muted);font-variant-numeric:tabular-nums}.tile-button b{font-size:12px}.tile-button small{display:block;color:var(--muted);font-size:10px}.tile-button>small{max-width:78px}
+.legend{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:14px;padding-top:13px;border-top:1px solid var(--line)}
+.legend-item{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:11px}.dot{width:10px;height:10px;border-radius:3px;flex:0 0 auto}
+.overview{grid-column:2}.matrices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.matrix-card{background:rgba(6,15,27,.44);border:1px solid #203750;border-radius:12px;padding:10px}
+.matrix-card h3{display:flex;justify-content:space-between;gap:8px}.matrix-card h3 span{color:var(--muted);font-size:11px;font-weight:400}
+svg.matrix{width:100%;height:auto;display:block;background:#071321;border-radius:8px;border:1px solid #1e3852}
+.axis{display:flex;justify-content:space-between;color:var(--muted);font-size:10px;margin-top:5px}
+.matrix-note{font-size:11px;color:var(--muted);margin-top:8px;min-height:31px}
+.detail{grid-column:2}.detail-grid{display:grid;grid-template-columns:minmax(280px,1.1fr) minmax(270px,.9fr);gap:12px}
+.subpanel{border:1px solid #203750;background:rgba(6,15,27,.4);border-radius:12px;padding:12px;min-width:0}
+.local-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.micro{min-height:128px;border:1px solid #284763;background:#0c1c30;border-radius:9px;padding:9px;transition:.18s}
+.micro.soft{border-color:#4d7092}.micro.active{border-color:var(--orange);background:rgba(151,86,38,.25);box-shadow:0 0 0 2px rgba(246,163,91,.12)}
+.micro.boundary{background:linear-gradient(145deg,#0c1c30 0 73%,rgba(101,72,43,.35) 73%)}
+.micro-head{display:flex;justify-content:space-between;gap:5px;font-size:11px;font-weight:700}.micro small{display:block;color:var(--muted);font-size:10px;margin-top:5px}.micro code{color:#b9d6ef;font-size:10px;display:block;margin-top:7px;white-space:normal}
+.c-track{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:12px}.c-seg{border:1px solid #324d68;border-radius:7px;padding:7px 5px;text-align:center;color:var(--muted);font-size:10px;background:#0a192b}.c-seg.active{color:#fff;border-color:var(--orange);background:rgba(176,95,35,.38)}.c-seg.done{border-color:#4c816f;color:#a5e9d1}
+.phase-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}.phase-row button{font-size:11px;padding:6px 8px}.phase-row button.selected{border-color:var(--orange);background:#4e3424}.phase-row button:disabled{opacity:.35;cursor:default}
+.micro{cursor:pointer}.micro:focus-visible{outline:2px solid var(--cyan)}.stage-line{display:flex;gap:8px;margin-bottom:12px}.stage-chip{flex:1;padding:8px;border:1px solid #2c435d;border-radius:9px;font-size:11px;color:var(--muted);text-align:center}.stage-chip.active{color:#ffcb92;border-color:var(--orange);background:rgba(177,97,35,.16)}.stage-chip.done{color:#a8dfc6;border-color:#47715f}
+.route-svg{width:100%;height:auto;display:block;min-height:188px}.route-svg .flow-node{fill:#0a192b;stroke:#2e4d69;stroke-width:2}.route-svg .flow-node.active{fill:#123f49;stroke:#38d39f}.route-svg .flow-node.warm{fill:#4b3020;stroke:#f6a35b}.route-svg .flow-node.red{fill:#482630;stroke:#ff6b7a}.route-svg .flow-node.dim{opacity:.4}.route-svg .flow-label{fill:#e7eef8;font-size:14px;font-weight:700}.route-svg .flow-sub{fill:#9fb4c9;font-size:11px}.route-svg .flow-arrow{stroke:#55738e;stroke-width:2;fill:none;marker-end:url(#flowArrow)}.route-svg .flow-arrow.active{stroke:#38d39f;stroke-width:3}.route-svg .flow-arrow.warm{stroke:#f6a35b;stroke-width:3}.route-svg .flow-arrow.red{stroke:#ff6b7a;stroke-width:3}.speed{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px}.speed select{background:#102b44;color:var(--text);border:1px solid #355170;padding:6px;border-radius:7px}
+.code-tip{font-size:11px;color:var(--muted);margin-top:8px}.entry-scope{font-size:11px;color:#adc2d8;margin-top:6px}.small-actions{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.export-button{font-size:11px;padding:6px 8px}
+.route{display:grid;gap:8px}.route-card{border:1px solid #27435d;border-radius:10px;padding:9px;background:rgba(8,19,33,.55)}.route-card.active{border-color:var(--green);background:rgba(35,137,104,.16)}.route-title{display:flex;justify-content:space-between;gap:8px;font-size:11px;font-weight:700}.route-text{font-size:11px;color:#c9d8e8;margin-top:5px;word-break:break-word}.route-arrow{text-align:center;color:var(--muted);font-size:14px;line-height:1}
+.address-strip{grid-column:2}.address-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.address-card{border:1px solid #25415d;border-radius:10px;padding:10px;background:#0a192b}.address-card.active{border-color:var(--green);box-shadow:inset 3px 0 var(--green)}.address-card h3{margin-bottom:5px}.address-card code{font-size:12px;color:#d9e9f8}.address-card p{font-size:11px;margin-top:4px}
+.source{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;align-items:center;color:var(--muted);font-size:11px;padding:4px 2px 14px}.source code{color:#bcd5ed}
+.footnote{grid-column:1/-1;color:var(--muted);font-size:11px;padding:0 2px 12px}
+.terms{grid-column:1/-1;color:var(--muted);font-size:12px;border:1px solid var(--line);border-radius:12px;padding:12px 16px;background:rgba(10,23,40,.6)}.terms summary{cursor:pointer;color:#c5d8ec;font-weight:600}.terms-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}.terms-grid p{font-size:12px}.terms-grid b{color:#d3e4f6}.terms code{overflow-wrap:anywhere}
+.hide{display:none!important}
+@media(max-width:1100px){.layout{grid-template-columns:1fr}.control-panel{grid-row:auto}.overview,.detail,.address-strip{grid-column:1}.matrices{grid-template-columns:repeat(3,minmax(220px,1fr))}}
+@media(max-width:700px){.app{padding:13px}.hero{display:block}.badge-row{justify-content:flex-start;margin-top:12px}.matrices,.detail-grid,.address-grid,.terms-grid{grid-template-columns:1fr}.event-meta{grid-template-columns:1fr 1fr}.panel{padding:12px}.tile-list{grid-template-columns:repeat(2,minmax(0,1fr))}.tile-button{grid-template-columns:26px 1fr;gap:4px}.tile-button>small{display:none}.tile-button small{font-size:9px}.badge{white-space:normal}.panel-head{flex-wrap:wrap}.micro code{font-size:10px}.micro{min-height:138px}.source{overflow-wrap:anywhere}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+@media print{.control-row,.range-label,#eventRange,.phase-row,.small-actions,.speed,.export-button{display:none}.app{padding:0}.layout{display:block}.panel{break-inside:avoid;margin-bottom:12px}.source,.footnote{color:#555}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="hero">
+    <div>
+      <div class="eyebrow">ONNXim / GemmWS / Stepwise Mapping</div>
+      <h1>GEMM Tile、C 归约与片上地址逐步映射</h1>
+      <p>单一边界示例：[T] N28 C64 M32 · [O] N2 C2 M2 · [I] N16 C32 M16</p>
+    </div>
+    <div class="badge-row">
+      <span class="badge">8×8 WS 阵列</span>
+      <span class="badge">precision = 1 B</span>
+      <span class="badge">无 Bias</span>
+      <span class="badge">指令示意，不是周期 Trace</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel control-panel">
+      <div class="panel-head"><div><h2>逐步播放</h2><small>按 GemmWS 的 Tile → 指令顺序高亮</small></div><span id="phaseBadge" class="phase MOVIN">MOVIN</span></div>
+      <div class="control-row"><button id="prev">← 上一步</button><button id="play" class="primary">▶ 播放</button><button id="next">下一步 →</button><button id="reset">重置</button></div>
+      <div class="small-actions"><button id="boundaryJump" class="warn">定位边界短块</button><label class="speed">速度 <select id="speed" aria-label="播放速度"><option value="1200">慢速</option><option value="650" selected>正常</option><option value="300">快速</option></select></label></div>
+      <div class="range-label"><span id="eventLabel">指令 1 / 176</span><span id="tileLabel">Tile 0 / 8</span></div>
+      <input id="eventRange" type="range" min="0" max="175" step="1" value="0" aria-label="指令步骤">
+      <div class="phase-row"><button data-phase="MOVIN">搬入 MOVIN</button><button data-phase="GEMM_PRELOAD">计算 PRELOAD</button><button data-phase="MOVOUT">写回 MOVOUT</button></div>
+      <div class="current-box">
+        <strong id="eventTitle">Step 1 · Tile 0 · MOVIN</strong>
+        <p id="eventDescription"></p>
+        <div class="event-meta">
+          <div class="kv"><span>Tile 索引</span><b id="tileIndex"></b></div>
+          <div class="kv"><span>全局范围</span><b id="globalRange"></b></div>
+          <div class="kv"><span>局部偏移</span><b id="localOffset"></b></div>
+          <div class="kv"><span>缓冲符号</span><b id="bankLabel"></b></div>
+        </div>
+      </div>
+      <h3>8 个外层 Tile（点击跳到该 Tile 的第一条指令）</h3>
+      <div id="tileList" class="tile-list"></div>
+      <div class="legend">
+        <div class="legend-item"><i class="dot" style="background:var(--blue)"></i>全局范围</div>
+        <div class="legend-item"><i class="dot" style="background:var(--violet)"></i>当前 Tile</div>
+        <div class="legend-item"><i class="dot" style="background:var(--orange)"></i>当前 C/K 微块</div>
+        <div class="legend-item"><i class="dot" style="background:var(--green)"></i>片上 entry</div>
+        <div class="legend-item"><i class="dot" style="background:var(--red)"></i>边界有效区域</div>
+        <div class="legend-item"><i class="dot" style="background:#687d93"></i>标称/非当前范围</div>
+      </div>
+    </section>
+
+    <section class="panel overview">
+      <div class="panel-head"><div><h2>全局 N / C / M 范围</h2><small>紫色背景表示当前 Tile；亮色表示当前指令的对应切片</small></div><span class="badge">total_loop = N28 / C64 / M32</span></div>
+      <div id="stageLine" class="stage-line"></div>
+      <div class="matrices">
+        <div class="matrix-card"><h3>Activation A <span>N28 × C64</span></h3><svg id="svgA" class="matrix" viewBox="0 0 640 280" role="img" aria-label="Activation global range"></svg><div class="axis"><span>N: 0 → 27</span><span>C: 0 → 63</span></div><div id="noteA" class="matrix-note"></div></div>
+        <div class="matrix-card"><h3>Weight W <span>M32 × C64</span></h3><svg id="svgW" class="matrix" viewBox="0 0 640 280" role="img" aria-label="Weight global range"></svg><div class="axis"><span>M: 0 → 31</span><span>C: 0 → 63</span></div><div id="noteW" class="matrix-note"></div></div>
+        <div class="matrix-card"><h3>Output Y <span>N28 × M32</span></h3><svg id="svgY" class="matrix" viewBox="0 0 320 280" role="img" aria-label="Output global range"></svg><div class="axis"><span>N: 0 → 27</span><span>M: 0 → 31</span></div><div id="noteY" class="matrix-note"></div></div>
+      </div>
+    </section>
+
+    <section class="panel detail">
+      <div class="panel-head"><div><h2>当前 Tile 的局部映射</h2><small>高亮的微块同时对应全局切片和 entry 标签</small></div><span id="boundaryBadge" class="badge">完整 N Tile</span></div>
+      <div class="detail-grid">
+        <div class="subpanel">
+          <h3>Ms / Ns 微块（Tile 内 N16 × M16）</h3>
+          <div id="localGrid" class="local-grid"></div>
+          <p id="microHint" class="code-tip"></p>
+          <h3 style="margin-top:14px">C/K 微块（当前 C Tile 内 C32）</h3>
+          <div id="cTrack" class="c-track"></div>
+        </div>
+        <div class="subpanel">
+          <h3>当前事件的数据流</h3>
+          <div id="route" class="route"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel address-strip">
+      <div class="panel-head"><div><h2>片上 entry 地址标签</h2><small>当前指令只高亮它使用的 entry；其他地址仅供对照</small></div><button id="exportSvg" class="export-button">导出当前映射 SVG</button></div>
+      <div id="addressGrid" class="address-grid"></div>
+      <p class="code-tip">T_N=16、T_C=32、T_M=16 是标称 Tile 长度，p=precision=1 B。SP_C0 / SP_C1 表示当前 C 阶段使用的 Scratchpad 缓冲符号；ACC_R 表示当前 N/M 输出区域的 Accumulator 缓冲符号，均不固定为 bank 0/1。</p>
+    </section>
+
+    <details class="terms" open><summary>符号与源码抽象说明</summary><div class="terms-grid">
+      <p><b>N / C / M：</b>N 是输入和输出的行，C 是归约长度，M 是权重的行与输出的列。A 按 [N,C]、W 按 [M,C]、Y 按 [N,M] 显示；同一 Y 区域经历 C0、C1 两个归约阶段。</p>
+      <p><b>[T] / [O] / [I]：</b>分别对应 <code>total_loop</code>（全局长度）、<code>tile_out_loop</code>（各方向 Tile 数）与 <code>tile_in_loop</code>（单个 Tile 的标称长度）。本图共 2×2×2=8 个调度 Tile，形成 4 个最终输出区域。</p>
+      <p><b>Tile 索引与偏移：</b><code>batch / M / C</code> 是 Tile 的 N/M/C 方向索引，均从 0 开始；这里 batch 不是原始模型的 Batch。<code>Ns / Ms</code> 是 Tile 内 N/M 偏移，取 0 或 8；<code>c_iter</code> 是 Tile 内 C/K 微块起点，取 0、8、16、24。</p>
+      <p><b>边界长度：</b><code>m_loop / n_loop</code> 是当前 M/N 微块的有效长度；<code>c_in_loop</code> 是当前 C Tile 的有效归约长度，本例为 32；<code>c_iter_size</code> 是一条计算指令的有效 K 长度，本例为 8。N 尾部 Tile 的 Ns=8 只剩 4 行。</p>
+      <p><b>GEMM_PRELOAD：</b>图中 PRELOAD 是该计算 opcode 的简称，表示带预装载时序的阵列计算指令。<code>tile_m / tile_k / tile_n</code> 分别填写 <code>m_loop / c_iter_size / n_loop</code>；基础延迟还使用 <code>compute_size=n_loop</code>。高亮的 C/K 逻辑切片移动，A/W entry 标签保持不变。</p>
+      <p><b>MOVIN / MOVOUT：</b>MOVIN 把全局 A/W 的 DRAM 请求关联到片上 entry；MOVOUT 在输出 entry 就绪后生成 DRAM 写请求，本图只在 C1 出现。Scratchpad entry 追踪输入/权重就绪，Accumulator entry 追踪输出贡献；二者都是元数据，不保存真实矩阵值。</p>
+      <p><b>地址公式：</b><code>SPAD_BASE=0x10000000</code>、<code>ACCUM_SPAD_BASE=0x20000000</code> 是片上标签基址；<code>T_N/T_C/T_M=16/32/16</code> 是标称步长，<code>p=precision=1 B</code>。<code>A_SP/W_SP/Y_ACC</code> 分别是激活、权重、输出 entry 标签。边界裁剪不改变这些步长。</p>
+      <p><b>缓冲符号：</b><code>spad_id</code>、<code>accum_spad_id</code> 选择各 entry 的实际 bank；本图用 <code>SP_C0/SP_C1</code> 区分两次输入装载，用 <code>ACC_R</code> 表示同一 N/M 输出区域的归约缓冲。符号不固定为物理 bank 0/1。</p>
+    </div></details>
+    <div class="source"><span>源码依据：</span><code>src/operations/GemmWS.cc:220–233, 269–455, 465–504</code><span>·</span><code>src/Sram.cc:76–134</code><span>·</span><span>当前高亮按指令教学顺序组织，不表示所有 Core 调度周期。</span></div>
+    <div class="footnote">图按源码的指令生成顺序教学展示，不模拟 DMA 响应、流水线或真实周期。边界 Tile 保留标称步长，Ns=8 仅 N24…27 有效。Accumulator 复用按相邻 C Tile 接续发射的归约意图示意；具体 bank 由 Core 当前调度状态决定，不保证任意重排或间隙。快捷键：← / → 单步，空格播放 / 暂停。</div>
+  </main>
+</div>
+<script>
+(function(){
+  "use strict";
+  const TILE_N=16, TILE_C=32, TILE_M=16, H=8, TOTAL_N=28, TOTAL_C=64, TOTAL_M=32;
+  const SPAD_BASE=0x10000000, ACC_BASE=0x20000000, PRECISION=1;
+  const fmtRange=(a,b)=>a===b?String(a):a+"…"+b;
+  const hex=n=>"0x"+n.toString(16).padStart(8,"0");
+  const bank=t=>t.c===0?"SP_C0":"SP_C1";
+  const tiles=[];
+  for(let batch=0;batch<2;batch++) for(let m=0;m<2;m++) for(let c=0;c<2;c++){
+    const n0=batch*TILE_N, m0=m*TILE_M, c0=c*TILE_C;
+    tiles.push({id:tiles.length,batch:batch,m:m,c:c,n0:n0,m0:m0,c0:c0,nEff:Math.min(TILE_N,TOTAL_N-n0),mEff:TILE_M,cEff:Math.min(TILE_C,TOTAL_C-c0),writeback:c===1});
+  }
+  const msList=[0,8], nsList=[0,8], kList=[0,8,16,24];
+  const events=[];
+  function evBase(t,phase,ms,ns,k,kind){
+    const nLoop=ns===8&&t.nEff<16?t.nEff-8:8;
+    const mLoop=8;
+    const nStart=t.n0+ns, mStart=t.m0+ms, cStart=t.c0+(k||0);
+    return {tile:t,phase:phase,kind:kind,ms:ms,ns:ns,k:k,nLoop:nLoop,mLoop:mLoop,nStart:nStart,mStart:mStart,cStart:cStart};
+  }
+  tiles.forEach(t=>{
+    events.push(evBase(t,"MOVIN",0,null,null,"weight"));
+    events.push(evBase(t,"MOVIN",0,0,null,"activation"));
+    events.push(evBase(t,"MOVIN",0,8,null,"activation"));
+    events.push(evBase(t,"MOVIN",8,null,null,"weight"));
+    msList.forEach(ms=>nsList.forEach(ns=>kList.forEach(k=>events.push(evBase(t,"GEMM_PRELOAD",ms,ns,k,"preload")))));
+    if(t.writeback) msList.forEach(ms=>nsList.forEach(ns=>events.push(evBase(t,"MOVOUT",ms,ns,null,"output"))));
+  });
+  let state={event:0,playing:false,timer:null};
+  const $=id=>document.getElementById(id);
+  const current=()=>events[state.event];
+  function rangeText(e,kind,entry){
+    const n=[e.nStart,e.nStart+e.nLoop-1], m=[e.mStart,e.mStart+e.mLoop-1], c=entry?[e.tile.c0,e.tile.c0+e.tile.cEff-1]:[e.cStart,e.cStart+(e.k===null?31:7)];
+    if(kind==="A") return "N="+fmtRange(n[0],n[1])+", C="+fmtRange(c[0],c[1]);
+    if(kind==="W") return "M="+fmtRange(m[0],m[1])+", C="+fmtRange(c[0],c[1]);
+    return "N="+fmtRange(n[0],n[1])+", M="+fmtRange(m[0],m[1]);
+  }
+  function addresses(e){
+    const a=SPAD_BASE+(e.ns===null?0:e.ns*TILE_C)*PRECISION;
+    const w=SPAD_BASE+TILE_N*TILE_C*PRECISION+(e.ms||0)*TILE_C*PRECISION;
+    const y=ACC_BASE+(e.ns===null?0:e.ns*TILE_M)*PRECISION+(e.ms||0)*PRECISION;
+    return {a:a,w:w,y:y};
+  }
+  function currentCell(e,ms,ns){
+    if(e.phase==="MOVIN"&&e.kind==="weight") return e.ms===ms;
+    if(e.phase==="MOVIN"&&e.kind==="activation") return e.ns===ns;
+    return e.ms===ms&&e.ns===ns;
+  }
+  function tileRowHtml(t){
+    const cls=(t.id===current().tile.id?" active":"")+(t.id<current().tile.id?" done":"");
+    const cText=t.c===0?"C0 初始化":"C1 归约+写回";
+    return '<button class="tile-button'+cls+'" data-tile="'+t.id+'"><span class="num">T'+t.id+'</span><span><b>N'+t.batch+' / M'+t.m+' / C'+t.c+'</b><small>N '+fmtRange(t.n0,t.n0+t.nEff-1)+' · M '+fmtRange(t.m0,t.m0+15)+' · C '+fmtRange(t.c0,t.c0+31)+'</small></span><small>'+cText+'</small></button>';
+  }
+  function renderTiles(){
+    $("tileList").innerHTML=tiles.map(tileRowHtml).join("");
+    document.querySelectorAll("[data-tile]").forEach(btn=>btn.addEventListener("click",()=>{
+      const id=Number(btn.dataset.tile); const idx=events.findIndex(e=>e.tile.id===id); stop(); setEvent(idx);
+    }));
+  }
+  function svgRect(x,y,w,h,fill,stroke,sw,opacity,dash){
+    return '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="3" fill="'+fill+'" fill-opacity="'+opacity+'" stroke="'+stroke+'" stroke-width="'+sw+'"'+(dash?' stroke-dasharray="5 4"':'')+'/>';
+  }
+  function renderMatrix(id,kind){
+    const e=current(), tile=e.tile;
+    const isA=kind==="A", isW=kind==="W", isY=kind==="Y";
+    const W=640, Hsvg=360;
+    const totalX=isY?TOTAL_M:TOTAL_C, totalY=32;
+    let out="";
+    if(isA){
+      for(let nt=0;nt<2;nt++) for(let ct=0;ct<2;ct++){
+        const x=ct*TILE_C/totalX*W,y=nt*TILE_N/totalY*Hsvg,w=TILE_C/totalX*W,h=TILE_N/totalY*Hsvg;
+        const active=tile.batch===nt&&tile.c===ct;
+        out+=svgRect(x,y,w,h,active?"#5d4b94":"#14283e",active?"#a78bfa":"#284863",active?2:1,active?.34:.65,false);
+      }
+    }else if(isW){
+      for(let mt=0;mt<2;mt++) for(let ct=0;ct<2;ct++){
+        const x=ct*TILE_C/totalX*W,y=mt*TILE_M/totalY*Hsvg,w=TILE_C/totalX*W,h=TILE_M/totalY*Hsvg;
+        const active=tile.m===mt&&tile.c===ct;
+        out+=svgRect(x,y,w,h,active?"#5d4b94":"#14283e",active?"#a78bfa":"#284863",active?2:1,active?.34:.65,false);
+      }
+    }else{
+      for(let nt=0;nt<2;nt++) for(let mt=0;mt<2;mt++){
+        const x=mt*TILE_M/totalX*W,y=nt*TILE_N/totalY*Hsvg,w=TILE_M/totalX*W,h=TILE_N/totalY*Hsvg;
+        const active=tile.batch===nt&&tile.m===mt;
+        const fill=nt===1?"#563941":(active?"#5d4b94":"#14283e");
+        out+=svgRect(x,y,w,h,fill,active?"#a78bfa":"#284863",active?2:1,active?.38:.65,false);
+        if(nt===1) out+=svgRect(x,y,w,TILE_N/totalY*Hsvg, "none","#8a5260",1,.9,true);
+      }
+    }
+    for(let xg=8;xg<totalX;xg+=8) out+='<path d="M'+(xg/totalX*W)+' 0 V'+Hsvg+'" stroke="#36506a" stroke-opacity=".45" stroke-dasharray="3 4"/>';
+    for(let yg=8;yg<32;yg+=8) out+='<path d="M0 '+(yg/32*Hsvg)+' H'+W+'" stroke="#36506a" stroke-opacity=".45" stroke-dasharray="3 4"/>';
+    let x,y,w,h,fill,stroke,opacity;
+    if(isA){
+      if(e.kind==="activation"||e.kind==="preload"){
+        const c0=e.phase==="GEMM_PRELOAD"?e.cStart:tile.c0, cw=e.phase==="GEMM_PRELOAD"?8:32;
+        x=c0/totalX*W; y=e.nStart/totalY*Hsvg; w=cw/totalX*W; h=e.nLoop/totalY*Hsvg; fill=e.phase==="GEMM_PRELOAD"?"#f6a35b":"#61d4e8"; stroke="#fff"; opacity=.86;
+        out+=svgRect(x,y,w,h,fill,stroke,2,opacity,false);
+      }
+    }else if(isW){
+      if(e.kind==="weight"||e.kind==="preload"){
+        const c0=e.phase==="GEMM_PRELOAD"?e.cStart:tile.c0, cw=e.phase==="GEMM_PRELOAD"?8:32;
+        x=c0/totalX*W; y=e.mStart/totalY*Hsvg; w=cw/totalX*W; h=8/totalY*Hsvg; fill=e.phase==="GEMM_PRELOAD"?"#f6a35b":"#61d4e8"; out+=svgRect(x,y,w,h,fill,"#fff",2,.86,false);
+      }
+    }else{
+      if(e.kind==="preload"||e.kind==="output"){
+        x=e.mStart/totalX*W; y=e.nStart/totalY*Hsvg; w=8/totalX*W; h=e.nLoop/totalY*Hsvg; fill=e.phase==="MOVOUT"?"#ff6b7a":"#38d39f"; out+=svgRect(x,y,w,h,fill,"#fff",2,.86,false);
+      }
+      if(tile.batch===1) out+=svgRect(tile.m0/totalX*W,tile.n0/totalY*Hsvg,16/totalX*W,16/totalY*Hsvg,"none","#ff6b7a",1,.8,true);
+    }
+    if(!isW){
+      out+=svgRect(0,TOTAL_N/32*Hsvg,W,4/32*Hsvg,"#3b4656","#687d93",1,.9,true);
+      out+='<text x="'+(W/2)+'" y="'+(TOTAL_N/32*Hsvg+30)+'" text-anchor="middle" fill="#c6ced8" font-size="26">N=28…31 · 无效尾部</text>';
+    }
+    const axisX=isY?'M':'C',axisY=isW?'M':'N';
+    for(let row=0;row<2;row++)for(let col=0;col<2;col++){
+      const fromX=col*totalX/2,toX=fromX+totalX/2-1,fromY=row*16,toY=isW?fromY+15:Math.min(fromY+15,TOTAL_N-1);
+      out+='<text x="'+(col*W/2+10)+'" y="'+(row*Hsvg/2+30)+'" fill="#d8e6f7" font-size="25" paint-order="stroke" stroke="#0c1c30" stroke-width="3">'+axisY+' '+fmtRange(fromY,toY)+' · '+axisX+' '+fmtRange(fromX,toX)+'</text>';
+    }
+    const svg=$(id); svg.setAttribute("viewBox","0 0 "+W+" "+Hsvg); svg.innerHTML=out;
+  }
+  function renderLocal(){
+    const e=current(), t=e.tile, a=addresses(e);
+    let html="";
+    nsList.forEach(ns=>msList.forEach(ms=>{
+      const active=currentCell(e,ms,ns), soft=active||((e.phase==="MOVIN"&&e.kind==="weight"&&e.ms===ms)||(e.phase==="MOVIN"&&e.kind==="activation"&&e.ns===ns));
+      const nLoop=ns===8&&t.nEff<16?t.nEff-8:8;
+      const n0=t.n0+ns,m0=t.m0+ms;
+      const aa=hex(SPAD_BASE+ns*TILE_C), ww=hex(SPAD_BASE+TILE_N*TILE_C+ms*TILE_C), yy=hex(ACC_BASE+ns*TILE_M+ms);
+      html+='<div class="micro '+(active?"active ":"")+(soft?"soft ":"")+(nLoop<8?"boundary":"")+'"><div class="micro-head"><span>Ns='+ns+' · Ms='+ms+'</span><span>'+(nLoop<8?"尾部":"完整")+'</span></div><small>全局 N '+fmtRange(n0,n0+nLoop-1)+' · M '+fmtRange(m0,m0+7)+'</small><small>n_loop='+nLoop+' · m_loop=8</small><code>A '+aa+' · W '+ww+' · Y '+yy+'</code></div>';
+    }));
+    $("localGrid").innerHTML=html;
+    document.querySelectorAll(".micro").forEach((node,i)=>{
+      node.setAttribute("tabindex","0");
+      node.setAttribute("role","button");
+      const ns=nsList[Math.floor(i/2)], ms=msList[i%2];
+      const jump=()=>{
+        const idx=events.findIndex(x=>x.tile.id===t.id&&x.kind==="preload"&&x.ms===ms&&x.ns===ns);
+        if(idx>=0){stop();setEvent(idx)}
+      };
+      node.addEventListener("click",jump);node.addEventListener("keydown",ev=>{if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();jump()}});
+    });
+    let chtml="";
+    kList.forEach(k=>{
+      const active=e.phase==="GEMM_PRELOAD"&&e.k===k, done=e.phase==="MOVOUT"|| (e.phase==="GEMM_PRELOAD"&&k<e.k);
+      chtml+='<div class="c-seg '+(active?"active ":"")+(done?"done":"")+'">c_iter='+k+'<br>C '+fmtRange(t.c0+k,t.c0+k+7)+'</div>';
+    });
+    $("cTrack").innerHTML=chtml;
+    document.querySelectorAll(".c-seg").forEach((node,i)=>{
+      node.setAttribute("tabindex","0");
+      node.setAttribute("role","button");
+      const k=kList[i];
+      const jump=()=>{
+        const ms=e.ms===null?0:e.ms,ns=e.ns===null?0:e.ns;
+        const idx=events.findIndex(x=>x.tile.id===t.id&&x.kind==="preload"&&x.ms===ms&&x.ns===ns&&x.k===k);
+        if(idx>=0){stop();setEvent(idx)}
+      };
+      node.addEventListener("click",jump);node.addEventListener("keydown",ev=>{if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();jump()}});
+    });
+    $("boundaryBadge").textContent=t.nEff<16?"边界 N Tile：有效 12 行":"完整 N Tile";
+    $("microHint").textContent=e.phase==="MOVIN"?"MOVIN 高亮的是可复用的整块 entry；同一 Weight 会服务两个 Ns 微块，同一 Activation 会服务两个 Ms 微块。":e.phase==="GEMM_PRELOAD"?"PRELOAD 高亮当前 8 项 C/K 逻辑切片；A/W entry 地址不随 c_iter 改变。":"MOVOUT 只高亮当前输出 entry，写请求对应当前 N/M 微块。";
+  }
+  function renderRoute(){
+    const e=current(),t=e.tile,a=addresses(e);
+    const c=rangeText(e,"A",false),w=rangeText(e,"W",false),y=rangeText(e,"Y",false);
+    const fullA=rangeText(e,"A",true),fullW=rangeText(e,"W",true);
+    const font='font-family="Inter,Noto Sans CJK SC,Noto Sans SC,Microsoft YaHei,sans-serif"';
+    const node=(x,y,w,h,title,subs,cls)=>'<rect class="flow-node '+(cls||'')+'" x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="12"/><text class="flow-label" '+font+' x="'+(x+12)+'" y="'+(y+26)+'">'+title+'</text>'+[].concat(subs).map((sub,i)=>'<text class="flow-sub" '+font+' x="'+(x+12)+'" y="'+(y+47+i*17)+'">'+sub+'</text>').join('');
+    const arrow=(x1,y1,x2,y2,cls)=>'<path class="flow-arrow '+(cls||'')+'" d="M '+x1+' '+y1+' L '+x2+' '+y2+'"/>';
+    let body='';
+    if(e.kind==="activation"){
+      body+=node(30,20,340,88,'全局 Activation',[fullA,'源：DRAM 张量切片'],'active');
+      body+=arrow(200,108,200,180,'active');
+      body+='<text class="flow-label" '+font+' x="220" y="148">MOVIN</text>';
+      body+=node(30,192,340,88,'Scratchpad A entry',[bank(t)+' · '+hex(a.a),'加载全部 C32，跨 Ms 复用'],'active');
+    }else if(e.kind==="weight"){
+      body+=node(30,20,340,88,'全局 Weight',[fullW,'源：DRAM 张量切片'],'active');
+      body+=arrow(200,108,200,180,'active');
+      body+='<text class="flow-label" '+font+' x="220" y="148">MOVIN</text>';
+      body+=node(30,192,340,88,'Scratchpad W entry',[bank(t)+' · '+hex(a.w),'加载全部 C32，跨 Ns 复用'],'active');
+    }else if(e.kind==="preload"){
+      body+=node(10,15,185,100,'A entry',[fullA,hex(a.a),'本步 C='+fmtRange(e.cStart,e.cStart+7)],'active');
+      body+=node(205,15,185,100,'W entry',[fullW,hex(a.w),'本步 C='+fmtRange(e.cStart,e.cStart+7)],'active');
+      body+=arrow(103,115,165,158,'warm'); body+=arrow(297,115,235,158,'warm');
+      body+=node(80,168,240,76,'GEMM_PRELOAD','tile_m/k/n = '+e.mLoop+'/8/'+e.nLoop,'warm');
+      body+=arrow(200,244,200,282,'warm');
+      body+=node(30,294,340,86,'Accumulator Y entry',[y,'ACC_R · '+hex(a.y)],'active');
+    }else{
+      body+=node(30,20,340,88,'Accumulator entry',['ACC_R · '+hex(a.y),'当前输出 entry 已 valid'],'red');
+      body+=arrow(200,108,200,180,'red');
+      body+='<text class="flow-label" '+font+' x="220" y="148">MOVOUT</text>';
+      body+=node(30,192,340,88,'全局 Output',[y,'生成 DRAM 写请求'],'red');
+    }
+    const svg='<svg class="route-svg" viewBox="0 0 400 '+(e.kind==='preload'?400:310)+'" role="img" aria-label="当前事件数据流"><defs><marker id="flowArrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#789aae"/></marker></defs>'+body+'</svg>';
+    const note=e.kind==="activation"?'MOVIN：全局 A 切片搬入 Scratchpad，entry 标签随后供 Ms 微块复用。':e.kind==="weight"?'MOVIN：全局 W 切片搬入 Scratchpad，entry 标签随后供 Ns 微块复用。':e.kind==="preload"?'GEMM_PRELOAD：读取两个已就绪 entry，按当前 c_iter 逻辑切片更新 Accumulator entry。':'MOVOUT：当前输出 entry 已 valid，生成对应全局 Y 的写请求。';
+    $("route").innerHTML='<div class="route-card active"><div class="route-title"><span>当前事件映射路径</span><span>'+e.phase+'</span></div>'+svg+'<div class="route-text">'+note+'</div></div>';
+  }
+  function renderAddresses(){
+    const e=current(),a=addresses(e),t=e.tile;
+    const cards=[
+      {title:"Activation entry",addr:hex(a.a),sub:"A_SP = SPAD_BASE + Ns×T_C×p",active:e.kind==="activation"||e.kind==="preload"},
+      {title:"Weight entry",addr:hex(a.w),sub:"W_SP = SPAD_BASE + T_N×T_C×p + Ms×T_C×p",active:e.kind==="weight"||e.kind==="preload"},
+      {title:"Accumulator entry",addr:hex(a.y),sub:"Y_ACC = ACCUM_SPAD_BASE + Ns×T_M×p + Ms×p",active:e.kind==="preload"||e.kind==="output"}
+    ];
+    $("addressGrid").innerHTML=cards.map(x=>'<div class="address-card '+(x.active?"active":"")+'"><h3>'+x.title+'</h3><code>'+x.addr+' · '+(x.title==="Accumulator entry"?"ACC_R":"SP_"+(t.c===0?"C0":"C1"))+'</code><p>'+x.sub+'</p></div>').join("");
+  }
+  function renderText(){
+    const e=current(),t=e.tile,a=addresses(e),phase=e.phase;
+    $("phaseBadge").className="phase "+phase;$("phaseBadge").textContent=phase;
+    $("eventLabel").textContent="指令 "+(state.event+1)+" / "+events.length;
+    $("tileLabel").textContent="Tile "+t.id+" / 8";
+    $("eventTitle").textContent="Step "+(state.event+1)+" · Tile "+t.id+" · "+phase;
+    let desc="";
+    if(e.kind==="weight") desc="加载当前 M 微块的权重：全局 M "+fmtRange(e.mStart,e.mStart+7)+"，C Tile "+fmtRange(t.c0,t.c0+31)+"。";
+    if(e.kind==="activation") desc="加载当前 N 微块的激活：全局 N "+fmtRange(e.nStart,e.nStart+e.nLoop-1)+"，C Tile "+fmtRange(t.c0,t.c0+31)+"。";
+    if(e.kind==="preload") desc="当前 K 微块：A "+rangeText(e,"A",false)+"；W "+rangeText(e,"W",false)+"；写入 Y entry "+hex(a.y)+"。";
+    if(e.kind==="output") desc="对应输出 entry 就绪后，生成全局 Output "+rangeText(e,"Y",false)+" 的写请求。";
+    $("eventDescription").textContent=desc;
+    $("tileIndex").textContent="batch="+t.batch+" · M="+t.m+" · C="+t.c;
+    $("globalRange").textContent=phase==="MOVOUT"?rangeText(e,"Y",false):(e.kind==="weight"?rangeText(e,"W",false):rangeText(e,"A",false));
+    $("localOffset").textContent="Ms="+(e.ms===null?"—":e.ms)+" · Ns="+(e.ns===null?"—":e.ns)+" · c_iter="+(e.k===null?"—":e.k);
+    $("bankLabel").textContent=e.phase==="MOVIN" ? bank(t)+" · spad_id" : (e.phase==="GEMM_PRELOAD" ? bank(t)+" · spad_id → ACC_R · accum_spad_id" : "ACC_R · accum_spad_id");
+    $("eventRange").value=state.event;
+    document.querySelectorAll("[data-phase]").forEach(btn=>{
+      btn.classList.toggle("selected",btn.dataset.phase===phase);
+      btn.disabled=btn.dataset.phase==="MOVOUT"&&!t.writeback;
+    });
+  }
+  function renderStageLine(){
+    const e=current(), phases=[
+      ["MOVIN","DRAM → Scratchpad"],
+      ["GEMM_PRELOAD","Scratchpad → Accumulator"],
+      ["MOVOUT","Accumulator → DRAM"]
+    ];
+    $("stageLine").innerHTML=phases.map(([k,label])=>{
+      const active=e.phase===k, done=(k==="MOVIN"&&e.phase!=="MOVIN")||(k==="GEMM_PRELOAD"&&e.phase==="MOVOUT");
+      return '<div class="stage-chip '+(active?"active ":"")+(done?"done":"")+'"><b>'+k+'</b><br><span>'+label+'</span></div>';
+    }).join("");
+  }
+  function render(){
+    renderText();renderStageLine();renderTiles();renderMatrix("svgA","A");renderMatrix("svgW","W");renderMatrix("svgY","Y");renderLocal();renderRoute();renderAddresses();
+    const e=current(),t=e.tile;
+    const tileA="N="+fmtRange(t.n0,t.n0+t.nEff-1)+", C="+fmtRange(t.c0,t.c0+t.cEff-1);
+    const tileW="M="+fmtRange(t.m0,t.m0+t.mEff-1)+", C="+fmtRange(t.c0,t.c0+t.cEff-1);
+    $("noteA").textContent=e.kind==="activation"||e.kind==="preload"?"当前高亮 "+rangeText(e,"A",false):"对照 A entry 范围（Tile 汇总） "+tileA;
+    $("noteW").textContent=e.kind==="weight"||e.kind==="preload"?"当前高亮 "+rangeText(e,"W",false):"对照 W entry 范围（Tile 汇总） "+tileW;
+    $("noteY").textContent="当前输出范围 "+rangeText(e,"Y",false)+(t.batch===1?" · 红虚线表示标称 Tile 轮廓；灰色 N=28…31 为无效尾部":"");
+  }
+  function setEvent(i){state.event=Math.max(0,Math.min(events.length-1,i));render();}
+  function stop(){state.playing=false;if(state.timer){clearInterval(state.timer);state.timer=null}$("play").textContent="▶ 播放";}
+  function togglePlay(){if(state.playing){stop();return}state.playing=true;$("play").textContent="Ⅱ 暂停";state.timer=setInterval(()=>{if(state.event>=events.length-1){stop();return}setEvent(state.event+1)},Number($("speed").value));}
+  function exportCurrentSvg(){
+    const e=current(),t=e.tile,a=addresses(e);
+    const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+    const font='font-family="Noto Sans CJK SC,Noto Sans SC,Microsoft YaHei,sans-serif"';
+    const txt=(x,y,text,size,color)=>'<text '+font+' x="'+x+'" y="'+y+'" fill="'+(color||'#e7eef8')+'" font-size="'+(size||18)+'">'+esc(text)+'</text>';
+    let body=txt(40,52,'ONNXim · 全局切片、Tile 与片上 entry',28,'#61d4e8');
+    body+=txt(40,88,'指令 '+(state.event+1)+' / '+events.length+' · '+e.phase+' · Tile '+t.id+' · batch='+t.batch+' / M='+t.m+' / C='+t.c);
+    ['A','W','Y'].forEach((kind,i)=>{
+      const x=40+i*380;
+      body+=txt(x,136,kind==='A'?'Activation A · N28×C64':kind==='W'?'Weight W · M32×C64':'Output Y · N28×M32',20);
+      body+='<svg x="'+x+'" y="155" width="340" height="200" viewBox="0 0 640 360">'+$('svg'+kind).innerHTML+'</svg>';
+    });
+    body+=txt(40,410,'Tile 内微块：Ns 行 / Ms 列',20,'#a78bfa');
+    nsList.forEach((ns,ni)=>msList.forEach((ms,mi)=>{
+      const x=40+mi*345,y=435+ni*190,nLoop=ns===8&&t.nEff<16?t.nEff-8:8,active=currentCell(e,ms,ns);
+      body+='<rect x="'+x+'" y="'+y+'" width="325" height="170" rx="12" fill="'+(active?'#382a23':'#0e1e32')+'" stroke="'+(active?'#f6a35b':'#2e4d69')+'" stroke-width="2"/>';
+      body+=txt(x+14,y+30,'Ns='+ns+' · Ms='+ms+' · n_loop='+nLoop,18);
+      body+=txt(x+14,y+57,'N '+fmtRange(t.n0+ns,t.n0+ns+nLoop-1)+' · M '+fmtRange(t.m0+ms,t.m0+ms+7),16);
+      body+=txt(x+14,y+88,'A '+hex(SPAD_BASE+ns*TILE_C),16);
+      body+=txt(x+14,y+113,'W '+hex(SPAD_BASE+TILE_N*TILE_C+ms*TILE_C),16);
+      body+=txt(x+14,y+138,'Y '+hex(ACC_BASE+ns*TILE_M+ms),16);
+    }));
+    const route=document.querySelector('.route-svg');
+    const routeStyle=[...document.querySelector('style').textContent.matchAll(/\.route-svg \.(flow-[\w.-]+)\{([^}]+)\}/g)].map(m=>'.'+m[1]+'{'+m[2]+'}').join('');
+    body+=txt(770,410,'当前事件数据流',20,'#38d39f');
+    body+='<svg x="760" y="430" width="390" height="390" viewBox="'+route.getAttribute('viewBox')+'">'+route.innerHTML+'</svg>';
+    body+=txt(40,850,'SPAD: '+bank(t)+' · Accumulator: ACC_R · p=1 B · 标称 T_N/T_C/T_M=16/32/16',17);
+    body+=txt(40,883,'边界保持标称地址步长；当前 c_iter='+(e.k===null?'—':e.k)+'，不会改变 A/W entry 地址。',17);
+    body+=txt(40,930,'源码指令顺序示意；entry 保存就绪元数据，不是矩阵数值；缓冲符号不固定为 bank 0/1。',15,'#96a9bd');
+    const svg='<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="970" viewBox="0 0 1200 970"><style>'+routeStyle+'</style><rect width="1200" height="970" fill="#09111f"/>'+body+'</svg>';
+    const blob=new Blob([svg],{type:"image/svg+xml"}),url=URL.createObjectURL(blob),aEl=document.createElement("a");
+    aEl.href=url;aEl.download="onnxim-gemm-step-"+String(state.event+1).padStart(3,"0")+".svg";aEl.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+  $("prev").addEventListener("click",()=>{stop();setEvent(state.event-1)});
+  $("next").addEventListener("click",()=>{stop();setEvent(state.event+1)});
+  $("reset").addEventListener("click",()=>{stop();setEvent(0)});
+  $("play").addEventListener("click",togglePlay);
+  $("speed").addEventListener("change",()=>{if(state.playing){stop();togglePlay()}});
+  $("boundaryJump").addEventListener("click",()=>{stop();const idx=events.findIndex(e=>e.tile.id===6&&e.kind==="preload"&&e.ms===0&&e.ns===8&&e.k===0);setEvent(idx)});
+  document.querySelectorAll("[data-phase]").forEach(btn=>btn.addEventListener("click",()=>{
+    const idx=events.findIndex(e=>e.tile.id===current().tile.id&&e.phase===btn.dataset.phase);
+    if(idx>=0){stop();setEvent(idx)}
+  }));
+  $("exportSvg").addEventListener("click",exportCurrentSvg);
+  $("eventRange").addEventListener("input",e=>{stop();setEvent(Number(e.target.value))});
+  document.addEventListener("keydown",e=>{
+    if(e.defaultPrevented||e.target.closest('button,input,select,[role="button"],summary'))return;
+    if(e.key==="ArrowRight"){e.preventDefault();stop();setEvent(state.event+1)}
+    if(e.key==="ArrowLeft"){e.preventDefault();stop();setEvent(state.event-1)}
+    if(e.key===" "){e.preventDefault();togglePlay()}
+  });
+  render();
+})();
+</script>
+</body>
+</html>

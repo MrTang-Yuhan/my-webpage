@@ -4,10 +4,12 @@ post_id: 2026-10-07-onnxim-模拟器-1-gemm-tile-脉动阵列与存储映射
 archive: 模拟器
 title: ONNXim 模拟器（1）：GEMM、Tile、脉动阵列与存储映射
 date: 2026-10-07
-updated: 2026-10-07
+updated: 2026-10-08
 tags:
   - post
 ---
+> 可视化交互图：[onnxim-gemm-mapping-stepwise.html](attach/onnxim-gemm-mapping-stepwise.html)
+
 # 1. 从完整 GEMM 到 Tile，再到一条计算指令
 
 ## 1.1 先明确这几个维度在本文中的含义
