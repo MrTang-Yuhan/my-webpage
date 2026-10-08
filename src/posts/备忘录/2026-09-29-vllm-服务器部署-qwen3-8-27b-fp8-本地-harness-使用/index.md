@@ -4,7 +4,7 @@ post_id: 2026-09-29-vllm-服务器部署-qwen3-8-27b-fp8-本地-harness-使用
 archive: 备忘录
 title: vLLM 服务器部署 Qwen3.8-27B-FP8，本地 Harness 使用
 date: 2026-09-29
-updated: 2026-09-29
+updated: 2026-10-08
 tags:
   - post
 ---
@@ -51,3 +51,39 @@ curl http://127.0.0.1:8000/v1/models
 ![Cindy Harness 配置](img/cindy-1.png)
 
 ![Cindy Harness 配置](img/cindy-2.png)
+
+---
+
+# 在 WSL 中使用
+
+完成上述配置（即已执行 `ssh -N -L 8000:127.0.0.1:8000 tyh@202.197.4.150` 建立转发）后，进入 WSL 执行：
+
+```bash
+curl http://127.0.0.1:8000/v1/models
+```
+
+此时会发现请求一直没有响应。
+
+这通常是因为配置了代理环境变量（为了使用梯子）：
+
+```bash
+http_proxy=http://127.0.0.1:7897    # 以及 HTTP_PROXY / https_proxy / HTTPS_PROXY 等
+```
+
+`curl` 会优先遵循这些变量，把请求转发给 `127.0.0.1:7897` 上的本地代理。但 WSL2 有独立的网络命名空间，WSL 内部的 `127.0.0.1` 并不是 Windows 的 `127.0.0.1`——梯子跑在 Windows 侧，在 WSL 里根本连不上，于是请求挂起、无响应。
+
+解决方法：
+
+```bash
+# 方式 1：单次绕过代理
+curl --noproxy '*' http://127.0.0.1:8000/v1/models
+
+# 方式 2：改用 localhost（若 no_proxy 中包含 localhost，会精确命中并绕过代理）
+curl http://localhost:8000/v1/models
+```
+
+同样地，在 cc-switch 中配置如下图：
+
+![](img/cc-switch-wsl.png)
+
+关键的配置部分，我用**红框**进行了标记，请确保一致。
