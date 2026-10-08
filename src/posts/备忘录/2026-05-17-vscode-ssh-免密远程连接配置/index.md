@@ -2,8 +2,9 @@
 layout: post.njk
 post_id: 2026-05-17-vscode-ssh-免密远程连接配置
 archive: 备忘录
-title: VSCode SSH 和 Pycharm SSH 免密远程连接和 WSL 连接配置
+title: 远程连接和 WSL 连接配置（1）：VSCode SSH 和 Pycharm SSH 免密连接
 date: 2026-05-18
+updated: 2026-10-08
 description: 在 Windows 系统下配置 SSH 免密登录远程服务器，并且支持多用户配置。
 tags:
   - post
