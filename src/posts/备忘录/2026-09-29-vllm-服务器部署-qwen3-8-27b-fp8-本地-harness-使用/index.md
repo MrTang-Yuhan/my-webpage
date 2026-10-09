@@ -4,7 +4,7 @@ post_id: 2026-09-29-vllm-服务器部署-qwen3-8-27b-fp8-本地-harness-使用
 archive: 备忘录
 title: vLLM 服务器部署 Qwen3.8-27B-FP8 （1）：服务器、本地、WSL 三端 Harness 使用
 date: 2026-09-29
-updated: 2026-10-08
+updated: 2026-10-09
 tags:
   - post
 ---
@@ -19,6 +19,18 @@ tags:
 部署完成后，服务器内 `CC-switch` 的配置参考如下：
 
 ![CC-switch 配置](img/cc-switch.png)
+
+> **注意**：需要在 `config.toml` 最开头增加如下字段，并在其后追加 `[features]` 段落：
+>
+> ```toml
+> model_post_turn_compact_threshold_percent = 80
+>
+> [features]
+> reasoning_effort_override = true
+> ```
+>
+> 否则可能出现在 compact 后会自动降低推理强度。
+
 
 ---
 
