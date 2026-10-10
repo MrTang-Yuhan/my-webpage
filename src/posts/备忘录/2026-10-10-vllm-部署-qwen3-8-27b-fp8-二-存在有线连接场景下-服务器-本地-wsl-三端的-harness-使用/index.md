@@ -1,0 +1,37 @@
+---
+layout: post.njk
+post_id: 2026-10-10-vllm-部署-qwen3-8-27b-fp8-二-存在有线连接场景下-服务器-本地-wsl-三端的-harness-使用
+archive: 备忘录
+title: vLLM 部署 Qwen3.8-27B-FP8（二）：存在有线连接场景下，服务器 / 本地 / WSL 三端的 Harness 使用
+date: 2026-10-10
+updated: 2026-10-10
+tags:
+  - post
+---
+# 0. 适用情况
+
+在有线内网时。
+
+# 1. 方案
+
+在 [vLLM 部署 Qwen3.8-27B-FP8（一）：无有线连接场景下，服务器 / 本地 / WSL 三端的 Harness 使用](https://my-webpage-adu.pages.dev/posts/%E5%A4%87%E5%BF%98%E5%BD%95/2026-09-29-vllm-%E6%9C%8D%E5%8A%A1%E5%99%A8%E9%83%A8%E7%BD%B2-qwen3-8-27b-fp8-%E6%9C%AC%E5%9C%B0-harness-%E4%BD%BF%E7%94%A8/) 的基础上，**不需要**再额外建立隧道： 
+
+```
+ssh -N -L 8000:127.0.0.1:8000 remote-150
+```
+
+**只需要** `base_url` 改成：
+
+```
+http://202.197.4.150:8000/v1
+```
+
+使用下面命令测试是否生效：
+
+```
+curl http://202.197.4.150:8000/v1/models
+```
+
+注意，在 harness 的配置中，`API_Key` 一定要填入任意字符。
+![](img/cindy-1.png)
+![](img/cindy-2.png)
