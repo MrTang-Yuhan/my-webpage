@@ -2,12 +2,20 @@
 layout: post.njk
 post_id: 2026-09-29-vllm-服务器部署-qwen3-8-27b-fp8-本地-harness-使用
 archive: 备忘录
-title: vLLM 服务器部署 Qwen3.8-27B-FP8 （1）：服务器、本地、WSL 三端 Harness 使用
+title: vLLM 部署 Qwen3.8-27B-FP8（一）：无有线连接场景下，服务器 / 本地 / WSL 三端的 Harness 使用
 date: 2026-09-29
-updated: 2026-10-09
+updated: 2026-10-10
 tags:
   - post
 ---
+# 0. 适用情况
+
+人在外面、只能走跳板机时：本机电脑到 `202.197.4.150` 没有直连路由，本地会话会连不上。解决办法是保持一条隧道（复用你现成的 `remote-150` 配置，自动经 `ProxyJump eda`）：
+```
+ssh -N -L 8000:127.0.0.1:8000 remote-150
+```
+这时给本地会话单独加一个供应商（如 vllm-local，`baseUrl` 填 `http://127.0.0.1:8000/v1`），本地任务选它；远端 H100 会话继续用现在的 vllm（`http://202.197.4.150:8000/v1`），任何位置都通。
+
 # 1. 服务器提前部署
 
 需要先在服务器上完成 `Qwen3.8-27B-FP8` 大模型的部署（本文使用 **vLLM**，部署过程略）。
@@ -41,8 +49,25 @@ tags:
 在本地终端执行以下命令，建立本机到服务器的 SSH 隧道：
 
 ```cmd
-ssh -N -L 8000:127.0.0.1:8000 tyh@202.197.4.150
+ssh -N -L 8000:127.0.0.1:8000 remote-150
 ```
+
+> 这里的 remote-150 是已经在 .ssh 中完成了相应的配置。如下：
+> ```
+> # 目标机：通过跳板机 eda 中转连接
+> Host remote-150
+>  HostName 202.197.4.150
+>  User tyh
+>  ProxyJump eda 
+>  IdentityFile C:\Users\tang\.ssh\id_ed25519_bastion
+>
+> # 跳板机（Bastion）
+> Host eda
+>  HostName 47.101.171.14
+>  Port 6001
+>  User eda
+>  IdentityFile C:\Users\tang\.ssh\id_ed25519_bastion
+> ```
 
 **命令解析：**
 
