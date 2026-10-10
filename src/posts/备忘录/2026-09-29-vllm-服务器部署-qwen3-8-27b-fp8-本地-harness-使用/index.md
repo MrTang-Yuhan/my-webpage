@@ -2,7 +2,7 @@
 layout: post.njk
 post_id: 2026-09-29-vllm-服务器部署-qwen3-8-27b-fp8-本地-harness-使用
 archive: 备忘录
-title: vLLM 部署 Qwen3.8-27B-FP8（一）：无有线连接场景下，服务器 / 本地 / WSL 三端的 Harness 使用
+title: vLLM 部署 Qwen3.8-27B-FP8（1）：无有线连接场景下，服务器 / 本地 / WSL 三端的 Harness 使用
 date: 2026-09-29
 updated: 2026-10-10
 tags:
