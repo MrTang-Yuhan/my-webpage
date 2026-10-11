@@ -4,6 +4,7 @@ post_id: 2026-08-12-skills-收集
 archive: 备忘录
 title: Harness 使用 (1)：受欢迎的 skills 收集
 date: 2026-08-12
+updated: 2026-10-11
 tags:
   - post
 ---
@@ -60,6 +61,10 @@ Archify skill 可以在对话里，把代码仓库或系统描述变成**漂亮�
 相比官方教程，[开源 Claude Code 本地代码知识图谱：code-review-graph 完整上手攻略](https://zhuanlan.zhihu.com/p/2037933211586670828) 写的更清楚。
 
 [code-review-graph 中文官网](https://github.com/tirth8205/code-review-graph/blob/staging/README.zh-CN.md) 有 **"使用说明"**、**"命令"** 页面。
+
+**我自己写的教程**：
+
+[code-review-graph 使用教程](https://my-webpage-adu.pages.dev/posts/skill-%E4%BD%BF%E7%94%A8%E6%95%99%E7%A8%8B/2026-10-11-code-review-graph-%E4%BD%BF%E7%94%A8%E6%95%99%E7%A8%8B/)
 
 ---
 
