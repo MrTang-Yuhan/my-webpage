@@ -4,7 +4,7 @@ post_id: 2026-09-29-vllm-服务器部署-qwen3-8-27b-fp8-本地-harness-使用
 archive: 备忘录
 title: vLLM 部署 Qwen3.8-27B-FP8（1）：无有线连接场景下，服务器 / 本地 / WSL 三端的 Harness 使用
 date: 2026-09-29
-updated: 2026-10-10
+updated: 2026-10-12
 tags:
   - post
 ---
@@ -52,7 +52,11 @@ ssh -N -L 8000:127.0.0.1:8000 remote-150
 在本地终端执行以下命令，建立本机到服务器的 SSH 隧道：
 
 ```cmd
+# 方式 1：已经配置好 .ssh
 ssh -N -L 8000:127.0.0.1:8000 remote-150
+
+# 方式 2
+ssh -N -L 8000:127.0.0.1:8000 tyh@202.197.4.150
 ```
 
 > 这里的 remote-150 是已经在 .ssh 中完成了相应的配置。如下：
