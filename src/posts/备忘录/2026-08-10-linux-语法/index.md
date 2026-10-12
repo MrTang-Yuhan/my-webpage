@@ -288,6 +288,14 @@ source ~/.bashrc
 
 ## 四、Codex-cli 下载
 
+> 注意，如果发现 WSL2 因网络问题下载失败，则配置走代理：
+> ```bash
+> export https_proxy=http://127.0.0.1:7897
+> export http_proxy=http://127.0.0.1:7897
+> ```
+> 注意根据 VPN 实际情况更换端口。
+
+
 Linux 命令行模式 codex-cli 下载（需要梯子）：
 
 1.下载 node.js 和 nvm：https://nodejs.org/zh-cn/download
