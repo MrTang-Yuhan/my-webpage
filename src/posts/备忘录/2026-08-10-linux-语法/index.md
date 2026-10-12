@@ -4,7 +4,7 @@ post_id: 2026-08-10-linux-语法
 archive: 备忘录
 title: Linux 开发环境配置
 date: 2026-08-10
-updated: 2026-10-05
+updated: 2026-10-12
 tags:
   - post
 ---
@@ -284,4 +284,6 @@ Linux 命令行模式 codex-cli 下载（需要梯子）：
 
 3.下载 codex（大概需要1分钟~30分钟，取决网速）: `npm install -g @openai/codex`
 
+## 五、Linux 换源工具
 
+[linuxmirrors](https://linuxmirrors.cn/)
