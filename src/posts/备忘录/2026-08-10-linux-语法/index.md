@@ -304,4 +304,21 @@ Linux 命令行模式 codex-cli 下载（需要梯子）：
 
 3.下载 codex（大概需要1分钟~30分钟，取决网速）: `npm install -g @openai/codex`
 
+## 五、容器快捷键配置
+
+`~/.bashrc` 配置：
+
+```
+# ================= Docker =================
+# de <容器名>：快捷进入指定名称的 Docker 容器（交互式，使用 bash）
+# 用法示例：de my-nginx
+de() {
+  if [ -z "$1" ]; then
+    echo "用法: de <容器名>" >&2
+    return 1
+  fi
+  docker exec -it "$1" /bin/bash
+}
+```
+
 
