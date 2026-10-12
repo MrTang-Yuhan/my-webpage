@@ -8,7 +8,19 @@ updated: 2026-10-12
 tags:
   - post
 ---
+## 零、Linux 换源工具
+
+[linuxmirrors](https://linuxmirrors.cn/)
+
 ## 一、Vim 配置
+
+升级 vim 到新版，防止粘贴问题：
+
+```bash
+# 升级 vim
+sudo apt upgrade vim
+```
+
 
 将以下内容保存到用户主目录下的 `~/.vimrc` 文件中（如果文件不存在则新建）。
 
@@ -284,6 +296,4 @@ Linux 命令行模式 codex-cli 下载（需要梯子）：
 
 3.下载 codex（大概需要1分钟~30分钟，取决网速）: `npm install -g @openai/codex`
 
-## 五、Linux 换源工具
 
-[linuxmirrors](https://linuxmirrors.cn/)
